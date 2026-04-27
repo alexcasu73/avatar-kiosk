@@ -24,6 +24,7 @@ db.exec(`
     camera_z          REAL DEFAULT 3.5,
     camera_y          REAL DEFAULT 1.0,
     camera_look_at_y  REAL DEFAULT 1.0,
+    idle_timeout      INTEGER DEFAULT 90,
     idle_icon         TEXT DEFAULT '🤖',
     idle_title        TEXT DEFAULT '',
     idle_subtitle     TEXT DEFAULT 'La tua assistente virtuale',
@@ -31,10 +32,33 @@ db.exec(`
     overlay_color     TEXT DEFAULT '#0a0a0f',
     overlay_opacity   REAL DEFAULT 0.75,
     overlay_height    REAL DEFAULT 65,
+    chat_height       INTEGER DEFAULT 65,
+    chat_bottom       INTEGER DEFAULT 0,
+    chat_max_width    INTEGER DEFAULT 100,
+    chat_align        TEXT DEFAULT 'center',
+    chat_hide_input   INTEGER DEFAULT 0,
+    show_logo         INTEGER DEFAULT 1,
     published         INTEGER DEFAULT 0,
     created_at        TEXT DEFAULT (datetime('now')),
     updated_at        TEXT DEFAULT (datetime('now'))
   )
 `);
+
+// Migrazione: aggiunge colonne mancanti su DB esistenti
+const existing = db.prepare("PRAGMA table_info(avatars)").all().map(c => c.name);
+if (!existing.includes('idle_timeout'))
+  db.exec("ALTER TABLE avatars ADD COLUMN idle_timeout INTEGER DEFAULT 90");
+if (!existing.includes('chat_height'))
+  db.exec("ALTER TABLE avatars ADD COLUMN chat_height INTEGER DEFAULT 65");
+if (!existing.includes('chat_bottom'))
+  db.exec("ALTER TABLE avatars ADD COLUMN chat_bottom INTEGER DEFAULT 0");
+if (!existing.includes('chat_max_width'))
+  db.exec("ALTER TABLE avatars ADD COLUMN chat_max_width INTEGER DEFAULT 100");
+if (!existing.includes('chat_align'))
+  db.exec("ALTER TABLE avatars ADD COLUMN chat_align TEXT DEFAULT 'center'");
+if (!existing.includes('chat_hide_input'))
+  db.exec("ALTER TABLE avatars ADD COLUMN chat_hide_input INTEGER DEFAULT 0");
+if (!existing.includes('show_logo'))
+  db.exec("ALTER TABLE avatars ADD COLUMN show_logo INTEGER DEFAULT 1");
 
 export default db;

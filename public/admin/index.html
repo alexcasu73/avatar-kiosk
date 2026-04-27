@@ -364,6 +364,40 @@
           <input type="range" min="10" max="95" step="1" id="s-overlay-height" value="65"
             oninput="document.getElementById('v-overlay-height').textContent=this.value; applyOverlayLive()"/>
         </div>
+        <div class="slider-field">
+          <label>Margine inferiore chat px <span id="v-chat-bottom">0</span></label>
+          <input type="range" min="0" max="300" step="4" id="s-chat-bottom" value="0"
+            oninput="document.getElementById('v-chat-bottom').textContent=this.value;
+                     sendToPreview({type:'avatarParam',key:'chat_bottom',value:this.value})"/>
+        </div>
+        <div class="slider-field">
+          <label>Larghezza massima chat % <span id="v-chat-max-width">100</span></label>
+          <input type="range" min="30" max="100" step="5" id="s-chat-max-width" value="100"
+            oninput="document.getElementById('v-chat-max-width').textContent=this.value;
+                     sendToPreview({type:'avatarParam',key:'chat_max_width',value:this.value})"/>
+        </div>
+        <div class="field">
+          <label>Posizione orizzontale</label>
+          <div class="btn-row" style="gap:6px">
+            <button id="align-left-btn"   class="btn btn-neutral" onclick="setChatAlign('left')">◀ Sinistra</button>
+            <button id="align-center-btn" class="btn btn-neutral active" onclick="setChatAlign('center')">● Centro</button>
+            <button id="align-right-btn"  class="btn btn-neutral" onclick="setChatAlign('right')">▶ Destra</button>
+          </div>
+        </div>
+        <div class="field" style="margin-top:4px">
+          <label style="display:flex;align-items:center;gap:10px;cursor:pointer">
+            <input type="checkbox" id="f-chat-hide-input"
+              onchange="sendToPreview({type:'avatarParam',key:'chat_hide_input',value:this.checked?1:0})"/>
+            Nascondi input vocale/testo
+          </label>
+        </div>
+        <div class="field" style="margin-top:4px">
+          <label style="display:flex;align-items:center;gap:10px;cursor:pointer">
+            <input type="checkbox" id="f-show-logo" checked
+              onchange="sendToPreview({type:'avatarParam',key:'show_logo',value:this.checked?1:0})"/>
+            Mostra nome avatar in alto a sinistra
+          </label>
+        </div>
       </div>
 
       <!-- Schermata Idle -->
@@ -392,6 +426,12 @@
           <label>Tasto / hint</label>
           <input type="text" id="f-idle-hint" value="✨ Tocca per iniziare"
             oninput="sendToPreview({type:'idleParam',key:'idle_hint',value:this.value})"/>
+        </div>
+        <div class="field">
+          <label>Timeout inattività <span id="val-idle-timeout">90</span>s</label>
+          <input type="range" id="s-idle-timeout" min="10" max="300" step="5" value="90"
+            oninput="document.getElementById('val-idle-timeout').textContent=this.value;
+                     sendToPreview({type:'idleParam',key:'idle_timeout',value:this.value})"/>
         </div>
       </div>
 
@@ -551,7 +591,8 @@
 
 <script>
 let avatars   = [];
-let currentId = null;
+let currentId  = null;
+let currentBg  = '#0a0a0f';
 
 // ── API helpers ───────────────────────────────────────────────────────────────
 const api = {
@@ -610,6 +651,7 @@ function selectAvatar(id) {
   document.getElementById('f-prompt').value  = a.system_prompt || '';
 
   // Sfondo
+  currentBg = a.background || '#0a0a0f';
   const isColor = !a.background || a.background.startsWith('#') || a.background.startsWith('rgb');
   if (isColor) {
     document.getElementById('f-bg-color').value = a.background || '#0a0a0f';
@@ -647,10 +689,20 @@ function selectAvatar(id) {
   document.getElementById('v-overlay-opacity').textContent = (a.overlay_opacity ?? 0.75).toFixed(2);
   document.getElementById('s-overlay-height').value = a.overlay_height ?? 65;
   document.getElementById('v-overlay-height').textContent = a.overlay_height ?? 65;
+  document.getElementById('s-chat-bottom').value = a.chat_bottom ?? 0;
+  document.getElementById('v-chat-bottom').textContent = a.chat_bottom ?? 0;
+  document.getElementById('s-chat-max-width').value = a.chat_max_width ?? 100;
+  document.getElementById('v-chat-max-width').textContent = a.chat_max_width ?? 100;
+  setChatAlign(a.chat_align || 'center');
+  document.getElementById('f-chat-hide-input').checked = !!(a.chat_hide_input);
+  document.getElementById('f-show-logo').checked = a.show_logo !== 0;
   document.getElementById('f-idle-icon').value     = a.idle_icon     || '🤖';
   document.getElementById('f-idle-title').value    = a.idle_title    || '';
   document.getElementById('f-idle-subtitle').value = a.idle_subtitle || 'La tua assistente virtuale';
   document.getElementById('f-idle-hint').value     = a.idle_hint     || '✨ Tocca per iniziare';
+  const idleTimeout = a.idle_timeout ?? 90;
+  document.getElementById('s-idle-timeout').value        = idleTimeout;
+  document.getElementById('val-idle-timeout').textContent = idleTimeout;
 
   // Publish btn
   document.getElementById('publish-btn').textContent = a.published ? '🔴 Rimuovi' : '🟢 Pubblica';
@@ -822,12 +874,11 @@ async function createAvatar() {
 // ── Salva avatar ──────────────────────────────────────────────────────────────
 async function saveAvatar() {
   if (!currentId) return;
-  const bg = document.getElementById('f-bg-color').value;
   const body = {
     name:            document.getElementById('f-name').value,
     voice_id:        document.getElementById('f-voice-id').value,
     system_prompt:   document.getElementById('f-prompt').value,
-    background:      bg,
+    background:      currentBg,
     idle_start:      parseFloat(document.getElementById('s-idle-start').value),
     idle_end:        parseFloat(document.getElementById('s-idle-end').value),
     speech_start:    parseFloat(document.getElementById('s-speech-start').value),
@@ -841,6 +892,12 @@ async function saveAvatar() {
     overlay_color:   document.getElementById('f-overlay-color').value,
     overlay_opacity: parseFloat(document.getElementById('s-overlay-opacity').value),
     overlay_height:  parseFloat(document.getElementById('s-overlay-height').value),
+    chat_bottom:     parseInt(document.getElementById('s-chat-bottom').value),
+    chat_max_width:  parseInt(document.getElementById('s-chat-max-width').value),
+    chat_align:      setChatAlign._current,
+    chat_hide_input: document.getElementById('f-chat-hide-input').checked ? 1 : 0,
+    show_logo:       document.getElementById('f-show-logo').checked ? 1 : 0,
+    idle_timeout:    parseInt(document.getElementById('s-idle-timeout').value),
     idle_icon:       document.getElementById('f-idle-icon').value,
     idle_title:      document.getElementById('f-idle-title').value,
     idle_subtitle:   document.getElementById('f-idle-subtitle').value,
@@ -916,6 +973,7 @@ async function uploadBackground(file) {
   const res  = await fetch(`/api/admin/avatars/${currentId}/upload-background`, { method:'POST', body:form });
   const data = await res.json();
   if (!res.ok) { toast('❌ ' + data.error, 'error'); return; }
+  currentBg = data.background;
   document.getElementById('bg-label').textContent = `✅ ${data.background}`;
   document.getElementById('bg-drop').classList.add('has-file');
   document.getElementById('remove-bg-btn').style.display = 'block';
@@ -933,7 +991,19 @@ function openKiosk() {
   if (!currentId) return;
   window.open(`/k/${currentId}`, '_blank');
 }
+function setChatAlign(val) {
+  ['left','center','right'].forEach(a => {
+    document.getElementById(`align-${a}-btn`).classList.toggle('active', a === val);
+  });
+  document.getElementById(`align-${val}-btn`).dataset.chatAlign = val;
+  sendToPreview({ type: 'avatarParam', key: 'chat_align', value: val });
+  // memorizza il valore corrente per il salvataggio
+  setChatAlign._current = val;
+}
+setChatAlign._current = 'center';
+
 function applyBgColor(color) {
+  currentBg = color;
   document.getElementById('f-bg-hex').textContent = color;
   sendToPreview({ type: 'avatarParam', key: 'background', value: color });
 }

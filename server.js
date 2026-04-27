@@ -69,11 +69,13 @@ app.get('/api/avatar/:id', (req, res) => {
   const { id, name, background, model_file, idle_start, idle_end,
           speech_start, speech_end, avatar_scale, avatar_offset_x,
           avatar_offset_y, avatar_rot_y, camera_z, camera_y, camera_look_at_y,
-          overlay_color, overlay_opacity, overlay_height,\n          idle_icon, idle_title, idle_subtitle, idle_hint } = avatar;
+          overlay_color, overlay_opacity, overlay_height, chat_height, chat_bottom, chat_max_width, chat_align, chat_hide_input, show_logo,
+          idle_timeout, idle_icon, idle_title, idle_subtitle, idle_hint } = avatar;
   res.json({ id, name, background, model_file, idle_start, idle_end,
              speech_start, speech_end, avatar_scale, avatar_offset_x,
              avatar_offset_y, avatar_rot_y, camera_z, camera_y, camera_look_at_y,
-             overlay_color, overlay_opacity, overlay_height });
+             overlay_color, overlay_opacity, overlay_height, chat_height, chat_bottom, chat_max_width, chat_align, chat_hide_input, show_logo,
+             idle_timeout, idle_icon, idle_title, idle_subtitle, idle_hint });
 });
 
 // ─── Route: Kiosk page ────────────────────────────────────────────────────────
@@ -96,11 +98,13 @@ app.get('/api/preview/:id', (req, res) => {
   const { id, name, background, model_file, idle_start, idle_end,
           speech_start, speech_end, avatar_scale, avatar_offset_x,
           avatar_offset_y, avatar_rot_y, camera_z, camera_y, camera_look_at_y,
-          overlay_color, overlay_opacity, overlay_height,\n          idle_icon, idle_title, idle_subtitle, idle_hint } = avatar;
+          overlay_color, overlay_opacity, overlay_height, chat_height, chat_bottom, chat_max_width, chat_align, chat_hide_input, show_logo,
+          idle_timeout, idle_icon, idle_title, idle_subtitle, idle_hint } = avatar;
   res.json({ id, name, background, model_file, idle_start, idle_end,
              speech_start, speech_end, avatar_scale, avatar_offset_x,
              avatar_offset_y, avatar_rot_y, camera_z, camera_y, camera_look_at_y,
-             overlay_color, overlay_opacity, overlay_height });
+             overlay_color, overlay_opacity, overlay_height, chat_height, chat_bottom, chat_max_width, chat_align, chat_hide_input, show_logo,
+             idle_timeout, idle_icon, idle_title, idle_subtitle, idle_hint });
 });
 
 // ─── Route: Admin page ────────────────────────────────────────────────────────
@@ -127,8 +131,8 @@ app.put('/api/admin/avatars/:id', (req, res) => {
   const fields = ['name','voice_id','system_prompt','background','idle_start','idle_end',
                   'speech_start','speech_end','avatar_scale','avatar_offset_x','avatar_offset_y',
                   'avatar_rot_y','camera_z','camera_y','camera_look_at_y',
-                  'overlay_color','overlay_opacity','overlay_height',
-                  'idle_icon','idle_title','idle_subtitle','idle_hint'];
+                  'overlay_color','overlay_opacity','overlay_height','chat_height','chat_bottom','chat_max_width','chat_align','chat_hide_input','show_logo',
+                  'idle_timeout','idle_icon','idle_title','idle_subtitle','idle_hint'];
   const updates = [];
   const values  = [];
   for (const f of fields) {
@@ -138,7 +142,11 @@ app.put('/api/admin/avatars/:id', (req, res) => {
   updates.push("updated_at = datetime('now')");
   values.push(req.params.id);
   db.prepare(`UPDATE avatars SET ${updates.join(', ')} WHERE id = ?`).run(...values);
-  res.json(db.prepare('SELECT * FROM avatars WHERE id = ?').get(req.params.id));
+  const updated = db.prepare('SELECT * FROM avatars WHERE id = ?').get(req.params.id);
+  // Broadcast ai kiosk connessi
+  const broadcast = JSON.stringify({ type: 'config_update', avatarId: String(req.params.id), data: updated });
+  for (const ws of clients.values()) { try { ws.send(broadcast); } catch {} }
+  res.json(updated);
 });
 
 app.delete('/api/admin/avatars/:id', (req, res) => {
