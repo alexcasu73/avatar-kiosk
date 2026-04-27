@@ -69,7 +69,7 @@ app.get('/api/avatar/:id', (req, res) => {
   const { id, name, background, model_file, idle_start, idle_end,
           speech_start, speech_end, avatar_scale, avatar_offset_x,
           avatar_offset_y, avatar_rot_y, camera_z, camera_y, camera_look_at_y,
-          overlay_color, overlay_opacity, overlay_height } = avatar;
+          overlay_color, overlay_opacity, overlay_height,\n          idle_icon, idle_title, idle_subtitle, idle_hint } = avatar;
   res.json({ id, name, background, model_file, idle_start, idle_end,
              speech_start, speech_end, avatar_scale, avatar_offset_x,
              avatar_offset_y, avatar_rot_y, camera_z, camera_y, camera_look_at_y,
@@ -96,7 +96,7 @@ app.get('/api/preview/:id', (req, res) => {
   const { id, name, background, model_file, idle_start, idle_end,
           speech_start, speech_end, avatar_scale, avatar_offset_x,
           avatar_offset_y, avatar_rot_y, camera_z, camera_y, camera_look_at_y,
-          overlay_color, overlay_opacity, overlay_height } = avatar;
+          overlay_color, overlay_opacity, overlay_height,\n          idle_icon, idle_title, idle_subtitle, idle_hint } = avatar;
   res.json({ id, name, background, model_file, idle_start, idle_end,
              speech_start, speech_end, avatar_scale, avatar_offset_x,
              avatar_offset_y, avatar_rot_y, camera_z, camera_y, camera_look_at_y,
@@ -127,7 +127,8 @@ app.put('/api/admin/avatars/:id', (req, res) => {
   const fields = ['name','voice_id','system_prompt','background','idle_start','idle_end',
                   'speech_start','speech_end','avatar_scale','avatar_offset_x','avatar_offset_y',
                   'avatar_rot_y','camera_z','camera_y','camera_look_at_y',
-                  'overlay_color','overlay_opacity','overlay_height'];
+                  'overlay_color','overlay_opacity','overlay_height',
+                  'idle_icon','idle_title','idle_subtitle','idle_hint'];
   const updates = [];
   const values  = [];
   for (const f of fields) {

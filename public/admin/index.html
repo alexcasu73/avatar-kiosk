@@ -366,6 +366,35 @@
         </div>
       </div>
 
+      <!-- Schermata Idle -->
+      <div class="section">
+        <h3>Schermata Idle</h3>
+        <p style="font-size:.75rem;color:var(--text-dim);margin-bottom:12px;">
+          Testo e icona mostrati quando il totem è inattivo
+        </p>
+        <div class="field">
+          <label>Icona (emoji)</label>
+          <input type="text" id="f-idle-icon" value="🤖" maxlength="8"
+            style="font-size:1.4rem; width:60px; text-align:center;"
+            oninput="sendToPreview({type:'idleParam',key:'idle_icon',value:this.value})"/>
+        </div>
+        <div class="field">
+          <label>Titolo</label>
+          <input type="text" id="f-idle-title" placeholder="Ciao! Sono {nome}"
+            oninput="sendToPreview({type:'idleParam',key:'idle_title',value:this.value})"/>
+        </div>
+        <div class="field">
+          <label>Sottotitolo</label>
+          <input type="text" id="f-idle-subtitle" value="La tua assistente virtuale"
+            oninput="sendToPreview({type:'idleParam',key:'idle_subtitle',value:this.value})"/>
+        </div>
+        <div class="field">
+          <label>Tasto / hint</label>
+          <input type="text" id="f-idle-hint" value="✨ Tocca per iniziare"
+            oninput="sendToPreview({type:'idleParam',key:'idle_hint',value:this.value})"/>
+        </div>
+      </div>
+
       <!-- Modello 3D -->
       <div class="section">
         <h3>Modello 3D</h3>
@@ -618,6 +647,10 @@ function selectAvatar(id) {
   document.getElementById('v-overlay-opacity').textContent = (a.overlay_opacity ?? 0.75).toFixed(2);
   document.getElementById('s-overlay-height').value = a.overlay_height ?? 65;
   document.getElementById('v-overlay-height').textContent = a.overlay_height ?? 65;
+  document.getElementById('f-idle-icon').value     = a.idle_icon     || '🤖';
+  document.getElementById('f-idle-title').value    = a.idle_title    || '';
+  document.getElementById('f-idle-subtitle').value = a.idle_subtitle || 'La tua assistente virtuale';
+  document.getElementById('f-idle-hint').value     = a.idle_hint     || '✨ Tocca per iniziare';
 
   // Publish btn
   document.getElementById('publish-btn').textContent = a.published ? '🔴 Rimuovi' : '🟢 Pubblica';
@@ -808,6 +841,10 @@ async function saveAvatar() {
     overlay_color:   document.getElementById('f-overlay-color').value,
     overlay_opacity: parseFloat(document.getElementById('s-overlay-opacity').value),
     overlay_height:  parseFloat(document.getElementById('s-overlay-height').value),
+    idle_icon:       document.getElementById('f-idle-icon').value,
+    idle_title:      document.getElementById('f-idle-title').value,
+    idle_subtitle:   document.getElementById('f-idle-subtitle').value,
+    idle_hint:       document.getElementById('f-idle-hint').value,
   };
   const updated = await api.put(`/api/admin/avatars/${currentId}`, body);
   avatars = avatars.map(a => a.id===currentId ? updated : a);

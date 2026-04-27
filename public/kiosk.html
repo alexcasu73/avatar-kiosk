@@ -686,10 +686,10 @@
 
   <!-- Idle overlay -->
   <div id="idle-overlay" onclick="wakeUp()">
-    <div class="idle-avatar-icon">🤖</div>
+    <div class="idle-avatar-icon" id="idle-icon">🤖</div>
     <h2 id="idle-title">Ciao! Sono Sofia</h2>
-    <p>La tua assistente virtuale</p>
-    <div class="tap-hint">✨ Tocca per iniziare</div>
+    <p id="idle-subtitle">La tua assistente virtuale</p>
+    <div class="tap-hint" id="idle-hint">✨ Tocca per iniziare</div>
   </div>
 
 </div>
@@ -1922,6 +1922,12 @@ window.addEventListener('message', e => {
       }
       return;
     }
+    if (msg.type === 'idleParam') {
+      const idMap = { idle_icon: 'idle-icon', idle_title: 'idle-title', idle_subtitle: 'idle-subtitle', idle_hint: 'idle-hint' };
+      const el = document.getElementById(idMap[msg.key]);
+      if (el) el.textContent = msg.value;
+      return;
+    }
     if (msg.key === 'background') {
       const color = msg.value;
       document.body.style.background = color;
@@ -2059,7 +2065,10 @@ async function initAvatar() {
 
     // UI
     document.getElementById('avatar-response-label').textContent = cfg.name.toUpperCase();
-    document.getElementById('idle-title').textContent = `Ciao! Sono ${cfg.name}`;
+    document.getElementById('idle-title').textContent = cfg.idle_title || `Ciao! Sono ${cfg.name}`;
+    document.getElementById('idle-subtitle').textContent = cfg.idle_subtitle || 'La tua assistente virtuale';
+    document.getElementById('idle-icon').textContent = cfg.idle_icon || '🤖';
+    document.getElementById('idle-hint').textContent = cfg.idle_hint || '✨ Tocca per iniziare';
     document.querySelector('.logo').textContent = cfg.name.toUpperCase();
 
     // Aggiorna camera
