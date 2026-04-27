@@ -1,0 +1,23 @@
+# Dipendenze
+node_modules/
+
+# Variabili d'ambiente (contengono API key sensibili)
+.env
+
+# Database (dati locali)
+avatars.db
+avatars.db-journal
+
+# Modelli e risorse caricate dall'utente
+public/models/
+public/backgrounds/
+
+# Profilo Chrome kiosk (dati locali del browser)
+chrome-kiosk-profile/
+
+# macOS
+.DS_Store
+
+# Log
+*.log
+npm-debug.log*

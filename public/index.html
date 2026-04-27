@@ -1,0 +1,1774 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Avatar Kiosk</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    :root {
+      --bg:        #0a0a0f;
+      --surface:   #13131a;
+      --surface2:  #1e1e2a;
+      --accent:    #6c63ff;
+      --accent2:   #a78bfa;
+      --text:      #f0f0f5;
+      --text-dim:  #8888aa;
+      --success:   #22d3a0;
+      --error:     #f87171;
+      --warn:      #fbbf24;
+      --border:    rgba(108,99,255,0.25);
+    }
+
+    html, body {
+      width: 100%; height: 100%;
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Segoe UI', system-ui, sans-serif;
+      overflow: hidden;
+      user-select: none;
+      touch-action: manipulation;
+    }
+
+    /* ─── Layout principale ─────────────────────────── */
+    #app {
+      display: flex;
+      flex-direction: column;
+      height: 100vh;
+      position: relative;
+    }
+
+    /* ─── Header ────────────────────────────────────── */
+    #header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 16px 32px;
+      background: rgba(10,10,15,0.95);
+      border-bottom: 1px solid var(--border);
+      z-index: 10;
+      flex-shrink: 0;
+    }
+
+    .logo {
+      font-size: 1rem;
+      font-weight: 700;
+      letter-spacing: 0.1em;
+      color: var(--accent2);
+    }
+
+    #status-chip {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      padding: 6px 14px;
+      transition: all 0.3s;
+    }
+
+    #status-chip.listening { border-color: var(--success); }
+    #status-chip.thinking  { border-color: var(--accent); }
+    #status-chip.speaking  { border-color: var(--warn); }
+
+    .status-dot {
+      width: 8px; height: 8px;
+      border-radius: 50%;
+      background: var(--success);
+      box-shadow: 0 0 8px var(--success);
+      flex-shrink: 0;
+    }
+
+    #status-label {
+      font-size: 0.78rem;
+      color: var(--text-dim);
+      white-space: nowrap;
+    }
+
+    /* ─── Main ──────────────────────────────────────── */
+    #main {
+      display: flex;
+      flex: 1;
+      overflow: hidden;
+      min-height: 0;
+    }
+
+    /* ─── Avatar Panel ──────────────────────────────── */
+    #avatar-panel {
+      flex: 1.2;
+      position: relative;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: radial-gradient(ellipse at 50% 60%, #1a1030 0%, var(--bg) 70%);
+      min-width: 0;
+    }
+
+    #avatar-canvas {
+      width: 100%;
+      height: 100%;
+      display: block;
+    }
+
+    /* Ring "sta parlando" */
+    #avatar-ring {
+      position: absolute;
+      bottom: 20%;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 220px; height: 220px;
+      border-radius: 50%;
+      border: 2px solid var(--accent);
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.3s;
+    }
+    #avatar-ring.speaking {
+      opacity: 1;
+      animation: ring-pulse 1.2s ease-in-out infinite;
+    }
+
+
+    /* ─── Pannello interazione ──────────────────────── */
+    #interaction-panel {
+      width: 420px;
+      display: flex;
+      flex-direction: column;
+      background: var(--surface);
+      border-left: 1px solid var(--border);
+      flex-shrink: 0;
+    }
+
+    /* ─── Area risposta ─────────────────────────────── */
+    #response-area {
+      flex: 1;
+      overflow-y: auto;
+      padding: 28px 24px 20px;
+      display: flex;
+      flex-direction: column;
+      justify-content: flex-end;
+      gap: 16px;
+      min-height: 0;
+    }
+
+    #response-area::-webkit-scrollbar { width: 3px; }
+    #response-area::-webkit-scrollbar-thumb { background: var(--border); }
+
+    #transcript-bubble {
+      align-self: flex-end;
+      max-width: 90%;
+      background: var(--accent);
+      color: #fff;
+      border-radius: 18px 18px 4px 18px;
+      padding: 14px 18px;
+      font-size: 1.05rem;
+      line-height: 1.5;
+      display: none;
+    }
+
+    #transcript-bubble .label {
+      font-size: 0.7rem;
+      font-weight: 700;
+      opacity: 0.7;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      display: block;
+      margin-bottom: 6px;
+    }
+
+    #response-bubble {
+      align-self: flex-start;
+      max-width: 95%;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 18px 18px 18px 4px;
+      padding: 18px 20px;
+      font-size: 1.15rem;
+      line-height: 1.6;
+      display: none;
+    }
+
+    #response-bubble .label {
+      font-size: 0.7rem;
+      font-weight: 700;
+      opacity: 0.6;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--accent2);
+      display: block;
+      margin-bottom: 8px;
+    }
+
+    .typing-indicator {
+      align-self: flex-start;
+      display: none;
+      gap: 5px;
+      padding: 16px 20px;
+      background: var(--surface2);
+      border-radius: 18px 18px 18px 4px;
+      border: 1px solid var(--border);
+    }
+    .typing-indicator.visible { display: flex; }
+    .typing-indicator span {
+      width: 7px; height: 7px;
+      background: var(--accent2);
+      border-radius: 50%;
+      animation: typing 1.2s infinite;
+    }
+    .typing-indicator span:nth-child(2) { animation-delay: 0.2s; }
+    .typing-indicator span:nth-child(3) { animation-delay: 0.4s; }
+
+    /* ─── VAD Status bar ────────────────────────────── */
+    #vad-section {
+      padding: 16px 24px;
+      border-top: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 12px;
+      flex-shrink: 0;
+    }
+
+    #vad-bars {
+      display: flex;
+      align-items: center;
+      gap: 3px;
+      height: 32px;
+    }
+
+    .vad-bar {
+      width: 4px;
+      border-radius: 2px;
+      background: var(--border);
+      height: 6px;
+      transition: height 0.08s ease, background 0.2s;
+    }
+
+    #vad-bars.active .vad-bar { background: var(--success); }
+    #vad-bars.recording .vad-bar { background: var(--error); }
+
+    #vad-label {
+      font-size: 0.82rem;
+      color: var(--text-dim);
+      text-align: center;
+    }
+
+    /* ─── Input testuale (fallback) ─────────────────── */
+    #input-area {
+      padding: 14px 20px 20px;
+      border-top: 1px solid var(--border);
+      display: flex;
+      gap: 10px;
+      flex-shrink: 0;
+    }
+
+    #text-input {
+      flex: 1;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 14px 18px;
+      color: var(--text);
+      font-size: 1rem;
+      outline: none;
+      font-family: inherit;
+      transition: border-color 0.2s;
+      min-width: 0;
+    }
+    #text-input:focus { border-color: var(--accent); }
+    #text-input::placeholder { color: var(--text-dim); }
+
+    #send-btn {
+      background: var(--accent);
+      border: none;
+      border-radius: 14px;
+      width: 52px;
+      height: 52px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: transform 0.15s, background 0.2s;
+      flex-shrink: 0;
+    }
+    #send-btn:hover  { background: var(--accent2); transform: scale(1.05); }
+    #send-btn:active { transform: scale(0.96); }
+    #send-btn svg    { fill: white; width: 20px; height: 20px; }
+
+    /* ─── Idle Overlay ──────────────────────────────── */
+    #idle-overlay {
+      position: absolute;
+      inset: 0;
+      background: rgba(10,10,15,0.93);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      z-index: 50;
+      cursor: pointer;
+      transition: opacity 0.5s;
+    }
+    #idle-overlay.hidden { opacity: 0; pointer-events: none; }
+
+    .idle-avatar-icon {
+      width: 140px; height: 140px;
+      border-radius: 50%;
+      background: radial-gradient(circle, var(--accent) 0%, #3b0764 100%);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 3.5rem;
+      margin-bottom: 28px;
+      box-shadow: 0 0 60px rgba(108,99,255,0.5);
+      animation: float 3s ease-in-out infinite;
+    }
+
+    #idle-overlay h2 {
+      font-size: 2rem;
+      font-weight: 700;
+      margin-bottom: 10px;
+    }
+
+    #idle-overlay p {
+      font-size: 1.1rem;
+      color: var(--text-dim);
+    }
+
+    .tap-hint {
+      margin-top: 36px;
+      font-size: 0.95rem;
+      color: var(--accent2);
+      border: 1px solid var(--border);
+      padding: 12px 28px;
+      border-radius: 24px;
+      animation: float 2s ease-in-out infinite;
+    }
+
+    /* ─── Animazioni ────────────────────────────────── */
+    @keyframes ring-pulse {
+      0%, 100% { transform: translateX(-50%) scale(1);    opacity: 1; }
+      50%       { transform: translateX(-50%) scale(1.08); opacity: 0.6; }
+    }
+    @keyframes typing {
+      0%, 60%, 100% { transform: translateY(0); }
+      30%            { transform: translateY(-6px); }
+    }
+    @keyframes float {
+      0%, 100% { transform: translateY(0); }
+      50%       { transform: translateY(-10px); }
+    }
+
+    /* ─── Pannello impostazioni ─────────────────────── */
+    #settings-panel {
+      position: absolute;
+      top: 16px;
+      right: 16px;
+      z-index: 30;
+    }
+
+    #settings-toggle {
+      width: 38px; height: 38px;
+      background: rgba(13,13,20,0.85);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      font-size: 1.1rem;
+      margin-left: auto;
+      transition: background 0.2s;
+    }
+    #settings-toggle:hover { background: var(--surface2); }
+
+    #settings-body {
+      display: none;
+      margin-top: 8px;
+      background: rgba(13,13,20,0.95);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 16px;
+      width: 230px;
+      backdrop-filter: blur(10px);
+    }
+    #settings-body.open { display: block; }
+
+    .settings-title {
+      font-size: 0.7rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--accent2);
+      margin-bottom: 10px;
+    }
+
+    .slider-group {
+      margin-bottom: 10px;
+    }
+
+    .slider-group label {
+      display: flex;
+      justify-content: space-between;
+      font-size: 0.78rem;
+      color: var(--text-dim);
+      margin-bottom: 4px;
+    }
+
+    .slider-group label span {
+      color: var(--text);
+      font-variant-numeric: tabular-nums;
+      min-width: 36px;
+      text-align: right;
+    }
+
+    .slider-group input[type=range] {
+      width: 100%;
+      accent-color: var(--accent);
+      cursor: pointer;
+    }
+
+    .copy-btn {
+      width: 100%;
+      margin-top: 12px;
+      padding: 8px;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      color: var(--text);
+      font-size: 0.8rem;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+    .copy-btn:hover { background: var(--accent); }
+
+    /* ─── FBX Dropzone ──────────────────────────────── */
+    #fbx-dropzone {
+      border: 2px dashed var(--border);
+      border-radius: 10px;
+      padding: 14px 10px;
+      text-align: center;
+      cursor: pointer;
+      transition: border-color 0.2s, background 0.2s;
+      font-size: 0.78rem;
+      color: var(--text-dim);
+      line-height: 1.5;
+      margin-top: 6px;
+    }
+    #fbx-dropzone:hover, #fbx-dropzone.drag-over {
+      border-color: var(--accent);
+      background: rgba(108,99,255,0.08);
+      color: var(--text);
+    }
+    #fbx-status {
+      font-size: 0.75rem;
+      margin-top: 6px;
+      min-height: 18px;
+      text-align: center;
+      color: var(--text-dim);
+    }
+    #fbx-status.ok    { color: var(--success); }
+    #fbx-status.error { color: var(--error); }
+    #fbx-status.loading { color: var(--accent2); }
+
+    /* ─── Responsive (portrait / totem) ─────────────── */
+    @media (max-aspect-ratio: 1/1) {
+      #main { flex-direction: column; }
+      #avatar-panel { flex: 1.4; }
+      #interaction-panel { width: 100%; flex-shrink: 0; height: 42vh; }
+    }
+  </style>
+</head>
+<body>
+<div id="app">
+
+  <!-- Header -->
+  <div id="header">
+    <div class="logo">AVATAR KIOSK</div>
+    <div id="status-chip">
+      <div class="status-dot" id="status-dot"></div>
+      <span id="status-label">In attesa...</span>
+    </div>
+  </div>
+
+  <div id="main">
+
+    <!-- Avatar -->
+    <div id="avatar-panel">
+      <canvas id="avatar-canvas"></canvas>
+
+      <!-- Pannello impostazioni avatar -->
+      <div id="settings-panel">
+        <div id="settings-toggle" onclick="toggleSettings()" title="Impostazioni avatar">⚙️</div>
+        <div id="settings-body">
+          <div class="settings-title">Posizione Avatar</div>
+          <div class="slider-group">
+            <label>Scala <span id="val-scale">0.75</span></label>
+            <input type="range" min="0.2" max="1.5" step="0.01" value="0.75"
+              oninput="updateAvatarParam('avatarScale', this.value, 'val-scale', false)" />
+          </div>
+          <div class="slider-group">
+            <label>Offset X <span id="val-x">0.0</span></label>
+            <input type="range" min="-2" max="2" step="0.05" value="0"
+              oninput="updateAvatarParam('avatarOffsetX', this.value, 'val-x', true)" />
+          </div>
+          <div class="slider-group">
+            <label>Offset Y <span id="val-y">0.0</span></label>
+            <input type="range" min="-2" max="2" step="0.05" value="0"
+              oninput="updateAvatarParam('avatarOffsetY', this.value, 'val-y', true)" />
+          </div>
+          <div class="slider-group">
+            <label>Rotazione Y <span id="val-roty">0.0</span></label>
+            <input type="range" min="-3.14" max="3.14" step="0.05" value="0"
+              oninput="updateAvatarParam('avatarRotY', this.value, 'val-roty', true)" />
+          </div>
+          <div class="settings-title" style="margin-top:12px">Camera</div>
+          <div class="slider-group">
+            <label>Distanza <span id="val-camz">3.5</span></label>
+            <input type="range" min="1" max="8" step="0.1" value="3.5"
+              oninput="updateCameraParam('cameraZ', this.value, 'val-camz')" />
+          </div>
+          <div class="slider-group">
+            <label>Altezza <span id="val-camy">1.0</span></label>
+            <input type="range" min="-1" max="4" step="0.1" value="1.0"
+              oninput="updateCameraParam('cameraY', this.value, 'val-camy')" />
+          </div>
+          <div class="slider-group">
+            <label>Guarda Y <span id="val-looky">1.0</span></label>
+            <input type="range" min="-1" max="4" step="0.1" value="1.0"
+              oninput="updateCameraParam('cameraLookAtY', this.value, 'val-looky')" />
+          </div>
+          <button class="copy-btn" onclick="copyConfig()">📋 Copia valori</button>
+
+          <div class="settings-title" style="margin-top:16px">Range Animazione</div>
+          <div style="font-size:0.7rem; color:var(--accent2); margin-bottom:6px;">💤 Idle</div>
+          <div class="slider-group">
+            <label>Idle Start <span id="val-idle-start">0.00</span>s</label>
+            <input type="range" id="idle-start-slider" min="0" max="10" step="0.01" value="0"
+              oninput="updateAnimRange('idleStart', this.value)" />
+          </div>
+          <div class="slider-group">
+            <label>Idle End <span id="val-idle-end">2.65</span>s</label>
+            <input type="range" id="idle-end-slider" min="0" max="10" step="0.01" value="2.65"
+              oninput="updateAnimRange('idleEnd', this.value)" />
+          </div>
+          <div style="font-size:0.7rem; color:var(--accent2); margin-bottom:6px; margin-top:10px;">🗣 Speech</div>
+          <div class="slider-group">
+            <label>Speech Start <span id="val-speech-start">2.65</span>s</label>
+            <input type="range" id="speech-start-slider" min="0" max="10" step="0.01" value="2.65"
+              oninput="updateAnimRange('speechStart', this.value)" />
+          </div>
+          <div class="slider-group">
+            <label>Speech End <span id="val-speech-end">9.04</span>s</label>
+            <input type="range" id="speech-end-slider" min="0" max="10" step="0.01" value="9.04"
+              oninput="updateAnimRange('speechEnd', this.value)" />
+          </div>
+
+          <div class="settings-title" style="margin-top:16px">Esplora Animazione</div>
+          <div class="slider-group">
+            <label>Posizione <span id="val-anim-time">0.00</span>s / <span id="val-anim-dur">—</span>s</label>
+            <input type="range" id="anim-scrubber" min="0" max="1" step="0.001" value="0"
+              oninput="scrubAnimation(this.value)" />
+          </div>
+          <div style="font-size:0.72rem; color:var(--text-dim); margin-bottom:6px;">
+            Start: <span id="lbl-start">—</span>s &nbsp;|&nbsp; End: <span id="lbl-end">—</span>s
+          </div>
+          <div style="display:flex; gap:6px; margin-bottom:10px;">
+            <button class="copy-btn" style="margin-top:0; flex:1" onclick="markRange('start')">[ Start</button>
+            <button class="copy-btn" style="margin-top:0; flex:1" onclick="markRange('end')">End ]</button>
+            <button class="copy-btn" style="margin-top:0; flex:1" id="scrub-play-btn" onclick="toggleScrubPlay()">▶ Play</button>
+          </div>
+          <div id="anim-range-info" style="font-size:0.72rem; color:var(--text-dim); margin-bottom:6px; min-height:16px;"></div>
+          <div style="display:flex; gap:6px; margin-bottom:10px;">
+            <button class="copy-btn" style="margin-top:0; flex:1" onclick="applyRangeTo('idle')">→ 💤 Idle</button>
+            <button class="copy-btn" style="margin-top:0; flex:1" onclick="applyRangeTo('speech')">→ 🗣 Speech</button>
+          </div>
+
+          <div class="settings-title" style="margin-top:16px">Carica Modello FBX</div>
+          <div id="fbx-dropzone" ondragover="event.preventDefault()" ondrop="handleFbxDrop(event)">
+            <div id="fbx-drop-label">Trascina un file .fbx qui<br><small>oppure clicca per selezionare</small></div>
+            <input type="file" id="fbx-input" accept=".fbx" style="display:none" onchange="uploadFbx(this.files[0])"/>
+          </div>
+          <div id="fbx-status"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Interazione -->
+    <div id="interaction-panel">
+
+      <div id="response-area">
+        <div id="transcript-bubble">
+          <span class="label">Hai detto</span>
+          <span id="transcript-text"></span>
+        </div>
+        <div class="typing-indicator" id="typing">
+          <span></span><span></span><span></span>
+        </div>
+        <div id="response-bubble">
+          <span class="label" id="avatar-response-label">SOFIA</span>
+          <span id="response-text"></span>
+        </div>
+      </div>
+
+      <!-- VAD visualizer -->
+      <div id="vad-section">
+        <div id="vad-bars">
+          <!-- generati da JS -->
+        </div>
+        <span id="vad-label">Parla pure quando sei pronto</span>
+      </div>
+
+      <!-- Input testo fallback -->
+      <div id="input-area">
+        <input
+          type="text"
+          id="text-input"
+          placeholder="Oppure scrivi un messaggio..."
+          autocomplete="off"
+        />
+        <button id="send-btn" onclick="sendText()" title="Invia">
+          <svg viewBox="0 0 24 24"><path d="M2 21l21-9L2 3v7l15 2-15 2v7z"/></svg>
+        </button>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- Idle overlay -->
+  <div id="idle-overlay" onclick="wakeUp()">
+    <div class="idle-avatar-icon">🤖</div>
+    <h2 id="idle-title">Ciao! Sono Sofia</h2>
+    <p>La tua assistente virtuale</p>
+    <div class="tap-hint">✨ Tocca per iniziare</div>
+  </div>
+
+</div>
+
+<!-- Three.js -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
+
+<script>
+// ═══════════════════════════════════════════════════════════════════════════
+//  CONFIGURAZIONE
+// ═══════════════════════════════════════════════════════════════════════════
+const CONFIG = {
+  serverUrl:    window.location.origin,
+  idleTimeout:  90000,
+  avatarName:   'Sofia',
+  avatarModelUrl: '/avatar.glb',
+
+  // ── Posizione e scala avatar ──────────────────────
+  avatarScale:    0.75,   // % dell'altezza del pannello (0.5 = metà, 1.0 = tutto)
+  avatarOffsetX:  0.0,    // spostamento orizzontale in unità world
+  avatarOffsetY:  0.0,    // spostamento verticale in unità world
+  avatarOffsetZ:  0.0,    // spostamento profondità
+  avatarRotY:     0.0,    // rotazione iniziale Y in radianti (es. 0.3 = girato a sinistra)
+
+  // ── Camera ────────────────────────────────────────
+  cameraZ:        3.5,    // distanza camera (più alto = più lontano)
+  cameraY:        1.0,    // altezza camera
+  cameraLookAtY:  1.0,    // punto di messa a fuoco verticale
+  // VAD
+  vadThreshold:        0.012,   // RMS energy (0–1); aumenta in ambienti rumorosi
+  vadSilenceDuration:  1300,    // ms di silenzio per considerare la frase terminata
+  vadMinSpeechDuration: 350,    // ms minimi di parlato per inviare
+};
+
+// ═══════════════════════════════════════════════════════════════════════════
+//  STATO
+// ═══════════════════════════════════════════════════════════════════════════
+const state = {
+  mode: 'idle',      // idle | listening | recording | thinking | speaking
+  sessionId: null,
+  currentAudio: null,
+  mixer: null,
+  avatar: null,
+  vad: null,
+};
+
+// ═══════════════════════════════════════════════════════════════════════════
+//  VOICE ACTIVITY DETECTION
+// ═══════════════════════════════════════════════════════════════════════════
+class VAD {
+  constructor(opts = {}) {
+    this.threshold         = opts.threshold         ?? 0.012;
+    this.silenceDuration   = opts.silenceDuration   ?? 1300;
+    this.minSpeechDuration = opts.minSpeechDuration ?? 350;
+    this.onSpeechStart     = opts.onSpeechStart     ?? (() => {});
+    this.onSpeechEnd       = opts.onSpeechEnd       ?? (() => {});
+    this.onVolume          = opts.onVolume          ?? (() => {});
+
+    this._active    = false;
+    this._paused    = false;
+    this._speaking  = false;
+    this._speechStart  = null;
+    this._silenceStart = null;
+    this._chunks    = [];
+    this._recorder  = null;
+    this._stream    = null;
+    this._context   = null;
+    this._analyser  = null;
+    this._buffer    = null;
+    this._rafId     = null;
+  }
+
+  async start() {
+    this._stream  = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
+    this._context = new AudioContext();
+    const source  = this._context.createMediaStreamSource(this._stream);
+    this._analyser = this._context.createAnalyser();
+    this._analyser.fftSize = 512;
+    source.connect(this._analyser);
+    this._buffer = new Float32Array(this._analyser.fftSize);
+
+    this._recorder = new MediaRecorder(this._stream);
+    this._recorder.ondataavailable = e => { if (e.data.size > 0) this._chunks.push(e.data); };
+    this._recorder.onstop = () => {
+      const blob = new Blob(this._chunks, { type: 'audio/webm' });
+      this._chunks = [];
+      this.onSpeechEnd(blob);
+    };
+
+    this._active = true;
+    this._tick();
+  }
+
+  pause()  { this._paused = true;  if (this._speaking) this._forceStop(); }
+  resume() { this._paused = false; }
+
+  stop() {
+    this._active = false;
+    if (this._rafId) cancelAnimationFrame(this._rafId);
+    if (this._speaking) this._forceStop();
+    this._stream?.getTracks().forEach(t => t.stop());
+    this._context?.close();
+  }
+
+  _getRMS() {
+    this._analyser.getFloatTimeDomainData(this._buffer);
+    let sum = 0;
+    for (let i = 0; i < this._buffer.length; i++) sum += this._buffer[i] ** 2;
+    return Math.sqrt(sum / this._buffer.length);
+  }
+
+  _forceStop() {
+    this._speaking = false;
+    this._speechStart  = null;
+    this._silenceStart = null;
+    if (this._recorder.state === 'recording') this._recorder.stop();
+  }
+
+  _tick() {
+    if (!this._active) return;
+    this._rafId = requestAnimationFrame(() => this._tick());
+
+    const rms = this._getRMS();
+    this.onVolume(rms);
+
+    if (this._paused) return;
+
+    const now = Date.now();
+
+    if (!this._speaking) {
+      if (rms > this.threshold) {
+        if (!this._speechStart) this._speechStart = now;
+        if (now - this._speechStart >= this.minSpeechDuration) {
+          this._speaking = true;
+          this._silenceStart = null;
+          this._chunks = [];
+          this._recorder.start();
+          this.onSpeechStart();
+        }
+      } else {
+        this._speechStart = null;
+      }
+    } else {
+      if (rms < this.threshold) {
+        if (!this._silenceStart) this._silenceStart = now;
+        if (now - this._silenceStart >= this.silenceDuration) {
+          this._speaking = false;
+          this._silenceStart = null;
+          this._speechStart  = null;
+          if (this._recorder.state === 'recording') this._recorder.stop();
+        }
+      } else {
+        this._silenceStart = null;
+      }
+    }
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+//  VAD VISUALIZER (barre animate)
+// ═══════════════════════════════════════════════════════════════════════════
+const VAD_BAR_COUNT = 16;
+const vadBarsEl = document.getElementById('vad-bars');
+const vadBars = [];
+
+for (let i = 0; i < VAD_BAR_COUNT; i++) {
+  const bar = document.createElement('div');
+  bar.className = 'vad-bar';
+  vadBarsEl.appendChild(bar);
+  vadBars.push(bar);
+}
+
+let _lastVolume = 0;
+
+function updateVadVisualizer(rms) {
+  _lastVolume = rms;
+  const norm = Math.min(rms / 0.08, 1);
+  vadBars.forEach((bar, i) => {
+    const wave = Math.sin((i / VAD_BAR_COUNT) * Math.PI);
+    const h = 4 + wave * norm * 28;
+    bar.style.height = h + 'px';
+  });
+}
+
+function setVadState(mode) {
+  vadBarsEl.className = '';
+  if (mode === 'active')     vadBarsEl.classList.add('active');
+  if (mode === 'recording')  vadBarsEl.classList.add('recording');
+
+  const labels = {
+    idle:      'Tocca per iniziare',
+    active:    'Ti sto ascoltando...',
+    recording: '🔴 Sto registrando...',
+    thinking:  '💭 Sto elaborando...',
+    speaking:  '🔊 Risposta in corso...',
+  };
+  document.getElementById('vad-label').textContent = labels[mode] ?? '';
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+//  THREE.JS — SCENA
+// ═══════════════════════════════════════════════════════════════════════════
+const canvas = document.getElementById('avatar-canvas');
+const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true });
+renderer.setPixelRatio(window.devicePixelRatio);
+renderer.outputEncoding = THREE.sRGBEncoding;
+renderer.shadowMap.enabled = true;
+
+const scene  = new THREE.Scene();
+const camera = new THREE.PerspectiveCamera(45, 1, 0.1, 100);
+camera.position.set(0, CONFIG.cameraY, CONFIG.cameraZ);
+camera.lookAt(0, CONFIG.cameraLookAtY, 0);
+
+scene.add(new THREE.AmbientLight(0xffffff, 0.6));
+const keyLight = new THREE.DirectionalLight(0xffeedd, 1.2);
+keyLight.position.set(1, 3, 2);
+keyLight.castShadow = true;
+scene.add(keyLight);
+const fillLight = new THREE.DirectionalLight(0x8877ff, 0.4);
+fillLight.position.set(-2, 1, 1);
+scene.add(fillLight);
+const rimLight = new THREE.DirectionalLight(0x44aaff, 0.3);
+rimLight.position.set(0, 2, -3);
+scene.add(rimLight);
+
+function createPlaceholderAvatar() {
+  const group = new THREE.Group();
+  const skin  = new THREE.MeshPhongMaterial({ color: 0xfdd8b0, shininess: 30 });
+
+  const body = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.25, 0.3, 0.9, 32),
+    new THREE.MeshPhongMaterial({ color: 0x6c63ff, shininess: 60 })
+  );
+  body.position.y = 0.7;
+  group.add(body);
+
+  const neck = new THREE.Mesh(new THREE.CylinderGeometry(0.09, 0.11, 0.2, 16), skin);
+  neck.position.y = 1.2;
+  group.add(neck);
+
+  const head = new THREE.Mesh(new THREE.SphereGeometry(0.22, 32, 32), skin);
+  head.position.y = 1.5;
+  group.add(head);
+
+  const hair = new THREE.Mesh(
+    new THREE.SphereGeometry(0.235, 32, 32, 0, Math.PI * 2, 0, Math.PI * 0.55),
+    new THREE.MeshPhongMaterial({ color: 0x3d1c02, side: THREE.DoubleSide })
+  );
+  hair.position.y = 1.5;
+  hair.rotation.x = -0.1;
+  group.add(hair);
+
+  const eyeMat   = new THREE.MeshPhongMaterial({ color: 0x222222 });
+  const pupilMat = new THREE.MeshPhongMaterial({ color: 0x000000 });
+  [-0.08, 0.08].forEach(x => {
+    const eye = new THREE.Mesh(new THREE.SphereGeometry(0.025, 16, 16), eyeMat);
+    eye.position.set(x, 1.52, 0.2);
+    group.add(eye);
+    const pupil = new THREE.Mesh(new THREE.SphereGeometry(0.012, 8, 8), pupilMat);
+    pupil.position.set(x, 1.52, 0.215);
+    group.add(pupil);
+  });
+
+  const mouthGroup = new THREE.Group();
+  mouthGroup.position.set(0, 1.43, 0.19);
+  group.add(mouthGroup);
+  group.userData.mouth = mouthGroup;
+
+  const lipMat = new THREE.MeshPhongMaterial({ color: 0xc8706a });
+  const upperLip = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.015, 0.02), lipMat);
+  upperLip.position.set(0, 0.01, 0);
+  mouthGroup.add(upperLip);
+
+  const lowerLip = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.015, 0.02), lipMat);
+  lowerLip.position.set(0, -0.01, 0);
+  lowerLip.name = 'lowerLip';
+  mouthGroup.add(lowerLip);
+
+  scene.add(group);
+  state.avatar = group;
+  startRenderLoop();
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+//  ANIMAZIONE PROCEDURALE + LIP SYNC
+// ═══════════════════════════════════════════════════════════════════════════
+
+// Stato animazione
+const anim = {
+  breathPhase: 0,
+  floatPhase:  0,
+  wobblePhase: 0,
+
+  // Rotazione modello intero (gesture globali)
+  cur: { rx: 0, ry: 0, rz: 0 },
+  tgt: { rx: 0, ry: 0, rz: 0 },
+
+  // Rotazione head bone (gesture testa)
+  head: { rx: 0, ry: 0, rz: 0 },
+  headTgt: { rx: 0, ry: 0, rz: 0 },
+
+  // Timing gesture
+  nextGestureIn:  3000,
+  lastGestureAt:  0,
+  gestureReturnAt: 0,
+
+  // Lip sync (rotazione X head = apertura bocca)
+  lipTarget:  0,
+  lipCurrent: 0,
+
+  baseY: 0,
+  bones: {},        // popolato dopo caricamento GLB
+  morphMesh:   null, // mesh con morph target jawOpen
+  morphJawIdx: -1,   // indice morph target
+};
+
+// Gestures testa: [rx, ry, rz, durata ms]
+const GESTURES = [
+  [ 0.12,  0.00,  0.00, 500],   // annuisce
+  [-0.08,  0.00,  0.00, 450],   // guarda su
+  [ 0.05,  0.25,  0.00, 650],   // guarda sinistra
+  [ 0.05, -0.25,  0.00, 650],   // guarda destra
+  [ 0.08,  0.15,  0.06, 550],   // inclina sinistra
+  [ 0.08, -0.15, -0.06, 550],   // inclina destra
+  [ 0.00,  0.00,  0.00, 400],   // neutro (pausa)
+];
+
+function triggerRandomGesture() {
+  const g = GESTURES[Math.floor(Math.random() * GESTURES.length)];
+  anim.headTgt = { rx: g[0], ry: g[1], rz: g[2] };
+  anim.gestureReturnAt = Date.now() + g[3];
+}
+
+function startRenderLoop() {
+  const clock = new THREE.Clock();
+
+  // Salva Y base del modello dopo il posizionamento
+  if (state.avatar) anim.baseY = state.avatar.position.y;
+
+  (function tick() {
+    requestAnimationFrame(tick);
+    const delta = clock.getDelta();
+    const now   = Date.now();
+
+    if (state.avatar) {
+      anim.breathPhase += delta * 0.35;
+      anim.floatPhase  += delta * 0.55;
+      anim.wobblePhase += delta * 1.8;
+
+      // ── Animazioni idle ───────────────────────────────
+      const breath = Math.sin(anim.breathPhase) * 0.006;
+      const float  = Math.sin(anim.floatPhase)  * 0.035;
+
+      // ── Gesture random ────────────────────────────────
+      if (now - anim.lastGestureAt > anim.nextGestureIn) {
+        anim.lastGestureAt = now;
+        anim.nextGestureIn = 3500 + Math.random() * 4500;
+        triggerRandomGesture();
+      }
+      if (now > anim.gestureReturnAt) {
+        anim.headTgt = { rx: 0, ry: 0, rz: 0 };
+      }
+
+      // Interpolazione smooth testa
+      const lerp = 1 - Math.pow(0.04, delta);
+      anim.head.rx += (anim.headTgt.rx - anim.head.rx) * lerp;
+      anim.head.ry += (anim.headTgt.ry - anim.head.ry) * lerp;
+      anim.head.rz += (anim.headTgt.rz - anim.head.rz) * lerp;
+
+      // ── Lip sync ──────────────────────────────────────
+      anim.lipCurrent += (anim.lipTarget - anim.lipCurrent) * 0.25;
+
+      state.avatar.position.y = anim.baseY;
+    }
+
+    // Controllo range animazione (idle o speech) — una sola azione
+    if (state.mainAction && !state._isScrubbing) {
+      const isSpeaking = state.mode === 'speaking';
+      const r = isSpeaking
+        ? { start: ANIM_RANGE.speechStart, end: ANIM_RANGE.speechEnd }
+        : { start: ANIM_RANGE.idleStart,   end: ANIM_RANGE.idleEnd   };
+      const t = state.mainAction.time;
+      if (t < r.start || t >= r.end) {
+        state.mainAction.time = r.start;
+      }
+    }
+
+    // Mixer principale (saltato durante scrub)
+    if (state.mixer && !state._isScrubbing) state.mixer.update(delta);
+    // Mixer scrub
+    if (state._scrubMixer && state._isScrubbing && _scrubPlaying) state._scrubMixer.update(delta);
+
+    if (!state._isScrubbing && state.avatar) {
+      const talking = state.mode === 'speaking' ? anim.lipCurrent : 0;
+
+      // ── Lip sync: priorità jaw bone → morph target → head rotation ──
+      if (anim.bones.jaw) {
+        // Opzione A: jaw bone — rotazione X
+        anim.bones.jaw.rotation.x = talking * 0.35 * Math.abs(Math.sin(anim.wobblePhase));
+      } else if (anim.morphMesh) {
+        // Opzione B: morph target jawOpen
+        anim.morphMesh.morphTargetInfluences[anim.morphJawIdx] =
+          talking * Math.abs(Math.sin(anim.wobblePhase));
+      } else if (anim.bones.head) {
+        // Fallback: rotazione testa
+        const lipRot = talking * 0.22 * Math.abs(Math.sin(anim.wobblePhase));
+        anim.bones.head.rotation.x += anim.head.rx + lipRot;
+        anim.bones.head.rotation.y += anim.head.ry;
+        anim.bones.head.rotation.z += anim.head.rz;
+      }
+
+      // Gesture testa (solo se non gestita dal lip sync con head)
+      if (anim.bones.head && (anim.bones.jaw || anim.morphMesh)) {
+        anim.bones.head.rotation.x += anim.head.rx;
+        anim.bones.head.rotation.y += anim.head.ry;
+        anim.bones.head.rotation.z += anim.head.rz;
+      }
+
+      // Respiro spine
+      if (anim.bones.spine) {
+        const breath = Math.sin(anim.breathPhase) * 0.006;
+        anim.bones.spine.rotation.x += breath * 2;
+      }
+    }
+
+    // Resize dinamico
+    const w = canvas.clientWidth, h = canvas.clientHeight;
+    if (canvas.width !== w || canvas.height !== h) {
+      renderer.setSize(w, h, false);
+      camera.aspect = w / h;
+      camera.updateProjectionMatrix();
+    }
+
+    renderer.render(scene, camera);
+  })();
+}
+
+// ── Forza una gesture dall'esterno (es. quando parla) ────────────────────
+function triggerTalkingGesture() {
+  const talking = [
+    [0.05,  0.08, 0.00, 400],
+    [0.08,  0.00, 0.02, 500],
+    [0.04, -0.10, 0.00, 450],
+  ];
+  const g = talking[Math.floor(Math.random() * talking.length)];
+  anim.headTgt = { rx: g[0], ry: g[1], rz: g[2] };
+  anim.gestureReturnAt = Date.now() + g[3];
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+//  LIP SYNC — guida anim.lipTarget tramite audio
+// ═══════════════════════════════════════════════════════════════════════════
+let _lipAudioCtx = null;
+
+function startLipSync(audioEl, alignment) {
+  // Con alignment ElevenLabs: vocali → bocca aperta
+  if (alignment?.chars) {
+    const { chars, char_start_times_seconds, char_durations_seconds } = alignment;
+    (function update() {
+      if (audioEl.paused || audioEl.ended) { anim.lipTarget = 0; return; }
+      const t = audioEl.currentTime;
+      for (let i = 0; i < chars.length; i++) {
+        if (t >= char_start_times_seconds[i] && t < char_start_times_seconds[i] + char_durations_seconds[i]) {
+          const isVowel = 'aeiouàèéìòù'.includes(chars[i].toLowerCase());
+          anim.lipTarget = isVowel ? 0.75 + Math.random() * 0.25 : 0.12;
+          // Gesture occasionale mentre parla
+          if (Math.random() < 0.02) triggerTalkingGesture();
+          break;
+        }
+      }
+      requestAnimationFrame(update);
+    })();
+    return;
+  }
+
+  // Fallback: analisi frequenze vocali (300–3000 Hz)
+  if (!_lipAudioCtx) _lipAudioCtx = new AudioContext();
+  const source   = _lipAudioCtx.createMediaElementSource(audioEl);
+  const analyser = _lipAudioCtx.createAnalyser();
+  analyser.fftSize = 256;
+  source.connect(analyser);
+  analyser.connect(_lipAudioCtx.destination);
+  const data = new Uint8Array(analyser.frequencyBinCount);
+
+  (function update() {
+    if (audioEl.paused || audioEl.ended) { anim.lipTarget = 0; return; }
+    analyser.getByteFrequencyData(data);
+    const s = Math.floor(300  / (_lipAudioCtx.sampleRate / analyser.fftSize));
+    const e = Math.floor(3000 / (_lipAudioCtx.sampleRate / analyser.fftSize));
+    let sum = 0;
+    for (let i = s; i < e; i++) sum += data[i];
+    anim.lipTarget = Math.min((sum / (e - s)) / 100, 1);
+    if (Math.random() < 0.015) triggerTalkingGesture();
+    requestAnimationFrame(update);
+  })();
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+//  GESTIONE STATO UI
+// ═══════════════════════════════════════════════════════════════════════════
+const MODE_CONFIG = {
+  idle:      { dot: '#22d3a0', label: 'In attesa...',         vad: 'idle' },
+  listening: { dot: '#22d3a0', label: '🎙 Ti sto ascoltando', vad: 'active' },
+  recording: { dot: '#f87171', label: '🔴 Registrazione...',  vad: 'recording' },
+  thinking:  { dot: '#a78bfa', label: '💭 Elaboro...',        vad: 'thinking' },
+  speaking:  { dot: '#fbbf24', label: '🔊 In risposta...',    vad: 'speaking' },
+};
+
+function setMode(mode) {
+  state.mode = mode;
+  const cfg = MODE_CONFIG[mode] || MODE_CONFIG.idle;
+
+  document.getElementById('status-dot').style.cssText =
+    `background:${cfg.dot}; box-shadow:0 0 8px ${cfg.dot}`;
+  document.getElementById('status-label').textContent = cfg.label;
+
+  const chip = document.getElementById('status-chip');
+  chip.className = mode;
+
+  setVadState(cfg.vad);
+
+  // Il range viene cambiato nel render loop tramite ANIM_RANGE + state.mode
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+//  PIPELINE PRINCIPALE
+// ═══════════════════════════════════════════════════════════════════════════
+let _idleTimer = null;
+
+function resetIdleTimer() {
+  clearTimeout(_idleTimer);
+  _idleTimer = setTimeout(() => {
+    document.getElementById('idle-overlay').classList.remove('hidden');
+    setMode('idle');
+    state.vad?.pause();
+  }, CONFIG.idleTimeout);
+}
+
+async function processUserInput(text) {
+  if (!text?.trim()) return;
+  resetIdleTimer();
+  state.vad?.pause();
+
+  // Mostra trascrizione utente
+  document.getElementById('transcript-text').textContent = text;
+  document.getElementById('transcript-bubble').style.display = 'block';
+  document.getElementById('response-bubble').style.display = 'none';
+  document.getElementById('response-text').textContent = '';
+
+  setMode('thinking');
+  document.getElementById('typing').classList.add('visible');
+
+  try {
+    // ── 1. Claude ────────────────────────────────────────────────────────
+    const chatRes = await fetch(`${CONFIG.serverUrl}/api/chat`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ message: text, sessionId: state.sessionId }),
+    });
+    const chatData = await chatRes.json();
+    if (!chatRes.ok) throw new Error(chatData.error);
+
+    state.sessionId = chatData.sessionId;
+
+    // ── 2. TTS ───────────────────────────────────────────────────────────
+    const ttsRes = await fetch(`${CONFIG.serverUrl}/api/tts`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ text: chatData.reply }),
+    });
+
+    // Mostra testo e avvia audio solo quando ElevenLabs ha risposto
+    document.getElementById('typing').classList.remove('visible');
+    document.getElementById('response-text').textContent = chatData.reply;
+    document.getElementById('response-bubble').style.display = 'block';
+    scrollToBottom();
+    setMode('speaking');
+
+    if (ttsRes.ok) {
+      const ttsData = await ttsRes.json();
+      const audio = new Audio(`data:audio/mpeg;base64,${ttsData.audio}`);
+      state.currentAudio = audio;
+      startProceduralLipSync();
+      await new Promise(resolve => {
+        audio.addEventListener('ended', resolve, { once: true });
+        audio.addEventListener('error', resolve, { once: true });
+        startLipSync(audio, ttsData.alignment);
+        audio.play().catch(resolve);
+      });
+    }
+
+  } catch (err) {
+    document.getElementById('typing').classList.remove('visible');
+    document.getElementById('response-text').textContent = `⚠️ ${err.message}`;
+    document.getElementById('response-bubble').style.display = 'block';
+  } finally {
+    stopProceduralLipSync();
+    anim.lipTarget = 0;
+    setMode('listening');
+    state.vad?.resume();
+    resetIdleTimer();
+  }
+}
+
+// Lip sync procedurale durante lo streaming (senza audio)
+let _proceduralLipInterval = null;
+function startProceduralLipSync() {
+  _proceduralLipInterval = setInterval(() => {
+    anim.lipTarget = 0.3 + Math.random() * 0.7;
+  }, 120);
+}
+function stopProceduralLipSync() {
+  clearInterval(_proceduralLipInterval);
+  _proceduralLipInterval = null;
+  anim.lipTarget = 0;
+}
+
+function scrollToBottom() {
+  const area = document.getElementById('response-area');
+  area.scrollTop = area.scrollHeight;
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+//  INPUT TESTO (fallback)
+// ═══════════════════════════════════════════════════════════════════════════
+async function sendText() {
+  const input = document.getElementById('text-input');
+  const text  = input.value.trim();
+  if (!text) return;
+  input.value = '';
+  await processUserInput(text);
+}
+
+document.getElementById('text-input').addEventListener('keydown', e => {
+  if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendText(); }
+});
+
+// ═══════════════════════════════════════════════════════════════════════════
+//  TRASCRIZIONE AUDIO (STT)
+// ═══════════════════════════════════════════════════════════════════════════
+async function transcribeAndProcess(blob) {
+  const formData = new FormData();
+  formData.append('audio', blob, 'recording.webm');
+
+  try {
+    const res  = await fetch(`${CONFIG.serverUrl}/api/stt`, { method: 'POST', body: formData });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error);
+    if (data.transcript?.trim()) {
+      await processUserInput(data.transcript);
+    } else {
+      setMode('listening');
+      state.vad?.resume();
+    }
+  } catch (err) {
+    document.getElementById('response-text').textContent = `⚠️ Errore trascrizione: ${err.message}`;
+    document.getElementById('response-bubble').style.display = 'block';
+    setMode('listening');
+    state.vad?.resume();
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+//  WAKE UP / IDLE
+// ═══════════════════════════════════════════════════════════════════════════
+async function wakeUp() {
+  document.getElementById('idle-overlay').classList.add('hidden');
+  setMode('listening');
+  resetIdleTimer();
+
+  // Prima visita: mostra benvenuto
+  document.getElementById('response-text').textContent =
+    `Ciao! Sono ${CONFIG.avatarName}. Come posso aiutarti?`;
+  document.getElementById('response-bubble').style.display = 'block';
+
+  // Avvia VAD se non già attivo
+  if (!state.vad) {
+    try {
+      state.vad = new VAD({
+        threshold:         CONFIG.vadThreshold,
+        silenceDuration:   CONFIG.vadSilenceDuration,
+        minSpeechDuration: CONFIG.vadMinSpeechDuration,
+        onVolume:    rms => updateVadVisualizer(rms),
+        onSpeechStart: () => {
+          if (state.mode === 'listening') setMode('recording');
+        },
+        onSpeechEnd: async blob => {
+          if (state.mode === 'recording') {
+            setMode('thinking');
+            await transcribeAndProcess(blob);
+          }
+        },
+      });
+      await state.vad.start();
+    } catch (err) {
+      setVadState('idle');
+      document.getElementById('vad-label').textContent =
+        '⚠️ Microfono non disponibile — usa la tastiera';
+    }
+  } else {
+    state.vad.resume();
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+//  PANNELLO IMPOSTAZIONI AVATAR
+// ═══════════════════════════════════════════════════════════════════════════
+function toggleSettings() {
+  const body = document.getElementById('settings-body');
+  const isOpen = body.classList.toggle('open');
+  // Quando si chiude il pannello, esci dallo scrub mode
+  if (!isOpen) exitScrubMode();
+}
+
+function exitScrubMode() {
+  if (!state._isScrubbing) return;
+  state._isScrubbing = false;
+  if (_scrubPlaying) {
+    clearInterval(_scrubInterval);
+    _scrubPlaying = false;
+    document.getElementById('scrub-play-btn').textContent = '▶ Play';
+  }
+  // Distruggi mixer scrub — verrà ricreato al prossimo scrub
+  if (state._scrubMixer) {
+    state._scrubMixer.stopAllAction();
+    state._scrubMixer = null;
+    state._scrubAction = null;
+  }
+  // Ripristina azione principale
+  if (state.mainAction) {
+    state.mainAction.paused    = false;
+    state.mainAction.weight    = 1;
+    state.mainAction.timeScale = 1;
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+//  SCRUBBER ANIMAZIONE
+// ═══════════════════════════════════════════════════════════════════════════
+const _range = { start: null, end: null };
+let _scrubPlaying = false;
+let _scrubInterval = null;
+
+// Range animazione
+const ANIM_RANGE = {
+  idleStart:   0.0,
+  idleEnd:     2.65,
+  speechStart: 2.65,
+  speechEnd:   9.04,
+};
+
+function initScrubber() {
+  if (!state._fullClip) return;
+  const dur = state._fullClip.duration;
+
+  // Scrubber esplorazione
+  const scrubber = document.getElementById('anim-scrubber');
+  scrubber.max   = dur;
+  scrubber.step  = 0.01;
+  scrubber.value = 0;
+  document.getElementById('val-anim-dur').textContent  = dur.toFixed(2);
+  document.getElementById('val-anim-time').textContent = '0.00';
+
+  // Slider range — max = durata clip
+  ['speech-start-slider','speech-end-slider','rest-time-slider'].forEach(id => {
+    document.getElementById(id).max = dur.toFixed(2);
+  });
+}
+
+function updateAnimRange(key, value) {
+  const v = parseFloat(value);
+  ANIM_RANGE[key] = v;
+  const labelMap = {
+    idleStart: 'val-idle-start', idleEnd: 'val-idle-end',
+    speechStart: 'val-speech-start', speechEnd: 'val-speech-end',
+  };
+  document.getElementById(labelMap[key]).textContent = v.toFixed(2);
+}
+
+function applyAnimRange() {
+  const { idleStart, idleEnd, speechStart, speechEnd } = ANIM_RANGE;
+  if (idleStart >= idleEnd) {
+    document.getElementById('anim-range-info').textContent = '⚠️ Idle Start deve essere < Idle End'; return;
+  }
+  if (speechStart >= speechEnd) {
+    document.getElementById('anim-range-info').textContent = '⚠️ Speech Start deve essere < Speech End'; return;
+  }
+  // I range vengono applicati direttamente nel render loop — nessun subclip
+  document.getElementById('anim-range-info').textContent =
+    `✅ Idle ${idleStart.toFixed(2)}→${idleEnd.toFixed(2)}s | Speech ${speechStart.toFixed(2)}→${speechEnd.toFixed(2)}s`;
+}
+
+function scrubAnimation(value) {
+  if (!state._fullClip || !state.avatar) return;
+  const t = parseFloat(value);
+
+  // Mixer dedicato allo scrub — creato una volta sola
+  if (!state._scrubMixer) {
+    state._scrubMixer  = new THREE.AnimationMixer(state.avatar);
+    state._scrubAction = state._scrubMixer.clipAction(state._fullClip);
+    state._scrubAction.setLoop(THREE.LoopOnce, 1);
+    state._scrubAction.clampWhenFinished = true;
+    state._scrubAction.play();
+  }
+
+  // Pausa il mixer principale
+  if (!state._isScrubbing) {
+    if (state.mainAction) state.mainAction.paused = true;
+    state._isScrubbing = true;
+  }
+
+  // Porta il mixer scrub al frame desiderato
+  state._scrubMixer.setTime(t);
+  document.getElementById('val-anim-time').textContent = t.toFixed(2);
+}
+
+function toggleScrubPlay() {
+  const btn = document.getElementById('scrub-play-btn');
+
+  if (_scrubPlaying) {
+    // Stop — ripristina animazioni normali
+    clearInterval(_scrubInterval);
+    _scrubPlaying = false;
+    btn.textContent = '▶ Play';
+    if (state._scrubAction) { state._scrubAction.weight = 0; state._scrubAction.timeScale = 0; }
+    if (state.mainAction) { state.mainAction.weight = 1; state.mainAction.timeScale = 1; }
+    state._isScrubbing = false;
+    return;
+  }
+
+  // Verifica range
+  if (_range.start === null || _range.end === null) {
+    document.getElementById('anim-range-info').textContent = '⚠️ Segna prima Start e End';
+    return;
+  }
+  if (_range.start >= _range.end) {
+    document.getElementById('anim-range-info').textContent = '⚠️ Start deve essere < End';
+    return;
+  }
+
+  // Inizializza scrub mixer se necessario
+  if (!state._scrubMixer && state._fullClip && state.avatar) {
+    state._scrubMixer  = new THREE.AnimationMixer(state.avatar);
+    state._scrubAction = state._scrubMixer.clipAction(state._fullClip);
+    state._scrubAction.setLoop(THREE.LoopRepeat, Infinity);
+    state._scrubAction.play();
+  }
+
+  // Parti dall'inizio del range
+  state._scrubMixer?.setTime(_range.start);
+
+  // Pausa il mixer principale
+  if (state.mainAction) state.mainAction.paused = true;
+  state._isScrubbing = true;
+
+  _scrubPlaying = true;
+  btn.textContent = '⏸ Stop';
+
+  const scrubber = document.getElementById('anim-scrubber');
+  let _scrubTime = _range.start;
+  _scrubInterval = setInterval(() => {
+    _scrubTime += 0.033;
+    if (_scrubTime >= _range.end) _scrubTime = _range.start;
+    state._scrubMixer?.setTime(_scrubTime);
+    scrubber.value = _scrubTime;
+    document.getElementById('val-anim-time').textContent = _scrubTime.toFixed(2);
+  }, 33);
+}
+
+function markRange(type) {
+  const scrubber = document.getElementById('anim-scrubber');
+  const t = parseFloat(scrubber.value);
+  _range[type] = parseFloat(t.toFixed(3));
+  document.getElementById(type === 'start' ? 'lbl-start' : 'lbl-end').textContent = t.toFixed(3);
+}
+
+function applyRangeTo(target) {
+  if (_range.start === null || _range.end === null) {
+    document.getElementById('anim-range-info').textContent = '⚠️ Segna prima Start e End';
+    return;
+  }
+  const s = _range.start, e = _range.end;
+  if (target === 'idle') {
+    ANIM_RANGE.idleStart = s; ANIM_RANGE.idleEnd = e;
+    document.getElementById('idle-start-slider').value     = s;
+    document.getElementById('idle-end-slider').value       = e;
+    document.getElementById('val-idle-start').textContent  = s.toFixed(2);
+    document.getElementById('val-idle-end').textContent    = e.toFixed(2);
+  } else {
+    ANIM_RANGE.speechStart = s; ANIM_RANGE.speechEnd = e;
+    document.getElementById('speech-start-slider').value    = s;
+    document.getElementById('speech-end-slider').value      = e;
+    document.getElementById('val-speech-start').textContent = s.toFixed(2);
+    document.getElementById('val-speech-end').textContent   = e.toFixed(2);
+  }
+  // Esci dallo scrub ed applica i subclip
+  exitScrubMode();
+  applyAnimRange();
+  document.getElementById('anim-range-info').textContent =
+    `✅ ${target === 'idle' ? '💤 Idle' : '🗣 Speech'}: ${s.toFixed(2)}→${e.toFixed(2)}s applicato`;
+}
+
+function copyRangeConfig() {
+  if (_range.start === null || _range.end === null) {
+    document.getElementById('anim-range-info').textContent = '⚠️ Segna prima Start e End';
+    return;
+  }
+  const txt = `// Range animazione selezionato\nconst subClip = THREE.AnimationUtils.subclip(\n  gltf.animations[0], 'nome', ${_range.start}, ${_range.end}\n);`;
+  navigator.clipboard.writeText(txt).then(() => {
+    const el = document.getElementById('anim-range-info');
+    const prev = el.textContent;
+    el.textContent = '✅ Copiato!';
+    setTimeout(() => { el.textContent = prev; }, 2000);
+  });
+}
+
+// ── FBX Upload ────────────────────────────────────────────────────────────
+document.addEventListener('DOMContentLoaded', () => {
+  const dz = document.getElementById('fbx-dropzone');
+  dz.addEventListener('click', () => document.getElementById('fbx-input').click());
+  dz.addEventListener('dragover',  e => { e.preventDefault(); dz.classList.add('drag-over'); });
+  dz.addEventListener('dragleave', () => dz.classList.remove('drag-over'));
+});
+
+function handleFbxDrop(e) {
+  e.preventDefault();
+  document.getElementById('fbx-dropzone').classList.remove('drag-over');
+  const file = e.dataTransfer.files[0];
+  if (file) uploadFbx(file);
+}
+
+async function uploadFbx(file) {
+  if (!file || !file.name.toLowerCase().endsWith('.fbx')) {
+    setFbxStatus('error', '⚠️ Seleziona un file .fbx');
+    return;
+  }
+  setFbxStatus('loading', `⏳ Conversione di ${file.name}...`);
+
+  const form = new FormData();
+  form.append('model', file);
+
+  try {
+    const res  = await fetch('/api/upload-avatar', { method: 'POST', body: form });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error);
+
+    setFbxStatus('ok', '✅ Modello caricato! Ricarico...');
+    setTimeout(() => reloadAvatar(), 800);
+  } catch (err) {
+    setFbxStatus('error', '❌ ' + err.message);
+  }
+}
+
+function setFbxStatus(type, msg) {
+  const el = document.getElementById('fbx-status');
+  el.className = type;
+  el.textContent = msg;
+}
+
+function reloadAvatar() {
+  // Rimuove il vecchio avatar e carica il nuovo GLB
+  if (state.avatar) {
+    scene.remove(state.avatar);
+    state.avatar = null;
+    state.mixer  = null;
+    state.mainAction = null;
+    anim.bones = {};
+  }
+  loadGLBAvatar('/avatar.glb?t=' + Date.now()); // cache-bust
+  setFbxStatus('ok', '✅ Avatar aggiornato');
+}
+
+function updateAvatarParam(key, value, labelId, liveUpdate) {
+  const v = parseFloat(value);
+  CONFIG[key] = v;
+  document.getElementById(labelId).textContent = v.toFixed(2);
+  if (!state.avatar) return;
+
+  if (key === 'avatarScale') {
+    // Ricalcola scala
+    const box = new THREE.Box3().setFromObject(state.avatar);
+    const size = box.getSize(new THREE.Vector3());
+    const panelH = document.getElementById('avatar-panel').clientHeight || window.innerHeight;
+    const visibleH = 2 * Math.tan((45 / 2) * Math.PI / 180) * camera.position.z;
+    const scale = (visibleH * v) / (size.y / state.avatar.scale.x);
+    state.avatar.scale.setScalar(scale);
+    anim.baseY = state.avatar.position.y;
+  } else if (key === 'avatarOffsetX') {
+    state.avatar.position.x = v;
+  } else if (key === 'avatarOffsetY') {
+    state.avatar.position.y = v;
+    anim.baseY = v;
+  } else if (key === 'avatarRotY') {
+    state.avatar.rotation.y = v;
+  }
+}
+
+function updateCameraParam(key, value, labelId) {
+  const v = parseFloat(value);
+  CONFIG[key] = v;
+  document.getElementById(labelId).textContent = v.toFixed(1);
+  if (key === 'cameraZ') camera.position.z = v;
+  if (key === 'cameraY') camera.position.y = v;
+  camera.lookAt(0, CONFIG.cameraLookAtY, 0);
+}
+
+function copyConfig() {
+  const cfg = `avatarScale:   ${CONFIG.avatarScale.toFixed(2)},
+avatarOffsetX: ${CONFIG.avatarOffsetX.toFixed(2)},
+avatarOffsetY: ${CONFIG.avatarOffsetY.toFixed(2)},
+avatarRotY:    ${CONFIG.avatarRotY.toFixed(2)},
+cameraZ:       ${CONFIG.cameraZ.toFixed(1)},
+cameraY:       ${CONFIG.cameraY.toFixed(1)},
+cameraLookAtY: ${CONFIG.cameraLookAtY.toFixed(1)},`;
+  navigator.clipboard.writeText(cfg).then(() => {
+    const btn = document.querySelector('.copy-btn');
+    btn.textContent = '✅ Copiato!';
+    setTimeout(() => { btn.textContent = '📋 Copia valori'; }, 2000);
+  });
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+//  CARICAMENTO MODELLO GLB
+// ═══════════════════════════════════════════════════════════════════════════
+function loadGLBAvatar(url) {
+  const loader = new THREE.GLTFLoader();
+  loader.load(
+    url,
+    gltf => {
+      const model = gltf.scene;
+
+      // Scala il modello per riempire il canvas
+      const box = new THREE.Box3().setFromObject(model);
+      const size = box.getSize(new THREE.Vector3());
+      const center = box.getCenter(new THREE.Vector3());
+
+      // Usa l'altezza del pannello avatar come riferimento
+      const panelH = document.getElementById('avatar-panel').clientHeight || window.innerHeight;
+      const panelW = document.getElementById('avatar-panel').clientWidth  || window.innerWidth * 0.6;
+
+      // Converti pixel in unità world: la camera vede ~2.4 unità in altezza a distanza 3
+      const visibleH = 2 * Math.tan((45 / 2) * Math.PI / 180) * camera.position.z;
+      const visibleW = visibleH * (panelW / panelH);
+      const targetH  = visibleH * CONFIG.avatarScale;
+      const scale    = targetH / size.y;
+
+      model.scale.setScalar(scale);
+      model.position.x = -center.x * scale + CONFIG.avatarOffsetX;
+      model.position.z = -center.z * scale + CONFIG.avatarOffsetZ;
+      model.position.y = -box.min.y * scale + CONFIG.avatarOffsetY;
+      model.rotation.y = CONFIG.avatarRotY;
+
+      scene.add(model);
+      state.avatar = model;
+      anim.baseY = model.position.y;
+
+      // Trova bone e morph target per lip sync
+      model.traverse(o => {
+        if (o.isBone) {
+          const n = o.name.replace(/mixamorig\w*:/i, '').replace(/mixamorig\w*_/i, '');
+          if (n === 'Head')  anim.bones.head  = o;
+          if (n === 'Neck')  anim.bones.neck  = o;
+          if (n === 'Spine') anim.bones.spine = o;
+          if (n === 'Hips')  anim.bones.hips  = o;
+          // Opzione A: jaw bone
+          if (/^jaw$/i.test(n)) anim.bones.jaw = o;
+        }
+        // Opzione B: morph target jawOpen
+        if (o.isMesh && o.morphTargetDictionary) {
+          const idx = o.morphTargetDictionary['jawOpen'] ?? o.morphTargetDictionary['JawOpen'];
+          if (idx !== undefined) {
+            anim.morphMesh    = o;
+            anim.morphJawIdx  = idx;
+          }
+        }
+      });
+      const lipSyncMethod = anim.bones.jaw ? 'jaw bone' : anim.morphMesh ? 'morph target jawOpen' : 'head rotation (fallback)';
+      console.log('Bone trovati:', Object.keys(anim.bones), '| Lip sync:', lipSyncMethod);
+      setTimeout(initScrubber, 100);
+
+      if (gltf.animations?.length) {
+        state.mixer     = new THREE.AnimationMixer(model);
+        state._fullClip = gltf.animations[0];
+
+        // Una sola azione sul clip completo — il range è controllato nel render loop
+        state.mainAction = state.mixer.clipAction(state._fullClip);
+        state.mainAction.setLoop(THREE.LoopRepeat, Infinity);
+        state.mainAction.timeScale = 1;
+        state.mainAction.time = ANIM_RANGE.idleStart;
+        state.mainAction.play();
+      }
+
+      startRenderLoop();
+      console.log('✅ Modello GLB caricato:', url);
+    },
+    xhr => console.log(`Caricamento modello: ${Math.round(xhr.loaded / xhr.total * 100)}%`),
+    err => {
+      console.warn('⚠️ Modello GLB non caricato, uso placeholder:', err);
+      createPlaceholderAvatar();
+    }
+  );
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+//  INIT
+// ═══════════════════════════════════════════════════════════════════════════
+if (CONFIG.avatarModelUrl) {
+  loadGLBAvatar(CONFIG.avatarModelUrl);
+} else {
+  createPlaceholderAvatar();
+}
+
+fetch('/api/health').then(r => r.json()).then(d => {
+  const name = d.avatar || 'Sofia';
+  CONFIG.avatarName = name;
+  document.getElementById('avatar-name-tag').textContent    = name.toUpperCase();
+  document.getElementById('avatar-response-label').textContent = name.toUpperCase();
+  document.getElementById('idle-title').textContent         = `Ciao! Sono ${name}`;
+  document.getElementById('mic-label-idle')?.remove();
+
+  if (!d.tts)  console.warn('⚠️ ElevenLabs non configurato: solo testo');
+  if (!d.stt)  console.warn('⚠️ Whisper non configurato: solo input testuale');
+}).catch(() => {
+  console.warn('⚠️ Server non raggiungibile');
+  document.getElementById('vad-label').textContent = '⚠️ Server offline';
+});
+</script>
+</body>
+</html>

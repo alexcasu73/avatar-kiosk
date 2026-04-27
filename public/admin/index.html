@@ -1,0 +1,930 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Avatar Kiosk — Backoffice</title>
+  <style>
+    * { margin:0; padding:0; box-sizing:border-box; }
+    :root {
+      --bg:       #0d0d14;
+      --surface:  #13131f;
+      --surface2: #1a1a2a;
+      --surface3: #22223a;
+      --accent:   #6c63ff;
+      --accent2:  #a78bfa;
+      --success:  #22d3a0;
+      --error:    #f87171;
+      --warn:     #fbbf24;
+      --text:     #f0f0f5;
+      --text-dim: #8888aa;
+      --border:   rgba(108,99,255,0.2);
+    }
+    html,body { height:100%; background:var(--bg); color:var(--text);
+      font-family:'Segoe UI',system-ui,sans-serif; overflow:hidden; }
+
+    /* ── Layout ─────────────────────────────────── */
+    #app { display:flex; height:100vh; }
+
+    /* ── Sidebar ────────────────────────────────── */
+    #sidebar {
+      width:280px; flex-shrink:0;
+      background:var(--surface);
+      border-right:1px solid var(--border);
+      display:flex; flex-direction:column;
+    }
+    #sidebar-header {
+      padding:20px;
+      border-bottom:1px solid var(--border);
+    }
+    #sidebar-header h1 { font-size:1rem; font-weight:700; color:var(--accent2); letter-spacing:.05em; }
+    #sidebar-header p  { font-size:.75rem; color:var(--text-dim); margin-top:2px; }
+
+    #new-btn {
+      margin:16px; padding:10px;
+      background:var(--accent); border:none; border-radius:10px;
+      color:#fff; font-size:.88rem; font-weight:600; cursor:pointer;
+      transition:background .2s;
+    }
+    #new-btn:hover { background:var(--accent2); }
+
+    #avatar-list { flex:1; overflow-y:auto; padding:0 12px 12px; }
+    #avatar-list::-webkit-scrollbar { width:3px; }
+    #avatar-list::-webkit-scrollbar-thumb { background:var(--border); }
+
+    .avatar-card {
+      background:var(--surface2);
+      border:1px solid var(--border);
+      border-radius:12px;
+      padding:12px 14px;
+      margin-bottom:8px;
+      cursor:pointer;
+      transition:border-color .2s, background .2s;
+    }
+    .avatar-card:hover       { border-color:var(--accent); }
+    .avatar-card.active      { border-color:var(--accent); background:var(--surface3); }
+    .avatar-card .card-name  { font-size:.9rem; font-weight:600; margin-bottom:4px; }
+    .avatar-card .card-meta  { display:flex; align-items:center; gap:8px; }
+    .avatar-card .badge {
+      font-size:.65rem; padding:2px 8px; border-radius:10px; font-weight:700;
+      letter-spacing:.04em;
+    }
+    .badge.published   { background:rgba(34,211,160,.15); color:var(--success); border:1px solid var(--success); }
+    .badge.unpublished { background:rgba(248,113,113,.1);  color:var(--error);   border:1px solid var(--error); }
+    .card-id { font-size:.68rem; color:var(--text-dim); font-family:monospace; }
+
+    /* ── Main panel ─────────────────────────────── */
+    #main-panel {
+      flex:1; display:flex; overflow:hidden;
+    }
+
+    /* ── Form panel ─────────────────────────────── */
+    #form-panel {
+      width:520px; flex-shrink:0;
+      overflow-y:auto; padding:0 24px 24px;
+      display:flex; flex-direction:column; gap:16px;
+      border-right:1px solid var(--border);
+    }
+    #form-panel::-webkit-scrollbar { width:4px; }
+    #form-panel::-webkit-scrollbar-thumb { background:var(--border); }
+
+    /* ── Preview panel ──────────────────────────── */
+    #preview-panel {
+      flex:1; position:relative;
+      background:#0a0a0f;
+      display:flex; align-items:center; justify-content:center;
+    }
+    #preview-iframe {
+      width:100%; height:100%; border:none;
+    }
+    #preview-placeholder {
+      color:var(--text-dim); font-size:.9rem; text-align:center;
+    }
+    #preview-placeholder .icon { font-size:3rem; margin-bottom:12px; }
+    #preview-bar {
+      position:absolute; bottom:0; left:0; right:0;
+      background:rgba(13,13,20,.9); border-top:1px solid var(--border);
+      padding:8px 16px; display:flex; align-items:center; gap:8px;
+      font-size:.75rem; color:var(--text-dim);
+    }
+
+    #empty-state {
+      display:flex; flex-direction:column;
+      align-items:center; justify-content:center;
+      color:var(--text-dim); gap:12px;
+      padding:60px 20px;
+    }
+    #empty-state .icon { font-size:3rem; }
+    #empty-state p { font-size:.9rem; }
+
+    /* ── Editor ─────────────────────────────────── */
+    #editor { display:none; flex-direction:column; min-height:0; }
+    #editor.visible { display:flex; }
+
+    /* Header sticky con azioni */
+    .editor-header {
+      position:sticky; top:0; z-index:10;
+      background:var(--surface);
+      border-bottom:1px solid var(--border);
+      padding:14px 24px;
+      display:flex; align-items:center; gap:10px;
+      margin:0 -24px 4px;
+    }
+    .editor-header h2 { font-size:1rem; font-weight:700; flex:1; min-width:0;
+      white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+
+    .actions { display:flex; gap:6px; flex-shrink:0; }
+
+    .btn {
+      padding:7px 14px; border:none; border-radius:8px;
+      font-size:.82rem; font-weight:600; cursor:pointer;
+      transition:all .15s; white-space:nowrap;
+    }
+    .btn-icon { padding:7px 10px; }
+    .btn-primary   { background:var(--accent); color:#fff; }
+    .btn-primary:hover { background:var(--accent2); }
+    .btn-success   { background:rgba(34,211,160,.15); color:var(--success); border:1px solid var(--success); }
+    .btn-success:hover { background:var(--success); color:#000; }
+    .btn-danger    { background:rgba(248,113,113,.1); color:var(--error); border:1px solid var(--error); }
+    .btn-danger:hover  { background:var(--error); color:#fff; }
+    .btn-neutral   { background:var(--surface2); color:var(--text); border:1px solid var(--border); }
+    .btn-neutral:hover { border-color:var(--accent); color:var(--accent2); }
+
+    /* ── Card sezione ───────────────────────────── */
+    .section {
+      background:var(--surface);
+      border:1px solid var(--border);
+      border-radius:14px;
+      padding:16px 18px;
+    }
+    .section h3 {
+      font-size:.7rem; font-weight:700; text-transform:uppercase;
+      letter-spacing:.08em; color:var(--accent2); margin-bottom:12px;
+    }
+
+    /* ── Form fields ────────────────────────────── */
+    .fields { display:grid; grid-template-columns:1fr 1fr; gap:14px; }
+    .fields.single { grid-template-columns:1fr; }
+    .fields.triple { grid-template-columns:1fr 1fr 1fr; }
+
+    .field { display:flex; flex-direction:column; gap:6px; }
+    .field label { font-size:.78rem; color:var(--text-dim); font-weight:500; }
+    .field input, .field textarea, .field select {
+      background:var(--surface2); border:1px solid var(--border);
+      border-radius:10px; padding:10px 12px;
+      color:var(--text); font-size:.9rem; font-family:inherit;
+      outline:none; transition:border-color .2s;
+    }
+    .field input:focus, .field textarea:focus, .field select:focus { border-color:var(--accent); }
+    .field textarea { resize:vertical; min-height:80px; }
+    .field .hint { font-size:.7rem; color:var(--text-dim); }
+
+    /* Slider campo ─────────────────────────────── */
+    .slider-field { display:flex; flex-direction:column; gap:6px; }
+    .slider-field label { font-size:.78rem; color:var(--text-dim); display:flex; justify-content:space-between; }
+    .slider-field label span { color:var(--text); font-variant-numeric:tabular-nums; }
+    .slider-field input[type=range] { width:100%; accent-color:var(--accent); cursor:pointer; }
+
+    /* ── Upload zone ────────────────────────────── */
+    .upload-zone {
+      border:2px dashed var(--border); border-radius:12px;
+      padding:20px; text-align:center; cursor:pointer;
+      transition:all .2s; font-size:.85rem; color:var(--text-dim);
+    }
+    .upload-zone:hover { border-color:var(--accent); color:var(--text); }
+    .upload-zone.has-file { border-color:var(--success); color:var(--success); }
+
+    /* ── Kiosk URL ──────────────────────────────── */
+    .kiosk-url {
+      display:flex; align-items:center; gap:10px;
+      background:var(--surface2); border:1px solid var(--border);
+      border-radius:10px; padding:10px 14px;
+    }
+    .kiosk-url code { flex:1; font-size:.85rem; color:var(--accent2); font-family:monospace; }
+    .kiosk-url button {
+      background:var(--surface3); border:1px solid var(--border);
+      border-radius:8px; padding:6px 12px; color:var(--text);
+      font-size:.78rem; cursor:pointer; transition:background .2s;
+    }
+    .kiosk-url button:hover { background:var(--accent); }
+
+    /* ── Color picker ───────────────────────────── */
+    .color-row {
+      display:flex; align-items:center; gap:10px;
+      background:var(--surface2); border:1px solid var(--border);
+      border-radius:10px; padding:8px 12px;
+    }
+    .color-input {
+      width:36px; height:36px; border:none; border-radius:6px;
+      cursor:pointer; background:none; padding:0;
+    }
+    .color-hex {
+      font-size:.85rem; font-family:monospace; color:var(--accent2);
+    }
+
+    /* ── Animazione UI helpers ───────────────────── */
+    .step-label {
+      font-size:.7rem; color:var(--text-dim);
+      text-transform:uppercase; letter-spacing:.06em;
+      margin:14px 0 8px;
+    }
+    .step-label:first-of-type { margin-top:0; }
+
+    .mark-info {
+      font-size:.78rem; color:var(--text-dim);
+      margin:6px 0 14px; padding:6px 10px;
+      background:var(--surface2); border-radius:8px;
+    }
+    .mark-info strong { color:var(--accent2); }
+
+    .btn-row {
+      display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-bottom:0;
+    }
+
+    .range-cards {
+      display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-top:0;
+    }
+    .range-card {
+      background:var(--surface2); border:1px solid var(--border);
+      border-radius:10px; padding:10px 12px;
+    }
+    .range-card-header {
+      display:flex; justify-content:space-between; align-items:center;
+      margin-bottom:6px;
+    }
+    .range-label { font-size:.7rem; color:var(--accent2); font-weight:700; }
+    .range-value { font-size:.85rem; color:var(--text); font-variant-numeric:tabular-nums; }
+
+    .mini-actions { display:flex; gap:4px; align-items:center; }
+    .mini-btn {
+      background:var(--surface3); border:1px solid var(--border);
+      border-radius:6px; padding:2px 8px; color:var(--text-dim);
+      font-size:.72rem; cursor:pointer; transition:all .15s;
+      white-space:nowrap;
+    }
+    .mini-btn:hover  { border-color:var(--accent); color:var(--accent2); }
+    .mini-btn.accent { color:var(--accent2); border-color:var(--accent); }
+    .mini-btn.active { background:var(--accent); color:#fff; border-color:var(--accent); }
+
+    /* ── Toast ──────────────────────────────────── */
+    #toast {
+      position:fixed; bottom:24px; right:24px;
+      background:var(--surface2); border:1px solid var(--border);
+      border-radius:12px; padding:12px 20px;
+      font-size:.85rem; opacity:0; pointer-events:none;
+      transition:opacity .3s; z-index:100;
+    }
+    #toast.show { opacity:1; }
+    #toast.ok    { border-color:var(--success); color:var(--success); }
+    #toast.error { border-color:var(--error);   color:var(--error); }
+  </style>
+</head>
+<body>
+<div id="app">
+
+  <!-- Sidebar -->
+  <div id="sidebar">
+    <div id="sidebar-header">
+      <h1>AVATAR KIOSK</h1>
+      <p>Backoffice</p>
+    </div>
+    <button id="new-btn" onclick="createAvatar()">+ Nuovo Avatar</button>
+    <div id="avatar-list"></div>
+  </div>
+
+  <!-- Main -->
+  <div id="main-panel">
+
+    <!-- Form -->
+    <div id="form-panel">
+    <div id="empty-state">
+      <div class="icon">🤖</div>
+      <p>Seleziona un avatar o creane uno nuovo</p>
+    </div>
+
+    <div id="editor">
+      <div class="editor-header">
+        <h2 id="editor-title">Avatar</h2>
+        <div class="actions">
+          <button class="btn btn-success" id="publish-btn" onclick="togglePublish()">Pubblica</button>
+          <button class="btn btn-primary" onclick="saveAvatar()">💾 Salva</button>
+          <button class="btn btn-neutral btn-icon" onclick="openKiosk()" title="Apri kiosk">↗</button>
+          <button class="btn btn-danger  btn-icon" onclick="deleteAvatar()" title="Elimina">🗑</button>
+        </div>
+      </div>
+
+      <!-- URL Kiosk -->
+      <div class="section">
+        <h3>URL Kiosk</h3>
+        <div class="kiosk-url">
+          <code id="kiosk-url-text">—</code>
+          <button onclick="copyUrl()">📋</button>
+          <button onclick="openKiosk()">↗</button>
+        </div>
+      </div>
+
+      <!-- Dati base -->
+      <div class="section">
+        <h3>Configurazione</h3>
+        <div class="field" style="margin-bottom:12px">
+          <label>Nome avatar</label>
+          <input type="text" id="f-name" placeholder="Es. Sofia"/>
+        </div>
+        <div class="field" style="margin-bottom:12px">
+          <label>ElevenLabs Voice ID</label>
+          <input type="text" id="f-voice-id" placeholder="dNeMsqRAC759PyIQ40Vf"/>
+        </div>
+        <div class="field">
+          <label>System Prompt</label>
+          <textarea id="f-prompt" placeholder="Sei Sofia, un'assistente virtuale..."></textarea>
+        </div>
+      </div>
+
+      <!-- Overlay chat -->
+      <div class="section">
+        <h3>Overlay Chat</h3>
+        <p style="font-size:.75rem;color:var(--text-dim);margin-bottom:12px;">
+          Layer semitrasparente sotto la chat, sull'avatar
+        </p>
+        <div class="field" style="margin-bottom:12px">
+          <label>Colore overlay</label>
+          <div class="color-row">
+            <input type="color" id="f-overlay-color" value="#0a0a0f"
+              class="color-input" oninput="applyOverlayLive()"/>
+            <span id="f-overlay-hex" class="color-hex">#0a0a0f</span>
+          </div>
+        </div>
+        <div class="slider-field">
+          <label>Opacità <span id="v-overlay-opacity">0.75</span></label>
+          <input type="range" min="0" max="1" step="0.01" id="s-overlay-opacity" value="0.75"
+            oninput="document.getElementById('v-overlay-opacity').textContent=parseFloat(this.value).toFixed(2); applyOverlayLive()"/>
+        </div>
+        <div class="slider-field">
+          <label>Altezza overlay % <span id="v-overlay-height">65</span></label>
+          <input type="range" min="10" max="95" step="1" id="s-overlay-height" value="65"
+            oninput="document.getElementById('v-overlay-height').textContent=this.value; applyOverlayLive()"/>
+        </div>
+      </div>
+
+      <!-- Modello 3D -->
+      <div class="section">
+        <h3>Modello 3D</h3>
+        <div class="upload-zone" id="model-drop"
+          ondragover="event.preventDefault(); this.classList.add('drag')"
+          ondragleave="this.classList.remove('drag')"
+          ondrop="handleModelDrop(event)"
+          onclick="document.getElementById('model-input').click()">
+          <div id="model-label">🎭 Trascina un file .fbx o clicca per selezionare</div>
+          <input type="file" id="model-input" accept=".fbx" style="display:none"
+            onchange="uploadModel(this.files[0])"/>
+        </div>
+      </div>
+
+      <!-- Sfondo -->
+      <div class="section">
+        <h3>Sfondo</h3>
+        <div class="field" style="margin-bottom:12px">
+          <label>Colore sfondo</label>
+          <div class="color-row">
+            <input type="color" id="f-bg-color" value="#0a0a0f"
+              oninput="applyBgColor(this.value)" class="color-input"/>
+            <span id="f-bg-hex" class="color-hex">#0a0a0f</span>
+            <span class="hint" style="margin:0">aggiornato live</span>
+          </div>
+        </div>
+        <div class="field">
+          <label>Immagine sfondo <span class="hint" style="margin:0">(opzionale, sovrascrive colore)</span></label>
+          <div class="upload-zone" id="bg-drop"
+            ondragover="event.preventDefault()"
+            ondrop="handleBgDrop(event)"
+            onclick="document.getElementById('bg-input').click()">
+            <div id="bg-label">🖼 Trascina un'immagine o clicca</div>
+            <input type="file" id="bg-input" accept="image/*" style="display:none"
+              onchange="uploadBackground(this.files[0])"/>
+          </div>
+          <button id="remove-bg-btn" class="btn btn-danger"
+            style="margin-top:8px;display:none"
+            onclick="removeBackground()">🗑 Rimuovi immagine</button>
+        </div>
+      </div>
+
+      <!-- Range animazione -->
+      <div class="section">
+        <h3>Animazione</h3>
+
+        <p class="step-label">1 — Esplora il clip</p>
+        <div class="slider-field">
+          <label>
+            <span>Posizione <span id="v-scrub">0.00</span>s / <span id="v-dur">—</span>s</span>
+            <span class="mini-actions">
+              <button class="mini-btn accent" onclick="playMarkedRange()">▶ Play</button>
+              <button class="mini-btn"        onclick="resetAnimPreview()">↺ Reset</button>
+            </span>
+          </label>
+          <input type="range" min="0" max="20" step="0.01" id="s-scrub" value="0"
+            oninput="scrubPreview(this.value)"/>
+        </div>
+        <div class="mark-info">
+          Marcato: <strong id="lbl-mark-start">—</strong>s → <strong id="lbl-mark-end">—</strong>s
+        </div>
+
+        <p class="step-label">2 — Marca il range</p>
+        <div class="btn-row">
+          <button class="btn btn-neutral" onclick="markAnim('start')">[ Start</button>
+          <button class="btn btn-neutral" onclick="markAnim('end')">End ]</button>
+        </div>
+
+        <p class="step-label">3 — Assegna e verifica</p>
+        <div class="btn-row">
+          <button class="btn btn-neutral" onclick="assignRange('idle')">→ 💤 Idle</button>
+          <button class="btn btn-neutral" onclick="assignRange('speech')">→ 🗣 Speech</button>
+        </div>
+
+        <p class="step-label">4 — Range attivi</p>
+        <div class="range-cards">
+          <div class="range-card">
+            <div class="range-card-header">
+              <span class="range-label">💤 IDLE</span>
+              <button id="play-idle-btn" class="mini-btn" onclick="togglePlayRange('idle')">▶</button>
+            </div>
+            <div class="range-value"><span id="v-idle-start">0.00</span>s → <span id="v-idle-end">2.00</span>s</div>
+            <input type="hidden" id="s-idle-start" value="0"/>
+            <input type="hidden" id="s-idle-end" value="2"/>
+          </div>
+          <div class="range-card">
+            <div class="range-card-header">
+              <span class="range-label">🗣 SPEECH</span>
+              <button id="play-speech-btn" class="mini-btn" onclick="togglePlayRange('speech')">▶</button>
+            </div>
+            <div class="range-value"><span id="v-speech-start">2.00</span>s → <span id="v-speech-end">9.00</span>s</div>
+            <input type="hidden" id="s-speech-start" value="2"/>
+            <input type="hidden" id="s-speech-end" value="9"/>
+          </div>
+        </div>
+      </div>
+
+      <!-- Posizione avatar -->
+      <div class="section">
+        <h3>Posizione Avatar</h3>
+        <div class="fields" style="gap:12px">
+          <div class="slider-field">
+            <label>Scala <span id="v-scale">0.75</span></label>
+            <input type="range" min="0.2" max="1.5" step="0.01" id="s-scale"
+              oninput="updateSlider('scale',this.value)"/>
+          </div>
+          <div class="slider-field">
+            <label>Rotazione Y <span id="v-rot-y">0.00</span></label>
+            <input type="range" min="-3.14" max="3.14" step="0.05" id="s-rot-y"
+              oninput="updateSlider('rot-y',this.value)"/>
+          </div>
+          <div class="slider-field">
+            <label>Offset X <span id="v-offset-x">0.00</span></label>
+            <input type="range" min="-2" max="2" step="0.05" id="s-offset-x"
+              oninput="updateSlider('offset-x',this.value)"/>
+          </div>
+          <div class="slider-field">
+            <label>Offset Y <span id="v-offset-y">0.00</span></label>
+            <input type="range" min="-2" max="2" step="0.05" id="s-offset-y"
+              oninput="updateSlider('offset-y',this.value)"/>
+          </div>
+          <div class="slider-field">
+            <label>Camera distanza <span id="v-cam-z">3.50</span></label>
+            <input type="range" min="1" max="8" step="0.1" id="s-cam-z"
+              oninput="updateSlider('cam-z',this.value)"/>
+          </div>
+          <div class="slider-field">
+            <label>Camera altezza <span id="v-cam-y">1.00</span></label>
+            <input type="range" min="-1" max="4" step="0.1" id="s-cam-y"
+              oninput="updateSlider('cam-y',this.value)"/>
+          </div>
+        </div>
+      </div>
+
+    </div><!-- /editor -->
+    </div><!-- /form-panel -->
+
+    <!-- Preview 3D -->
+    <div id="preview-panel">
+      <div id="preview-placeholder">
+        <div class="icon">🎭</div>
+        <p>Seleziona un avatar per la preview</p>
+      </div>
+      <iframe id="preview-iframe" style="display:none"></iframe>
+      <div id="preview-bar" style="display:none">
+        🔴 Preview live — le modifiche agli slider si applicano in tempo reale
+      </div>
+    </div>
+
+  </div><!-- /main-panel -->
+</div>
+
+<div id="toast"></div>
+
+<script>
+let avatars   = [];
+let currentId = null;
+
+// ── API helpers ───────────────────────────────────────────────────────────────
+const api = {
+  get:    url          => fetch(url).then(r=>r.json()),
+  post:   (url, body)  => fetch(url,{method:'POST',  headers:{'Content-Type':'application/json'},body:JSON.stringify(body)}).then(r=>r.json()),
+  put:    (url, body)  => fetch(url,{method:'PUT',   headers:{'Content-Type':'application/json'},body:JSON.stringify(body)}).then(r=>r.json()),
+  delete: url          => fetch(url,{method:'DELETE'}).then(r=>r.json()),
+};
+
+// ── Toast ─────────────────────────────────────────────────────────────────────
+function toast(msg, type='ok') {
+  const el = document.getElementById('toast');
+  el.textContent = msg; el.className = `show ${type}`;
+  setTimeout(() => el.className='', 2500);
+}
+
+// ── Carica lista avatar ───────────────────────────────────────────────────────
+async function loadAvatars() {
+  avatars = await api.get('/api/admin/avatars');
+  renderList();
+}
+
+function renderList() {
+  const list = document.getElementById('avatar-list');
+  list.innerHTML = '';
+  avatars.forEach(a => {
+    const card = document.createElement('div');
+    card.className = `avatar-card${currentId===a.id?' active':''}`;
+    card.innerHTML = `
+      <div class="card-name">${a.name}</div>
+      <div class="card-meta">
+        <span class="badge ${a.published?'published':'unpublished'}">${a.published?'LIVE':'BOZZA'}</span>
+        <span class="card-id">${a.id}</span>
+      </div>`;
+    card.onclick = () => selectAvatar(a.id);
+    list.appendChild(card);
+  });
+}
+
+// ── Seleziona avatar ──────────────────────────────────────────────────────────
+function selectAvatar(id) {
+  currentId = id;
+  const a = avatars.find(x=>x.id===id);
+  if (!a) return;
+
+  document.getElementById('empty-state').style.display = 'none';
+  const editor = document.getElementById('editor');
+  editor.classList.add('visible');
+  loadPreview(id);
+
+  document.getElementById('editor-title').textContent = a.name;
+
+  // Campi testo
+  document.getElementById('f-name').value    = a.name;
+  document.getElementById('f-voice-id').value= a.voice_id || '';
+  document.getElementById('f-prompt').value  = a.system_prompt || '';
+
+  // Sfondo
+  const isColor = !a.background || a.background.startsWith('#') || a.background.startsWith('rgb');
+  if (isColor) {
+    document.getElementById('f-bg-color').value = a.background || '#0a0a0f';
+    document.getElementById('bg-label').textContent = '🖼 Immagine sfondo (opzionale)';
+    document.getElementById('bg-drop').classList.remove('has-file');
+    document.getElementById('remove-bg-btn').style.display = 'none';
+  } else {
+    document.getElementById('bg-label').textContent = `✅ ${a.background}`;
+    document.getElementById('bg-drop').classList.add('has-file');
+    document.getElementById('remove-bg-btn').style.display = 'block';
+  }
+
+  // Modello
+  document.getElementById('model-label').textContent =
+    a.model_file ? `✅ ${a.model_file}` : '🎭 Trascina un file .fbx o clicca per selezionare';
+  document.getElementById('model-drop').className =
+    `upload-zone${a.model_file?' has-file':''}`;
+
+  // Sliders
+  setSlider('idle-start',   a.idle_start);
+  setSlider('idle-end',     a.idle_end);
+  setSlider('speech-start', a.speech_start);
+  setSlider('speech-end',   a.speech_end);
+  setSlider('scale',        a.avatar_scale);
+  setSlider('offset-x',     a.avatar_offset_x);
+  setSlider('offset-y',     a.avatar_offset_y);
+  setSlider('rot-y',        a.avatar_rot_y);
+  setSlider('cam-z',        a.camera_z);
+  setSlider('cam-y',        a.camera_y);
+
+  // Overlay
+  document.getElementById('f-overlay-color').value = a.overlay_color || '#0a0a0f';
+  document.getElementById('f-overlay-hex').textContent = a.overlay_color || '#0a0a0f';
+  document.getElementById('s-overlay-opacity').value = a.overlay_opacity ?? 0.75;
+  document.getElementById('v-overlay-opacity').textContent = (a.overlay_opacity ?? 0.75).toFixed(2);
+  document.getElementById('s-overlay-height').value = a.overlay_height ?? 65;
+  document.getElementById('v-overlay-height').textContent = a.overlay_height ?? 65;
+
+  // Publish btn
+  document.getElementById('publish-btn').textContent = a.published ? '🔴 Rimuovi' : '🟢 Pubblica';
+
+  // URL kiosk
+  const url = `${location.origin}/k/${a.id}`;
+  document.getElementById('kiosk-url-text').textContent = url;
+
+  renderList();
+}
+
+function setSlider(key, val) {
+  const v = parseFloat(val) || 0;
+  const s = document.getElementById(`s-${key}`);
+  const lbl = document.getElementById(`v-${key}`);
+  if (s)   s.value = v;
+  if (lbl) lbl.textContent = v.toFixed(2);
+}
+
+// Mappa slider → chiave DB per postMessage
+const SLIDER_MAP = {
+  'idle-start':  'idle_start',
+  'idle-end':    'idle_end',
+  'speech-start':'speech_start',
+  'speech-end':  'speech_end',
+  'scale':       'avatar_scale',
+  'offset-x':   'avatar_offset_x',
+  'offset-y':   'avatar_offset_y',
+  'rot-y':      'avatar_rot_y',
+  'cam-z':      'camera_z',
+  'cam-y':      'camera_y',
+};
+
+function updateSlider(key, val) {
+  const v = parseFloat(val);
+  document.getElementById(`v-${key}`).textContent = v.toFixed(2);
+  // Invia aggiornamento real-time all'iframe
+  const dbKey = SLIDER_MAP[key];
+  if (dbKey) sendToPreview({ type: 'avatarParam', key: dbKey, value: v });
+}
+
+function sendToPreview(msg) {
+  const iframe = document.getElementById('preview-iframe');
+  if (iframe.contentWindow) iframe.contentWindow.postMessage(msg, '*');
+}
+
+// ── Scrubber ──────────────────────────────────────────────────────────────────
+const _marked = { start: null, end: null };
+
+function scrubPreview(value) {
+  const t = parseFloat(value);
+  document.getElementById('v-scrub').textContent = t.toFixed(2);
+  if (_playingRange) stopPlayRange();
+  sendToPreview({ type: 'scrubTo', time: t }); // pausa e si ferma al frame
+}
+
+function playMarkedRange() {
+  if (_marked.start === null || _marked.end === null) {
+    toast('Segna prima Start e End', 'error'); return;
+  }
+  if (_playingRange) stopPlayRange();
+  sendToPreview({ type: 'playFrom', time: _marked.start, end: _marked.end });
+}
+
+function resetAnimPreview() {
+  if (_playingRange) stopPlayRange();
+  const dur = parseFloat(document.getElementById('v-dur').textContent) || 0;
+  _marked.start = 0;
+  _marked.end   = dur;
+  document.getElementById('lbl-mark-start').textContent = '0.000';
+  document.getElementById('lbl-mark-end').textContent   = dur.toFixed(3);
+  document.getElementById('s-scrub').value = 0;
+  document.getElementById('v-scrub').textContent = '0.00';
+  sendToPreview({ type: 'playFrom', time: 0, end: dur });
+}
+
+function markAnim(type) {
+  const t = parseFloat(document.getElementById('s-scrub').value);
+  _marked[type] = parseFloat(t.toFixed(3));
+  document.getElementById(`lbl-mark-${type}`).textContent = _marked[type].toFixed(3);
+
+  // Quando si marca lo start, parte subito la riproduzione da lì
+  if (type === 'start') {
+    if (_playingRange) stopPlayRange();
+    sendToPreview({ type: 'playFrom', time: _marked.start, end: _marked.end });
+  }
+  // Quando si marca anche l'end (con start già impostato), loop nel range
+  if (type === 'end' && _marked.start !== null) {
+    if (_playingRange) stopPlayRange();
+    sendToPreview({ type: 'playFrom', time: _marked.start, end: _marked.end });
+  }
+}
+
+function assignRange(target) {
+  if (_marked.start === null || _marked.end === null) {
+    toast('Segna prima Start e End', 'error'); return;
+  }
+  if (_marked.start >= _marked.end) {
+    toast('Start deve essere < End', 'error'); return;
+  }
+  const s = _marked.start, e = _marked.end;
+  document.getElementById(`s-${target}-start`).value         = s;
+  document.getElementById(`s-${target}-end`).value           = e;
+  document.getElementById(`v-${target}-start`).textContent   = s.toFixed(2);
+  document.getElementById(`v-${target}-end`).textContent     = e.toFixed(2);
+  // Invia alla preview
+  sendToPreview({ type: 'avatarParam', key: `${target}_start`, value: s });
+  sendToPreview({ type: 'avatarParam', key: `${target}_end`,   value: e });
+  toast(`✅ Range assegnato a ${target === 'idle' ? '💤 Idle' : '🗣 Speech'}`);
+}
+
+// ── Play/Stop loop range ──────────────────────────────────────────────────────
+let _playingRange = null;
+
+function togglePlayRange(range) {
+  if (_playingRange === range) {
+    stopPlayRange();
+  } else {
+    if (_playingRange) stopPlayRange();
+    _playingRange = range;
+    sendToPreview({ type: 'playRange', range });
+    const btn = document.getElementById(`play-${range}-btn`);
+    btn.textContent = '⏹';
+    btn.classList.add('active');
+  }
+}
+
+function stopPlayRange() {
+  if (!_playingRange) return;
+  sendToPreview({ type: 'stopRange' });
+  const btn = document.getElementById(`play-${_playingRange}-btn`);
+  if (btn) { btn.textContent = '▶'; btn.classList.remove('active'); }
+  _playingRange = null;
+}
+
+// Riceve durata clip dall'iframe
+window.addEventListener('message', e => {
+  if (e.data?.type === 'clipDuration') {
+    const dur = e.data.duration;
+    document.getElementById('v-dur').textContent = dur.toFixed(2);
+    ['s-scrub','s-idle-start','s-idle-end','s-speech-start','s-speech-end'].forEach(id => {
+      document.getElementById(id).max = dur.toFixed(2);
+    });
+  }
+});
+
+function loadPreview(id) {
+  const iframe = document.getElementById('preview-iframe');
+  const placeholder = document.getElementById('preview-placeholder');
+  const bar = document.getElementById('preview-bar');
+  iframe.src = `/preview/${id}?t=${Date.now()}`;
+  iframe.style.display = 'block';
+  placeholder.style.display = 'none';
+  bar.style.display = 'flex';
+  stopPlayRange();
+}
+
+function reloadPreview() {
+  if (currentId) loadPreview(currentId);
+}
+
+// ── Crea avatar ───────────────────────────────────────────────────────────────
+async function createAvatar() {
+  const a = await api.post('/api/admin/avatars', { name: 'Nuovo Avatar' });
+  await loadAvatars();
+  selectAvatar(a.id);
+}
+
+// ── Salva avatar ──────────────────────────────────────────────────────────────
+async function saveAvatar() {
+  if (!currentId) return;
+  const bg = document.getElementById('f-bg-color').value;
+  const body = {
+    name:            document.getElementById('f-name').value,
+    voice_id:        document.getElementById('f-voice-id').value,
+    system_prompt:   document.getElementById('f-prompt').value,
+    background:      bg,
+    idle_start:      parseFloat(document.getElementById('s-idle-start').value),
+    idle_end:        parseFloat(document.getElementById('s-idle-end').value),
+    speech_start:    parseFloat(document.getElementById('s-speech-start').value),
+    speech_end:      parseFloat(document.getElementById('s-speech-end').value),
+    avatar_scale:    parseFloat(document.getElementById('s-scale').value),
+    avatar_offset_x: parseFloat(document.getElementById('s-offset-x').value),
+    avatar_offset_y: parseFloat(document.getElementById('s-offset-y').value),
+    avatar_rot_y:    parseFloat(document.getElementById('s-rot-y').value),
+    camera_z:        parseFloat(document.getElementById('s-cam-z').value),
+    camera_y:        parseFloat(document.getElementById('s-cam-y').value),
+    overlay_color:   document.getElementById('f-overlay-color').value,
+    overlay_opacity: parseFloat(document.getElementById('s-overlay-opacity').value),
+    overlay_height:  parseFloat(document.getElementById('s-overlay-height').value),
+  };
+  const updated = await api.put(`/api/admin/avatars/${currentId}`, body);
+  avatars = avatars.map(a => a.id===currentId ? updated : a);
+  document.getElementById('editor-title').textContent = updated.name;
+  renderList();
+  toast('✅ Salvato');
+}
+
+// ── Pubblica / rimuovi ────────────────────────────────────────────────────────
+async function togglePublish() {
+  if (!currentId) return;
+  await saveAvatar();  // salva sempre prima di pubblicare
+  const res = await api.post(`/api/admin/avatars/${currentId}/publish`, {});
+  avatars = avatars.map(a => a.id===currentId ? {...a, published: res.published} : a);
+  document.getElementById('publish-btn').textContent = res.published ? '🔴 Rimuovi' : '🟢 Pubblica';
+  renderList();
+  toast(res.published ? '🟢 Avatar pubblicato' : '🔴 Avatar rimosso');
+}
+
+// ── Elimina ───────────────────────────────────────────────────────────────────
+async function deleteAvatar() {
+  if (!currentId) return;
+  if (!confirm('Eliminare questo avatar?')) return;
+  await api.delete(`/api/admin/avatars/${currentId}`);
+  avatars = avatars.filter(a => a.id !== currentId);
+  currentId = null;
+  document.getElementById('editor').classList.remove('visible');
+  document.getElementById('empty-state').style.display = '';
+  renderList();
+  toast('🗑 Avatar eliminato');
+}
+
+// ── Upload modello ────────────────────────────────────────────────────────────
+function handleModelDrop(e) {
+  e.preventDefault();
+  document.getElementById('model-drop').classList.remove('drag');
+  const file = e.dataTransfer.files[0];
+  if (file) uploadModel(file);
+}
+
+async function uploadModel(file) {
+  if (!currentId) return toast('Salva prima l\'avatar', 'error');
+  if (!file?.name.toLowerCase().endsWith('.fbx'))
+    return toast('Seleziona un file .fbx', 'error');
+  document.getElementById('model-label').textContent = '⏳ Conversione in corso...';
+  const form = new FormData();
+  form.append('model', file);
+  const res = await fetch(`/api/admin/avatars/${currentId}/upload-model`, { method:'POST', body:form });
+  const data = await res.json();
+  if (!res.ok) { toast('❌ ' + data.error, 'error'); return; }
+  document.getElementById('model-label').textContent = `✅ ${data.model_file}`;
+  document.getElementById('model-drop').classList.add('has-file');
+  avatars = avatars.map(a => a.id===currentId ? {...a, model_file: data.model_file} : a);
+  reloadPreview();
+  toast('✅ Modello caricato');
+}
+
+// ── Upload sfondo ─────────────────────────────────────────────────────────────
+function handleBgDrop(e) {
+  e.preventDefault();
+  const file = e.dataTransfer.files[0];
+  if (file) uploadBackground(file);
+}
+
+async function uploadBackground(file) {
+  if (!currentId) return toast('Salva prima l\'avatar', 'error');
+  const form = new FormData();
+  form.append('background', file);
+  const res  = await fetch(`/api/admin/avatars/${currentId}/upload-background`, { method:'POST', body:form });
+  const data = await res.json();
+  if (!res.ok) { toast('❌ ' + data.error, 'error'); return; }
+  document.getElementById('bg-label').textContent = `✅ ${data.background}`;
+  document.getElementById('bg-drop').classList.add('has-file');
+  document.getElementById('remove-bg-btn').style.display = 'block';
+  avatars = avatars.map(a => a.id===currentId ? {...a, background: data.background} : a);
+  reloadPreview();
+  toast('✅ Sfondo caricato');
+}
+
+// ── Helpers URL ───────────────────────────────────────────────────────────────
+function copyUrl() {
+  const url = document.getElementById('kiosk-url-text').textContent;
+  navigator.clipboard.writeText(url).then(() => toast('📋 URL copiato'));
+}
+function openKiosk() {
+  if (!currentId) return;
+  window.open(`/k/${currentId}`, '_blank');
+}
+function applyBgColor(color) {
+  document.getElementById('f-bg-hex').textContent = color;
+  sendToPreview({ type: 'avatarParam', key: 'background', value: color });
+}
+
+function applyOverlayLive() {
+  const color   = document.getElementById('f-overlay-color').value;
+  const opacity = parseFloat(document.getElementById('s-overlay-opacity').value);
+  const height  = parseFloat(document.getElementById('s-overlay-height').value);
+  document.getElementById('f-overlay-hex').textContent = color;
+  sendToPreview({ type: 'avatarParam', key: 'overlay_color',   value: color });
+  sendToPreview({ type: 'avatarParam', key: 'overlay_opacity', value: opacity });
+  sendToPreview({ type: 'avatarParam', key: 'overlay_height',  value: height });
+}
+
+async function removeBackground() {
+  if (!currentId) return;
+  await api.put(`/api/admin/avatars/${currentId}`, { background: '#0a0a0f' });
+  avatars = avatars.map(a => a.id===currentId ? {...a, background:'#0a0a0f'} : a);
+  document.getElementById('f-bg-color').value = '#0a0a0f';
+  document.getElementById('bg-label').textContent = '🖼 Immagine sfondo (opzionale)';
+  document.getElementById('bg-drop').classList.remove('has-file');
+  document.getElementById('remove-bg-btn').style.display = 'none';
+  reloadPreview();
+  toast('✅ Sfondo rimosso');
+}
+
+// ── Init ──────────────────────────────────────────────────────────────────────
+loadAvatars();
+</script>
+</body>
+</html>
