@@ -110,6 +110,7 @@ app.get('/api/avatar/:id', (req, res) => {
           avatar_offset_y, avatar_rot_y, camera_z, camera_y, camera_look_at_y,
           overlay_color, overlay_opacity, overlay_height, chat_height, chat_bottom, chat_max_width, chat_align, chat_hide_input, show_logo, header_color, header_font,
           idle_timeout, idle_icon, idle_title, idle_subtitle, idle_hint,
+          chat_font, chat_font_size,
           show_vad, show_controls, show_header_left,
           mic_icon, mic_icon_size, mic_icon_x, mic_icon_y,
           audio_icon, audio_icon_size, audio_icon_x, audio_icon_y } = avatar;
@@ -118,6 +119,7 @@ app.get('/api/avatar/:id', (req, res) => {
              avatar_offset_y, avatar_rot_y, camera_z, camera_y, camera_look_at_y,
              overlay_color, overlay_opacity, overlay_height, chat_height, chat_bottom, chat_max_width, chat_align, chat_hide_input, show_logo, header_color, header_font,
              idle_timeout, idle_icon, idle_title, idle_subtitle, idle_hint,
+             chat_font, chat_font_size,
              show_vad, show_controls, show_header_left,
              mic_icon, mic_icon_size, mic_icon_x, mic_icon_y,
              audio_icon, audio_icon_size, audio_icon_x, audio_icon_y });
@@ -145,6 +147,7 @@ app.get('/api/preview/:id', (req, res) => {
           avatar_offset_y, avatar_rot_y, camera_z, camera_y, camera_look_at_y,
           overlay_color, overlay_opacity, overlay_height, chat_height, chat_bottom, chat_max_width, chat_align, chat_hide_input, show_logo, header_color, header_font,
           idle_timeout, idle_icon, idle_title, idle_subtitle, idle_hint,
+          chat_font, chat_font_size,
           show_vad, show_controls, show_header_left,
           mic_icon, mic_icon_size, mic_icon_x, mic_icon_y,
           audio_icon, audio_icon_size, audio_icon_x, audio_icon_y } = avatar;
@@ -153,6 +156,7 @@ app.get('/api/preview/:id', (req, res) => {
              avatar_offset_y, avatar_rot_y, camera_z, camera_y, camera_look_at_y,
              overlay_color, overlay_opacity, overlay_height, chat_height, chat_bottom, chat_max_width, chat_align, chat_hide_input, show_logo, header_color, header_font,
              idle_timeout, idle_icon, idle_title, idle_subtitle, idle_hint,
+             chat_font, chat_font_size,
              show_vad, show_controls, show_header_left,
              mic_icon, mic_icon_size, mic_icon_x, mic_icon_y,
              audio_icon, audio_icon_size, audio_icon_x, audio_icon_y });
@@ -243,6 +247,7 @@ app.put('/api/admin/avatars/:id', (req, res) => {
                   'ai_provider','ai_max_tokens','anthropic_api_key','anthropic_model','openai_api_key','openai_model',
                   'avatar_mode','webhook_url','webhook_input_template','webhook_output_field','webhook_headers',
                   'idle_timeout','idle_icon','idle_title','idle_subtitle','idle_hint',
+                  'chat_font','chat_font_size',
                   'show_vad','show_controls','show_header_left',
                   'mic_icon_size','mic_icon_x','mic_icon_y',
                   'audio_icon_size','audio_icon_x','audio_icon_y'];

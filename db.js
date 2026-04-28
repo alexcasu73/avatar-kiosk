@@ -57,6 +57,8 @@ db.exec(`
     chat_max_width    INTEGER DEFAULT 100,
     chat_align        TEXT DEFAULT 'center',
     chat_hide_input   INTEGER DEFAULT 0,
+    chat_font         TEXT DEFAULT '',
+    chat_font_size    REAL DEFAULT 1.0,
     show_logo         INTEGER DEFAULT 1,
     show_vad          INTEGER DEFAULT 1,
     show_controls     INTEGER DEFAULT 1,
@@ -127,6 +129,10 @@ if (!existing.includes('chat_hide_input'))
   db.exec("ALTER TABLE avatars ADD COLUMN chat_hide_input INTEGER DEFAULT 0");
 if (!existing.includes('show_logo'))
   db.exec("ALTER TABLE avatars ADD COLUMN show_logo INTEGER DEFAULT 1");
+if (!existing.includes('chat_font'))
+  db.exec("ALTER TABLE avatars ADD COLUMN chat_font TEXT DEFAULT ''");
+if (!existing.includes('chat_font_size'))
+  db.exec("ALTER TABLE avatars ADD COLUMN chat_font_size REAL DEFAULT 1.0");
 if (!existing.includes('show_vad'))
   db.exec("ALTER TABLE avatars ADD COLUMN show_vad INTEGER DEFAULT 1");
 if (!existing.includes('show_controls'))

@@ -913,6 +913,23 @@
         </div>
 
         <div class="section">
+          <h3>Font chat</h3>
+          <div class="fields" style="gap:12px">
+            <div class="field">
+              <label>Font <span class="hint" style="margin:0">(Google Font o CSS)</span></label>
+              <input type="text" id="f-chat-font" placeholder="es. Roboto"
+                oninput="sendToPreview({type:'avatarParam',key:'chat_font',value:this.value})"/>
+            </div>
+            <div class="field">
+              <label>Grandezza <span id="val-chat-font-size">1.0</span>rem</label>
+              <input type="range" id="s-chat-font-size" min="0.6" max="2.5" step="0.05" value="1.0"
+                oninput="document.getElementById('val-chat-font-size').textContent=parseFloat(this.value).toFixed(2);
+                         sendToPreview({type:'avatarParam',key:'chat_font_size',value:this.value})"/>
+            </div>
+          </div>
+        </div>
+
+        <div class="section">
           <h3>Indicatori in alto</h3>
           <div class="fields" style="gap:12px">
             <div class="field">
@@ -1296,6 +1313,10 @@ function selectAvatar(id) {
   document.getElementById('v-chat-max-width').textContent = a.chat_max_width ?? 100;
   setChatAlign(a.chat_align || 'center');
   document.getElementById('f-chat-hide-input').checked = !!(a.chat_hide_input);
+  document.getElementById('f-chat-font').value            = a.chat_font      || '';
+  const cfs = a.chat_font_size ?? 1.0;
+  document.getElementById('s-chat-font-size').value         = cfs;
+  document.getElementById('val-chat-font-size').textContent = parseFloat(cfs).toFixed(2);
   document.getElementById('f-show-logo').checked = a.show_logo !== 0;
   document.getElementById('f-show-vad').checked      = (a.show_vad      ?? 1) !== 0;
   document.getElementById('f-show-controls').checked    = (a.show_controls    ?? 1) !== 0;
@@ -1704,6 +1725,8 @@ async function saveAvatar() {
     chat_max_width:  parseInt(document.getElementById('s-chat-max-width').value),
     chat_align:      setChatAlign._current,
     chat_hide_input: document.getElementById('f-chat-hide-input').checked ? 1 : 0,
+    chat_font:       document.getElementById('f-chat-font').value,
+    chat_font_size:  parseFloat(document.getElementById('s-chat-font-size').value),
     show_logo:       document.getElementById('f-show-logo').checked ? 1 : 0,
     show_vad:        document.getElementById('f-show-vad').checked      ? 1 : 0,
     show_controls:     document.getElementById('f-show-controls').checked    ? 1 : 0,

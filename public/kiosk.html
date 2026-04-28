@@ -176,11 +176,17 @@
     }
 
     #chat-history {
-      margin-top: auto; /* spinge il contenuto in fondo senza justify-content */
+      margin-top: auto;
       touch-action: pan-y;
       display: flex;
       flex-direction: column;
       gap: 12px;
+      --chat-font-family: inherit;
+      --chat-font-size: 1rem;
+    }
+
+    .transcript-bubble, .response-bubble-hist {
+      font-family: var(--chat-font-family);
     }
 
     #response-area::-webkit-scrollbar { width: 4px; }
@@ -214,7 +220,7 @@
       color: #fff;
       border-radius: 18px 18px 4px 18px;
       padding: 12px 16px;
-      font-size: 1rem;
+      font-size: var(--chat-font-size);
       line-height: 1.5;
     }
 
@@ -225,7 +231,7 @@
       border: 1px solid var(--border);
       border-radius: 18px 18px 18px 4px;
       padding: 14px 18px;
-      font-size: 1.05rem;
+      font-size: var(--chat-font-size);
       line-height: 1.6;
       backdrop-filter: blur(8px);
     }
@@ -2133,7 +2139,7 @@ window.addEventListener('message', e => {
       document.getElementById('avatar-panel').style.background =
         `radial-gradient(ellipse at 50% 60%, ${color}aa 0%, ${color} 70%)`;
     } else {
-      const stringKeys = ['chat_align', 'header_color', 'header_font', 'model_file', 'mic_icon', 'audio_icon'];
+      const stringKeys = ['chat_align', 'header_color', 'header_font', 'model_file', 'mic_icon', 'audio_icon', 'chat_font'];
       const val = stringKeys.includes(msg.key) ? msg.value : parseFloat(msg.value);
       applyParamLive(msg.key, val);
     }
@@ -2234,6 +2240,8 @@ function applyIdleParam(key, value) {
         if (d.chat_max_width  !== undefined) applyParamLive('chat_max_width',  d.chat_max_width);
         if (d.chat_align      !== undefined) applyParamLive('chat_align',      d.chat_align);
         if (d.chat_hide_input !== undefined) applyParamLive('chat_hide_input', d.chat_hide_input);
+        if (d.chat_font       !== undefined) applyParamLive('chat_font',       d.chat_font);
+        if (d.chat_font_size  !== undefined) applyParamLive('chat_font_size',  d.chat_font_size);
         if (d.show_logo       !== undefined) applyParamLive('show_logo',       d.show_logo);
         if (d.show_vad        !== undefined) applyParamLive('show_vad',        d.show_vad);
         if (d.show_controls    !== undefined) applyParamLive('show_controls',    d.show_controls);
@@ -2298,6 +2306,20 @@ function applyParamLive(key, v) {
     chat_hide_input: () => {
       document.getElementById('input-area').classList.toggle('hidden', parseInt(v) === 1);
     },
+    chat_font:      () => {
+      const el = document.getElementById('chat-history');
+      if (!el) return;
+      if (v) {
+        const link = document.getElementById('_chat-font-link') || document.createElement('link');
+        link.id = '_chat-font-link'; link.rel = 'stylesheet';
+        link.href = `https://fonts.googleapis.com/css2?family=${encodeURIComponent(v).replace(/%20/g,'+')}&display=swap`;
+        document.head.appendChild(link);
+        el.style.setProperty('--chat-font-family', `'${v}', sans-serif`);
+      } else {
+        el.style.setProperty('--chat-font-family', 'inherit');
+      }
+    },
+    chat_font_size: () => { document.getElementById('chat-history')?.style.setProperty('--chat-font-size', v + 'rem'); },
     show_logo:    () => { document.querySelector('.logo').style.display = parseInt(v) === 0 ? 'none' : ''; },
     header_color: () => applyHeaderStyle('header_color', v),
     header_font:  () => applyHeaderStyle('header_font',  v),
@@ -2382,6 +2404,8 @@ async function initAvatar() {
     document.documentElement.style.setProperty('--chat-max-width', `${cfg.chat_max_width ?? 100}%`);
     applyParamLive('chat_align',      cfg.chat_align      || 'center');
     applyParamLive('chat_hide_input', cfg.chat_hide_input ?? 0);
+    applyParamLive('chat_font',      cfg.chat_font      || '');
+    applyParamLive('chat_font_size', cfg.chat_font_size ?? 1.0);
     applyParamLive('show_logo',       cfg.show_logo       ?? 1);
     applyParamLive('show_vad',        cfg.show_vad        ?? 1);
     applyParamLive('show_controls',   cfg.show_controls   ?? 1);
