@@ -1183,6 +1183,11 @@ function startRenderLoop() {
     }
 
     renderer.render(scene, camera);
+    // Nasconde lo spinner al primo frame effettivamente renderizzato
+    const loader = document.getElementById('avatar-loader');
+    if (loader && !loader.classList.contains('hidden')) {
+      loader.classList.add('hidden');
+    }
   })();
 }
 
@@ -1948,7 +1953,6 @@ function loadGLBAvatar(url) {
         }
       }
 
-      document.getElementById('avatar-loader').classList.add('hidden');
       startRenderLoop();
       console.log('✅ Modello GLB caricato:', url);
     },
