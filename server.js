@@ -310,9 +310,21 @@ app.post('/api/admin/avatars/:id/upload-model', uploadFbx.single('model'), async
   const outGlb  = join(__dirname, 'public', 'models', `${req.params.id}.glb`);
   try {
     if (!req.file) return res.status(400).json({ error: 'Nessun file ricevuto' });
-    const assimp = '/opt/homebrew/bin/assimp';
-    const { execFile } = await import('child_process');
+    const { execFile, execFileSync } = await import('child_process');
     const { promisify } = await import('util');
+
+    // Trova assimp nel PATH o nei percorsi comuni
+    let assimp = null;
+    const candidates = [
+      'assimp',
+      '/usr/bin/assimp',
+      '/usr/local/bin/assimp',
+      '/opt/homebrew/bin/assimp',
+    ];
+    for (const c of candidates) {
+      try { execFileSync(c, ['version'], { stdio: 'ignore' }); assimp = c; break; } catch {}
+    }
+    if (!assimp) return res.status(500).json({ error: 'assimp non trovato. Installalo con: apt install assimp-utils (Linux) o brew install assimp (macOS)' });
 
     // 1. FBX → GLB grezzo
     await promisify(execFile)(assimp, ['export', tmpFbx, rawGlb]);

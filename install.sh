@@ -193,6 +193,15 @@ else
 fi
 ok "Credenziali admin: utente=${INPUT_USER}"
 
+# ── assimp (conversione FBX → GLB) ───────────────────────────────────────
+if ! command -v assimp &>/dev/null; then
+  info "Installo assimp (conversione modelli 3D)..."
+  install_pkg assimp-utils 2>/dev/null || install_pkg assimp 2>/dev/null || \
+    echo -e "${YELLOW}[WARN]${NC}  assimp non installato — il caricamento modelli FBX non funzionerà"
+else
+  ok "assimp $(assimp version 2>/dev/null | head -1 || echo '')"
+fi
+
 # ── Directory dati ────────────────────────────────────────────────────────
 mkdir -p public/models public/backgrounds public/icons
 ok "Directory dati pronte"

@@ -3,7 +3,7 @@ FROM node:20-alpine
 WORKDIR /app
 
 # Dipendenze di sistema per better-sqlite3 e gltf-pipeline
-RUN apk add --no-cache python3 make g++ cairo-dev pango-dev
+RUN apk add --no-cache python3 make g++ cairo-dev pango-dev assimp
 
 # Installa dipendenze npm
 COPY package*.json ./
