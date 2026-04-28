@@ -109,7 +109,7 @@ app.get('/api/avatar/:id', (req, res) => {
           speech_start, speech_end, avatar_scale, avatar_offset_x,
           avatar_offset_y, avatar_rot_y, camera_z, camera_y, camera_look_at_y,
           overlay_color, overlay_opacity, overlay_height, chat_height, chat_bottom, chat_max_width, chat_align, chat_hide_input, show_logo, header_color, header_font,
-          idle_timeout, idle_icon, idle_title, idle_subtitle, idle_hint,
+          idle_timeout, idle_icon, idle_icon_img, idle_title, idle_subtitle, idle_hint, idle_font, idle_font_size,
           chat_font, chat_font_size,
           show_vad, show_controls, show_header_left,
           mic_icon, mic_icon_size, mic_icon_x, mic_icon_y,
@@ -119,7 +119,7 @@ app.get('/api/avatar/:id', (req, res) => {
              speech_start, speech_end, avatar_scale, avatar_offset_x,
              avatar_offset_y, avatar_rot_y, camera_z, camera_y, camera_look_at_y,
              overlay_color, overlay_opacity, overlay_height, chat_height, chat_bottom, chat_max_width, chat_align, chat_hide_input, show_logo, header_color, header_font,
-             idle_timeout, idle_icon, idle_title, idle_subtitle, idle_hint,
+             idle_timeout, idle_icon, idle_icon_img, idle_title, idle_subtitle, idle_hint, idle_font, idle_font_size,
              chat_font, chat_font_size,
              show_vad, show_controls, show_header_left,
              mic_icon, mic_icon_size, mic_icon_x, mic_icon_y,
@@ -148,7 +148,7 @@ app.get('/api/preview/:id', (req, res) => {
           speech_start, speech_end, avatar_scale, avatar_offset_x,
           avatar_offset_y, avatar_rot_y, camera_z, camera_y, camera_look_at_y,
           overlay_color, overlay_opacity, overlay_height, chat_height, chat_bottom, chat_max_width, chat_align, chat_hide_input, show_logo, header_color, header_font,
-          idle_timeout, idle_icon, idle_title, idle_subtitle, idle_hint,
+          idle_timeout, idle_icon, idle_icon_img, idle_title, idle_subtitle, idle_hint, idle_font, idle_font_size,
           chat_font, chat_font_size,
           show_vad, show_controls, show_header_left,
           mic_icon, mic_icon_size, mic_icon_x, mic_icon_y,
@@ -158,7 +158,7 @@ app.get('/api/preview/:id', (req, res) => {
              speech_start, speech_end, avatar_scale, avatar_offset_x,
              avatar_offset_y, avatar_rot_y, camera_z, camera_y, camera_look_at_y,
              overlay_color, overlay_opacity, overlay_height, chat_height, chat_bottom, chat_max_width, chat_align, chat_hide_input, show_logo, header_color, header_font,
-             idle_timeout, idle_icon, idle_title, idle_subtitle, idle_hint,
+             idle_timeout, idle_icon, idle_icon_img, idle_title, idle_subtitle, idle_hint, idle_font, idle_font_size,
              chat_font, chat_font_size,
              show_vad, show_controls, show_header_left,
              mic_icon, mic_icon_size, mic_icon_x, mic_icon_y,
@@ -250,7 +250,7 @@ app.put('/api/admin/avatars/:id', (req, res) => {
                   'tts_api_key','tts_model','tts_stability','tts_similarity',
                   'ai_provider','ai_max_tokens','anthropic_api_key','anthropic_model','openai_api_key','openai_model',
                   'avatar_mode','webhook_url','webhook_input_template','webhook_output_field','webhook_headers',
-                  'idle_timeout','idle_icon','idle_title','idle_subtitle','idle_hint',
+                  'idle_timeout','idle_icon','idle_title','idle_subtitle','idle_hint','idle_font','idle_font_size',
                   'chat_font','chat_font_size',
                   'show_vad','show_controls','show_header_left',
                   'mic_icon_size','mic_icon_x','mic_icon_y','mic_wave_color',
@@ -356,10 +356,10 @@ const uploadIcon = multer({ storage: multer.diskStorage({
 
 app.post('/api/admin/avatars/:id/upload-icon/:type', uploadIcon.single('icon'), (req, res) => {
   if (!req.file) return res.status(400).json({ error: 'Nessun file ricevuto' });
-  const type = req.params.type; // 'mic' | 'audio'
-  if (!['mic', 'audio'].includes(type)) return res.status(400).json({ error: 'Tipo non valido' });
+  const type = req.params.type; // 'mic' | 'audio' | 'idle'
+  if (!['mic', 'audio', 'idle'].includes(type)) return res.status(400).json({ error: 'Tipo non valido' });
   const iconFile = `icons/${req.file.filename}`;
-  const col = type === 'mic' ? 'mic_icon' : 'audio_icon';
+  const col = type === 'mic' ? 'mic_icon' : type === 'audio' ? 'audio_icon' : 'idle_icon_img';
   db.prepare(`UPDATE avatars SET ${col} = ?, updated_at = datetime('now') WHERE id = ?`)
     .run(iconFile, req.params.id);
   res.json({ ok: true, [col]: iconFile });

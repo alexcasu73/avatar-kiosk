@@ -46,9 +46,12 @@ db.exec(`
     webhook_headers       TEXT DEFAULT '{}',
     idle_timeout      INTEGER DEFAULT 90,
     idle_icon         TEXT DEFAULT '🤖',
+    idle_icon_img     TEXT DEFAULT '',
     idle_title        TEXT DEFAULT '',
     idle_subtitle     TEXT DEFAULT 'La tua assistente virtuale',
     idle_hint         TEXT DEFAULT '✨ Tocca per iniziare',
+    idle_font         TEXT DEFAULT '',
+    idle_font_size    REAL DEFAULT 1.0,
     overlay_color     TEXT DEFAULT '#0a0a0f',
     overlay_opacity   REAL DEFAULT 0.75,
     overlay_height    REAL DEFAULT 65,
@@ -161,5 +164,11 @@ if (!existing.includes('mic_wave_color'))
   db.exec("ALTER TABLE avatars ADD COLUMN mic_wave_color TEXT DEFAULT '#ffffff'");
 if (!existing.includes('audio_wave_color'))
   db.exec("ALTER TABLE avatars ADD COLUMN audio_wave_color TEXT DEFAULT '#ffffff'");
+if (!existing.includes('idle_icon_img'))
+  db.exec("ALTER TABLE avatars ADD COLUMN idle_icon_img TEXT DEFAULT ''");
+if (!existing.includes('idle_font'))
+  db.exec("ALTER TABLE avatars ADD COLUMN idle_font TEXT DEFAULT ''");
+if (!existing.includes('idle_font_size'))
+  db.exec("ALTER TABLE avatars ADD COLUMN idle_font_size REAL DEFAULT 1.0");
 
 export default db;

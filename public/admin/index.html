@@ -75,12 +75,24 @@
     /* ── Form panel ─────────────────────────────── */
     #form-panel {
       width:520px; flex-shrink:0;
-      overflow-y:auto; padding:0 24px 24px;
-      display:flex; flex-direction:column; gap:16px;
+      overflow-y:hidden; padding:0;
+      display:flex; flex-direction:column;
       border-right:1px solid var(--border);
     }
-    #form-panel::-webkit-scrollbar { width:4px; }
-    #form-panel::-webkit-scrollbar-thumb { background:var(--border); }
+    #form-panel-sticky {
+      flex-shrink:0;
+      padding:0 24px;
+      background:var(--surface);
+      border-bottom:1px solid var(--border);
+      z-index:9;
+    }
+    #form-panel-scroll {
+      flex:1; overflow-y:auto;
+      padding:0 24px 24px;
+      display:flex; flex-direction:column; gap:16px;
+    }
+    #form-panel-scroll::-webkit-scrollbar { width:4px; }
+    #form-panel-scroll::-webkit-scrollbar-thumb { background:var(--border); }
 
     /* ── Preview panel ──────────────────────────── */
     #preview-panel {
@@ -144,7 +156,7 @@
     #empty-state p { font-size:.9rem; }
 
     /* ── Editor ─────────────────────────────────── */
-    #editor { display:none; flex-direction:column; min-height:0; }
+    #editor { display:none; flex-direction:column; flex:1; min-height:0; overflow:hidden; }
     #editor.visible { display:flex; }
 
     /* Header sticky con azioni */
@@ -516,47 +528,25 @@
 
       <!-- Step 2: AI -->
       <div id="ws2" style="display:none">
-        <div class="fields" style="gap:8px;margin-bottom:14px">
-          <div id="wiz-emb-card" class="provider-card active" onclick="wizAiMode('embedded')" style="cursor:pointer">
-            <div class="provider-card-header">
-              <span class="provider-name">⚙️ Embedded</span>
-              <span class="provider-badge" id="wiz-emb-badge">● SELEZIONATO</span>
-            </div>
+        <div class="fields" style="gap:10px;margin-bottom:10px">
+          <div id="wiz-ai-prov-anth" class="provider-card active" onclick="wizAiProv('anthropic')" style="cursor:pointer;padding:10px 14px">
+            <span class="provider-name" style="font-size:.75rem">Anthropic</span>
+            <span class="provider-badge" id="wiz-anth-badge" style="font-size:.6rem">● IN USO</span>
           </div>
-          <div id="wiz-wbk-card" class="provider-card" onclick="wizAiMode('webhook')" style="cursor:pointer">
-            <div class="provider-card-header">
-              <span class="provider-name">🔗 Webhook</span>
-              <span class="provider-badge hidden" id="wiz-wbk-badge">● SELEZIONATO</span>
-            </div>
+          <div id="wiz-ai-prov-oai" class="provider-card" onclick="wizAiProv('openai')" style="cursor:pointer;padding:10px 14px">
+            <span class="provider-name" style="font-size:.75rem">OpenAI</span>
+            <span class="provider-badge hidden" id="wiz-oai-badge" style="font-size:.6rem">● IN USO</span>
           </div>
         </div>
-        <div id="wiz-ai-embedded">
-          <div class="fields" style="gap:10px;margin-bottom:10px">
-            <div id="wiz-ai-prov-anth" class="provider-card active" onclick="wizAiProv('anthropic')" style="cursor:pointer;padding:10px 14px">
-              <span class="provider-name" style="font-size:.75rem">Anthropic</span>
-              <span class="provider-badge" id="wiz-anth-badge" style="font-size:.6rem">● IN USO</span>
-            </div>
-            <div id="wiz-ai-prov-oai" class="provider-card" onclick="wizAiProv('openai')" style="cursor:pointer;padding:10px 14px">
-              <span class="provider-name" style="font-size:.75rem">OpenAI</span>
-              <span class="provider-badge hidden" id="wiz-oai-badge" style="font-size:.6rem">● IN USO</span>
-            </div>
-          </div>
-          <div class="field" style="margin-bottom:10px">
-            <label>API Key <span class="hint" style="margin:0">(lascia vuoto per default .env)</span></label>
-            <input id="wiz-ai-key" type="password" placeholder="default da .env"/>
-          </div>
-          <div class="field">
-            <label>Modello</label>
-            <div class="model-row">
-              <input id="wiz-ai-model" type="text" placeholder="claude-sonnet-4-6"/>
-              <button class="btn btn-neutral btn-load" onclick="wizLoadModels()">⟳ Carica</button>
-            </div>
-          </div>
+        <div class="field" style="margin-bottom:10px">
+          <label>API Key <span class="hint" style="margin:0">(lascia vuoto per default .env)</span></label>
+          <input id="wiz-ai-key" type="password" placeholder="default da .env"/>
         </div>
-        <div id="wiz-ai-webhook" style="display:none">
-          <div class="field">
-            <label>Webhook URL</label>
-            <input id="wiz-wh-url" type="text" placeholder="https://n8n.example.com/webhook/..."/>
+        <div class="field">
+          <label>Modello</label>
+          <div class="model-row">
+            <input id="wiz-ai-model" type="text" placeholder="claude-sonnet-4-6"/>
+            <button class="btn btn-neutral btn-load" onclick="wizLoadModels()">⟳ Carica</button>
           </div>
         </div>
       </div>
@@ -614,27 +604,31 @@
     </div>
 
     <div id="editor">
-      <div class="editor-header">
-        <h2 id="editor-title">Avatar</h2>
-        <div class="actions">
-          <button class="btn btn-success" id="publish-btn" onclick="togglePublish()">Pubblica</button>
-          <button class="btn btn-primary" onclick="saveAvatar()">Salva</button>
-          <button class="btn btn-neutral btn-icon" onclick="openKiosk()" title="Apri kiosk">↗</button>
-          <button class="btn btn-danger  btn-icon" onclick="deleteAvatar()" title="Elimina">🗑</button>
+      <!-- Header + Tab bar: fissi, non scrollano -->
+      <div id="form-panel-sticky">
+        <div class="editor-header">
+          <h2 id="editor-title">Avatar</h2>
+          <div class="actions">
+            <button class="btn btn-success" id="publish-btn" onclick="togglePublish()">Pubblica</button>
+            <button class="btn btn-primary" onclick="saveAvatar()">Salva</button>
+            <button class="btn btn-neutral btn-icon" onclick="openKiosk()" title="Apri kiosk">↗</button>
+            <button class="btn btn-danger  btn-icon" onclick="deleteAvatar()" title="Elimina">🗑</button>
+          </div>
+        </div>
+        <div style="display:flex;gap:8px;align-items:center;padding:12px 0">
+          <div class="tab-bar" style="flex:1;margin-bottom:0">
+            <button class="tab-btn active" onclick="switchTab('generale')">Generale</button>
+            <button class="tab-btn"        onclick="switchTab('ai')">AI</button>
+            <button class="tab-btn"        onclick="switchTab('aspetto')">Aspetto</button>
+            <button class="tab-btn"        onclick="switchTab('avatar3d')">Avatar 3D</button>
+          </div>
+          <button class="btn btn-neutral" onclick="toggleAllSections()" id="expand-all-btn"
+            style="font-size:.72rem;padding:7px 12px;flex-shrink:0">Espandi</button>
         </div>
       </div>
 
-      <!-- Tab bar -->
-      <div style="display:flex;gap:8px;align-items:center;margin-bottom:16px;position:sticky;top:56px;z-index:9">
-        <div class="tab-bar" style="flex:1;margin-bottom:0">
-          <button class="tab-btn active" onclick="switchTab('generale')">Generale</button>
-          <button class="tab-btn"        onclick="switchTab('ai')">AI</button>
-          <button class="tab-btn"        onclick="switchTab('aspetto')">Aspetto</button>
-          <button class="tab-btn"        onclick="switchTab('avatar3d')">Avatar 3D</button>
-        </div>
-        <button class="btn btn-neutral" onclick="toggleAllSections()" id="expand-all-btn"
-          style="font-size:.72rem;padding:7px 12px;flex-shrink:0">Espandi</button>
-      </div>
+      <!-- Contenuto tab: scrollabile -->
+      <div id="form-panel-scroll">
 
       <!-- ═══ TAB: GENERALE ════════════════════════════════════════════════════ -->
       <div class="tab-pane active" id="tab-generale">
@@ -1075,7 +1069,7 @@
           <h3>Schermata Idle</h3>
           <div class="fields" style="gap:12px">
             <div class="field">
-              <label>Icona</label>
+              <label>Emoji icona</label>
               <input type="text" id="f-idle-icon" value="🤖" maxlength="8"
                 style="font-size:1.4rem;text-align:center;"
                 oninput="sendToPreview({type:'idleParam',key:'idle_icon',value:this.value})"/>
@@ -1085,6 +1079,30 @@
               <input type="range" id="s-idle-timeout" min="10" max="300" step="5" value="90"
                 oninput="document.getElementById('val-idle-timeout').textContent=this.value;
                          sendToPreview({type:'idleParam',key:'idle_timeout',value:this.value})"/>
+            </div>
+          </div>
+          <div style="margin-top:10px">
+            <div style="font-size:.78rem;color:#aaa;margin-bottom:8px;font-weight:600">Immagine icona (sovrascrive emoji)</div>
+            <div style="display:flex;align-items:center;gap:10px">
+              <img id="preview-idle-icon" src="" alt="" style="width:48px;height:48px;object-fit:cover;border-radius:50%;background:#1a1a2e;display:none"/>
+              <label style="cursor:pointer;background:#2a2a4a;border:1px dashed #444;border-radius:8px;padding:8px 14px;font-size:.8rem;color:#aaa">
+                📁 Carica immagine
+                <input type="file" accept="image/*" style="display:none" onchange="uploadIcon('idle',this)"/>
+              </label>
+              <span id="idle-icon-label" style="font-size:.75rem;color:#666">Nessuna</span>
+            </div>
+          </div>
+          <div class="fields" style="gap:12px;margin-top:12px">
+            <div class="field">
+              <label>Font testi</label>
+              <input type="text" id="f-idle-font" placeholder="Es: Montserrat"
+                oninput="sendToPreview({type:'idleParam',key:'idle_font',value:this.value})"/>
+            </div>
+            <div class="field">
+              <label>Grandezza testo <span id="val-idle-font-size">1.0</span>rem</label>
+              <input type="range" id="s-idle-font-size" min="0.5" max="3.0" step="0.05" value="1.0"
+                oninput="document.getElementById('val-idle-font-size').textContent=parseFloat(this.value).toFixed(2);
+                         sendToPreview({type:'idleParam',key:'idle_font_size',value:this.value})"/>
             </div>
           </div>
           <div class="fields single" style="gap:10px;margin-top:10px">
@@ -1212,6 +1230,7 @@
 
       </div><!-- /tab-avatar3d -->
 
+      </div><!-- /form-panel-scroll -->
     </div><!-- /editor -->
     </div><!-- /form-panel -->
 
@@ -1412,9 +1431,14 @@ function selectAvatar(id) {
   document.getElementById('f-audio-wave-color').value    = audWaveColor;
   document.getElementById('f-audio-wave-hex').textContent = audWaveColor;
   document.getElementById('f-idle-icon').value     = a.idle_icon     || '🤖';
+  setIconPreview('idle', a.idle_icon_img || '');
   document.getElementById('f-idle-title').value    = a.idle_title    || '';
   document.getElementById('f-idle-subtitle').value = a.idle_subtitle || 'La tua assistente virtuale';
   document.getElementById('f-idle-hint').value     = a.idle_hint     || '✨ Tocca per iniziare';
+  document.getElementById('f-idle-font').value     = a.idle_font     || '';
+  const idleFontSize = a.idle_font_size ?? 1.0;
+  document.getElementById('s-idle-font-size').value         = idleFontSize;
+  document.getElementById('val-idle-font-size').textContent = idleFontSize.toFixed(2);
   const idleTimeout = a.idle_timeout ?? 90;
   document.getElementById('s-idle-timeout').value        = idleTimeout;
   document.getElementById('val-idle-timeout').textContent = idleTimeout;
@@ -1645,7 +1669,7 @@ function createAvatar() {
   document.getElementById('wiz-wh-url').value   = '';
   document.getElementById('wiz-model-label').textContent = '🎭 Trascina un file .fbx o clicca';
   _wizStep = 0; _wizAiMode = 'embedded'; _wizAiProv = 'anthropic'; _wizAvatarId = null;
-  wizAiMode('embedded'); wizAiProv('anthropic');
+  wizAiProv('anthropic');
   wizRender();
   document.getElementById('wiz-modal').classList.add('open');
   setTimeout(() => document.getElementById('wiz-name').focus(), 100);
@@ -1668,13 +1692,6 @@ function wizRender() {
 
 function wizAiMode(mode) {
   _wizAiMode = mode;
-  ['embedded','webhook'].forEach(m => {
-    const active = m === mode;
-    document.getElementById(`wiz-${m==='embedded'?'emb':'wbk'}-card`).classList.toggle('active', active);
-    document.getElementById(`wiz-${m==='embedded'?'emb':'wbk'}-badge`).classList.toggle('hidden', !active);
-  });
-  document.getElementById('wiz-ai-embedded').style.display = mode === 'embedded' ? '' : 'none';
-  document.getElementById('wiz-ai-webhook').style.display  = mode === 'webhook'  ? '' : 'none';
 }
 
 function wizAiProv(prov) {
@@ -1850,6 +1867,8 @@ async function saveAvatar() {
     idle_title:      document.getElementById('f-idle-title').value,
     idle_subtitle:   document.getElementById('f-idle-subtitle').value,
     idle_hint:       document.getElementById('f-idle-hint').value,
+    idle_font:       document.getElementById('f-idle-font').value,
+    idle_font_size:  parseFloat(document.getElementById('s-idle-font-size').value),
     mic_icon_size:   parseInt(document.getElementById('s-mic-icon-size').value),
     mic_icon_x:      parseInt(document.getElementById('s-mic-icon-x').value),
     mic_icon_y:      parseInt(document.getElementById('s-mic-icon-y').value),
@@ -1950,10 +1969,11 @@ async function uploadIcon(type, input) {
   const res  = await fetch(`/api/admin/avatars/${currentId}/upload-icon/${type}`, { method:'POST', body:form });
   const data = await res.json();
   if (!res.ok) { toast('❌ ' + data.error, 'error'); return; }
-  const col = type === 'mic' ? 'mic_icon' : 'audio_icon';
+  const col = type === 'mic' ? 'mic_icon' : type === 'audio' ? 'audio_icon' : 'idle_icon_img';
   setIconPreview(type, data[col]);
   avatars = avatars.map(a => a.id===currentId ? {...a, [col]: data[col]} : a);
-  sendToPreview({ type: 'avatarParam', key: col, value: data[col] });
+  const msgType = type === 'idle' ? 'idleParam' : 'avatarParam';
+  sendToPreview({ type: msgType, key: col, value: data[col] });
   toast(`✅ Icona ${type} caricata`);
 }
 
