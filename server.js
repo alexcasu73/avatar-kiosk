@@ -73,6 +73,13 @@ app.use('/backgrounds', express.static(join(__dirname, 'public', 'backgrounds'),
 app.use('/icons', express.static(join(__dirname, 'public', 'icons'), {
   maxAge: '7d',
 }));
+// Blocca accesso diretto a public/admin/* senza autenticazione
+app.use('/admin', (req, res, next) => {
+  if (req.path === '/login') return next();
+  if (isAdminAuth(req)) return next();
+  res.redirect('/admin/login');
+});
+
 app.use(express.static(join(__dirname, 'public')));
 
 // ─── WebSocket ────────────────────────────────────────────────────────────────
