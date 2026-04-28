@@ -569,9 +569,17 @@
   <div id="header">
     <div class="logo">AVATAR KIOSK</div>
     <div style="display:flex;flex-direction:column;align-items:flex-end;gap:8px">
-      <div id="status-chip">
-        <div class="status-dot" id="status-dot"></div>
-        <span id="status-label">In attesa...</span>
+      <div style="display:flex;align-items:center;gap:8px">
+        <button id="mic-btn" onclick="toggleMic()" title="Attiva/disattiva microfono"
+          style="background:rgba(248,113,113,.15);border:1px solid rgba(248,113,113,.4);
+                 border-radius:20px;padding:5px 12px;color:#f87171;font-size:.75rem;
+                 cursor:pointer;transition:all .2s;pointer-events:auto">
+          🎙 Mic spento
+        </button>
+        <div id="status-chip">
+          <div class="status-dot" id="status-dot"></div>
+          <span id="status-label">In attesa...</span>
+        </div>
       </div>
       <div id="vad-section">
         <div id="vad-bars"><!-- generati da JS --></div>
@@ -742,6 +750,7 @@
 const CONFIG = {
   serverUrl:    window.location.origin,
   idleTimeout:  90000,
+  micEnabled:   false,
   avatarName:   'Sofia',
   avatarModelUrl: '/avatar.glb',
 
@@ -1515,6 +1524,66 @@ async function transcribeAndProcess(blob) {
 // ═══════════════════════════════════════════════════════════════════════════
 //  WAKE UP / IDLE
 // ═══════════════════════════════════════════════════════════════════════════
+function updateMicBtn() {
+  const btn = document.getElementById('mic-btn');
+  if (!btn) return;
+  if (CONFIG.micEnabled) {
+    btn.style.background    = 'rgba(34,211,160,.15)';
+    btn.style.borderColor   = 'rgba(34,211,160,.5)';
+    btn.style.color         = '#22d3a0';
+    btn.textContent         = '🎙 Mic attivo';
+  } else {
+    btn.style.background    = 'rgba(248,113,113,.15)';
+    btn.style.borderColor   = 'rgba(248,113,113,.4)';
+    btn.style.color         = '#f87171';
+    btn.textContent         = '🎙 Mic spento';
+  }
+}
+
+async function toggleMic() {
+  CONFIG.micEnabled = !CONFIG.micEnabled;
+  updateMicBtn();
+  if (CONFIG.micEnabled) {
+    // Avvia o riprende il VAD
+    if (state.mode !== 'idle') {
+      if (!state.vad) await _startVad();
+      else state.vad.resume();
+    }
+  } else {
+    state.vad?.pause();
+  }
+}
+
+async function _startVad() {
+  try {
+    state.vad = new VAD({
+      threshold:         CONFIG.vadThreshold,
+      silenceDuration:   CONFIG.vadSilenceDuration,
+      minSpeechDuration: CONFIG.vadMinSpeechDuration,
+      onVolume:    rms => updateVadVisualizer(rms),
+      onSpeechStart: () => {
+        if (state.mode === 'listening') {
+          setMode('recording');
+        } else if (state.mode === 'speaking') {
+          stopCurrentAudio();
+          setMode('recording');
+        }
+      },
+      onSpeechEnd: async blob => {
+        if (state.mode === 'recording') {
+          setMode('thinking');
+          await transcribeAndProcess(blob);
+        }
+      },
+    });
+    await state.vad.start();
+  } catch (err) {
+    setVadState('idle');
+    document.getElementById('vad-label').textContent =
+      '⚠️ Microfono non disponibile — usa la tastiera';
+  }
+}
+
 async function wakeUp() {
   document.getElementById('idle-overlay').classList.add('hidden');
   setMode('listening');
@@ -1523,38 +1592,11 @@ async function wakeUp() {
   // Prima visita: mostra benvenuto
   addToHistory('avatar', `Ciao! Sono ${CONFIG.avatarName}. Come posso aiutarti?`);
 
-  // Avvia VAD se non già attivo
-  if (!state.vad) {
-    try {
-      state.vad = new VAD({
-        threshold:         CONFIG.vadThreshold,
-        silenceDuration:   CONFIG.vadSilenceDuration,
-        minSpeechDuration: CONFIG.vadMinSpeechDuration,
-        onVolume:    rms => updateVadVisualizer(rms),
-        onSpeechStart: () => {
-          if (state.mode === 'listening') {
-            setMode('recording');
-          } else if (state.mode === 'speaking') {
-            stopCurrentAudio();
-            setMode('recording');
-          }
-        },
-        onSpeechEnd: async blob => {
-          if (state.mode === 'recording') {
-            setMode('thinking');
-            await transcribeAndProcess(blob);
-          }
-        },
-      });
-      await state.vad.start();
-    } catch (err) {
-      setVadState('idle');
-      document.getElementById('vad-label').textContent =
-        '⚠️ Microfono non disponibile — usa la tastiera';
-    }
-  } else {
-    state.vad.resume();
-  }
+  // Avvia VAD solo se microfono abilitato
+  if (!CONFIG.micEnabled) return;
+
+  if (!state.vad) await _startVad();
+  else state.vad.resume();
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
