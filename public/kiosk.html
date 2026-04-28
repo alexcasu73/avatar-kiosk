@@ -87,6 +87,24 @@
     /* ─── Avatar Panel ──────────────────────────────── */
     #avatar-panel { position: absolute; inset: 0; background: radial-gradient(ellipse at 50% 60%, #1a1030 0%, var(--bg) 70%); }
 
+    /* ─── Loading spinner ───────────────────────── */
+    #avatar-loader {
+      position: absolute; inset: 0; z-index: 5;
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: center; gap: 16px;
+      background: var(--bg); transition: opacity .5s;
+    }
+    #avatar-loader.hidden { opacity: 0; pointer-events: none; }
+    .loader-ring {
+      width: 48px; height: 48px;
+      border: 3px solid var(--border);
+      border-top-color: var(--accent);
+      border-radius: 50%;
+      animation: spin .8s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .loader-text { font-size: .8rem; color: var(--text-dim); }
+
     #avatar-canvas {
       width: 100%;
       height: 100%;
@@ -564,6 +582,10 @@
 
     <!-- Avatar -->
     <div id="avatar-panel">
+      <div id="avatar-loader">
+        <div class="loader-ring"></div>
+        <span class="loader-text">Caricamento avatar…</span>
+      </div>
       <canvas id="avatar-canvas"></canvas>
 
       <!-- Pannello impostazioni avatar -->
@@ -1926,11 +1948,18 @@ function loadGLBAvatar(url) {
         }
       }
 
+      document.getElementById('avatar-loader').classList.add('hidden');
       startRenderLoop();
       console.log('✅ Modello GLB caricato:', url);
     },
-    xhr => console.log(`Caricamento modello: ${Math.round(xhr.loaded / xhr.total * 100)}%`),
+    xhr => {
+      const pct = xhr.total ? Math.round(xhr.loaded / xhr.total * 100) : '…';
+      const el = document.querySelector('#avatar-loader .loader-text');
+      if (el) el.textContent = `Caricamento avatar… ${pct}%`;
+      console.log(`Caricamento modello: ${pct}%`);
+    },
     err => {
+      document.getElementById('avatar-loader').classList.add('hidden');
       console.warn('⚠️ Modello GLB non caricato, uso placeholder:', err);
       createPlaceholderAvatar();
     }
