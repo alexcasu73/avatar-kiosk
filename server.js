@@ -272,7 +272,8 @@ app.post('/api/admin/avatars/:id/upload-model', uploadFbx.single('model'), async
     fs.unlinkSync(tmpFbx);
 
     // 2. GLB → GLB con compressione Draco
-    const { processGlb } = await import('gltf-pipeline');
+    const { default: gltfPipeline } = await import('gltf-pipeline');
+    const { processGlb } = gltfPipeline;
     const glbBuf = fs.readFileSync(rawGlb);
     const result = await processGlb(glbBuf, { dracoOptions: { compressionLevel: 7 } });
     fs.writeFileSync(outGlb, result.glb);
