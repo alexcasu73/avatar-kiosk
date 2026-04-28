@@ -1544,13 +1544,14 @@ async function toggleMic() {
   CONFIG.micEnabled = !CONFIG.micEnabled;
   updateMicBtn();
   if (CONFIG.micEnabled) {
-    // Avvia o riprende il VAD
-    if (state.mode !== 'idle') {
-      if (!state.vad) await _startVad();
-      else state.vad.resume();
-    }
+    if (state.mode !== 'idle') await _startVad();
   } else {
-    state.vad?.pause();
+    // Ferma completamente lo stream — il browser toglierà l'indicatore mic
+    state.vad?.stop();
+    state.vad = null;
+    if (state.mode === 'recording' || state.mode === 'listening') {
+      setMode('listening');
+    }
   }
 }
 
