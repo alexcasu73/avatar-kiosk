@@ -131,6 +131,10 @@
       border-radius:36px;
       border:6px solid #2a2a3e;
     }
+    #preview-frame-wrap.mode-web {
+      border-radius:8px;
+      border:6px solid #2a2a3e;
+    }
     #preview-iframe {
       position:absolute; top:0; left:0;
       border:none; transform-origin:top left;
@@ -911,8 +915,8 @@
                 oninput="document.getElementById('v-overlay-height').textContent=this.value; applyOverlayLive()"/>
             </div>
             <div class="slider-field">
-              <label>Margine inferiore px <span id="v-chat-bottom">200</span></label>
-              <input type="range" min="0" max="600" step="4" id="s-chat-bottom" value="200"
+              <label>Margine inferiore px <span id="v-chat-bottom">100</span></label>
+              <input type="range" min="0" max="600" step="4" id="s-chat-bottom" value="100"
                 oninput="document.getElementById('v-chat-bottom').textContent=this.value;
                          sendToPreview({type:'avatarParam',key:'chat_bottom',value:this.value})"/>
             </div>
@@ -938,24 +942,9 @@
               Nascondi input testo
             </label>
             <label style="display:flex;align-items:center;gap:10px;cursor:pointer;font-size:.78rem;color:var(--text-dim)">
-              <input type="checkbox" id="f-show-logo" checked
-                onchange="sendToPreview({type:'avatarParam',key:'show_logo',value:this.checked?1:0})"/>
-              Mostra nome avatar in alto a sinistra
-            </label>
-            <label style="display:flex;align-items:center;gap:10px;cursor:pointer;font-size:.78rem;color:var(--text-dim)">
-              <input type="checkbox" id="f-show-vad" checked
-                onchange="sendToPreview({type:'avatarParam',key:'show_vad',value:this.checked?1:0})"/>
-              Mostra forma d'onda e stato microfono
-            </label>
-            <label style="display:flex;align-items:center;gap:10px;cursor:pointer;font-size:.78rem;color:var(--text-dim)">
               <input type="checkbox" id="f-show-controls" checked
                 onchange="sendToPreview({type:'avatarParam',key:'show_controls',value:this.checked?1:0})"/>
               Mostra indicatori in alto a destra (mic / audio)
-            </label>
-            <label style="display:flex;align-items:center;gap:10px;cursor:pointer;font-size:.78rem;color:var(--text-dim)">
-              <input type="checkbox" id="f-show-header-left" checked
-                onchange="sendToPreview({type:'avatarParam',key:'show_header_left',value:this.checked?1:0})"/>
-              Mostra indicatori in alto a sinistra (nome / stato)
             </label>
           </div>
         </div>
@@ -969,30 +958,10 @@
                 oninput="sendToPreview({type:'avatarParam',key:'chat_font',value:this.value})"/>
             </div>
             <div class="field">
-              <label>Grandezza <span id="val-chat-font-size">2.25</span>rem</label>
-              <input type="range" id="s-chat-font-size" min="0.6" max="3.5" step="0.05" value="2.25"
+              <label>Grandezza <span id="val-chat-font-size">1.1</span>rem</label>
+              <input type="range" id="s-chat-font-size" min="0.6" max="3.5" step="0.05" value="1.1"
                 oninput="document.getElementById('val-chat-font-size').textContent=parseFloat(this.value).toFixed(2);
                          sendToPreview({type:'avatarParam',key:'chat_font_size',value:this.value})"/>
-            </div>
-          </div>
-        </div>
-
-        <div class="section">
-          <h3>Indicatori in alto</h3>
-          <div class="fields" style="gap:12px">
-            <div class="field">
-              <label>Colore testo</label>
-              <div class="color-row">
-                <input type="color" id="f-header-color" value="#a0a0b8" class="color-input"
-                  oninput="document.getElementById('f-header-hex').textContent=this.value;
-                           sendToPreview({type:'avatarParam',key:'header_color',value:this.value})"/>
-                <span id="f-header-hex" class="color-hex">#a0a0b8</span>
-              </div>
-            </div>
-            <div class="field">
-              <label>Font <span class="hint" style="margin:0">(Google Font o CSS)</span></label>
-              <input type="text" id="f-header-font" placeholder="es. Roboto"
-                oninput="sendToPreview({type:'avatarParam',key:'header_font',value:this.value})"/>
             </div>
           </div>
         </div>
@@ -1013,8 +982,8 @@
             </div>
             <div class="fields" style="gap:10px">
               <div class="field">
-                <label>Dimensione <span id="val-mic-icon-size">200</span>px</label>
-                <input type="range" id="s-mic-icon-size" min="10" max="300" step="2" value="200"
+                <label>Dimensione <span id="val-mic-icon-size">100</span>px</label>
+                <input type="range" id="s-mic-icon-size" min="10" max="300" step="2" value="100"
                   oninput="document.getElementById('val-mic-icon-size').textContent=this.value;
                            sendToPreview({type:'avatarParam',key:'mic_icon_size',value:this.value})"/>
               </div>
@@ -1046,8 +1015,8 @@
             </div>
             <div class="fields" style="gap:10px">
               <div class="field">
-                <label>Dimensione <span id="val-audio-icon-size">200</span>px</label>
-                <input type="range" id="s-audio-icon-size" min="10" max="300" step="2" value="200"
+                <label>Dimensione <span id="val-audio-icon-size">100</span>px</label>
+                <input type="range" id="s-audio-icon-size" min="10" max="300" step="2" value="100"
                   oninput="document.getElementById('val-audio-icon-size').textContent=this.value;
                            sendToPreview({type:'avatarParam',key:'audio_icon_size',value:this.value})"/>
               </div>
@@ -1121,8 +1090,8 @@
                 oninput="sendToPreview({type:'idleParam',key:'idle_font',value:this.value})"/>
             </div>
             <div class="field">
-              <label>Grandezza testo <span id="val-idle-font-size">2.25</span>rem</label>
-              <input type="range" id="s-idle-font-size" min="0.5" max="4.0" step="0.05" value="2.25"
+              <label>Grandezza testo <span id="val-idle-font-size">1.1</span>rem</label>
+              <input type="range" id="s-idle-font-size" min="0.5" max="4.0" step="0.05" value="1.1"
                 oninput="document.getElementById('val-idle-font-size').textContent=parseFloat(this.value).toFixed(2);
                          sendToPreview({type:'idleParam',key:'idle_font_size',value:this.value})"/>
             </div>
@@ -1261,6 +1230,7 @@
       <div id="preview-mode-bar" style="display:none">
         <button id="btn-mode-kiosk"  class="active" onclick="setPreviewMode('kiosk')">📺 Kiosk 9:16</button>
         <button id="btn-mode-mobile" onclick="setPreviewMode('mobile')">📱 Smartphone</button>
+        <button id="btn-mode-web"    onclick="setPreviewMode('web')">🖥 Web</button>
       </div>
       <div id="preview-viewport">
         <div id="preview-placeholder">
@@ -1411,30 +1381,23 @@ function selectAvatar(id) {
   document.getElementById('v-overlay-opacity').textContent = (a.overlay_opacity ?? 0.75).toFixed(2);
   document.getElementById('s-overlay-height').value = a.overlay_height ?? 65;
   document.getElementById('v-overlay-height').textContent = a.overlay_height ?? 65;
-  document.getElementById('s-chat-bottom').value = a.chat_bottom ?? 200;
-  document.getElementById('v-chat-bottom').textContent = a.chat_bottom ?? 200;
+  document.getElementById('s-chat-bottom').value = a.chat_bottom ?? 100;
+  document.getElementById('v-chat-bottom').textContent = a.chat_bottom ?? 100;
   document.getElementById('s-chat-max-width').value = a.chat_max_width ?? 100;
   document.getElementById('v-chat-max-width').textContent = a.chat_max_width ?? 100;
   setChatAlign(a.chat_align || 'center');
   document.getElementById('f-chat-hide-input').checked = !!(a.chat_hide_input);
   document.getElementById('f-chat-font').value            = a.chat_font      || '';
-  const cfs = a.chat_font_size ?? 2.25;
+  const cfs = a.chat_font_size ?? 1.1;
   document.getElementById('s-chat-font-size').value         = cfs;
   document.getElementById('val-chat-font-size').textContent = parseFloat(cfs).toFixed(2);
-  document.getElementById('f-show-logo').checked = a.show_logo !== 0;
-  document.getElementById('f-show-vad').checked      = (a.show_vad      ?? 1) !== 0;
   document.getElementById('f-show-controls').checked    = (a.show_controls    ?? 1) !== 0;
-  document.getElementById('f-show-header-left').checked = (a.show_header_left ?? 1) !== 0;
-  const hColor = a.header_color || '#a0a0b8';
-  document.getElementById('f-header-color').value   = hColor;
-  document.getElementById('f-header-hex').textContent = hColor;
-  document.getElementById('f-header-font').value    = a.header_font  || '';
   setIconPreview('mic',   a.mic_icon   || '');
   setIconPreview('audio', a.audio_icon || '');
-  const micSize  = a.mic_icon_size   ?? 200;
+  const micSize  = a.mic_icon_size   ?? 100;
   const micX     = a.mic_icon_x      ?? 0;
   const micY     = a.mic_icon_y      ?? 0;
-  const audSize  = a.audio_icon_size ?? 200;
+  const audSize  = a.audio_icon_size ?? 100;
   const audX     = a.audio_icon_x    ?? 0;
   const audY     = a.audio_icon_y    ?? 0;
   document.getElementById('s-mic-icon-size').value         = micSize;
@@ -1461,7 +1424,7 @@ function selectAvatar(id) {
   document.getElementById('f-idle-subtitle').value = a.idle_subtitle || 'La tua assistente virtuale';
   document.getElementById('f-idle-hint').value     = a.idle_hint     || '✨ Tocca per iniziare';
   document.getElementById('f-idle-font').value     = a.idle_font     || '';
-  const idleFontSize = a.idle_font_size ?? 2.25;
+  const idleFontSize = a.idle_font_size ?? 1.1;
   document.getElementById('s-idle-font-size').value         = idleFontSize;
   document.getElementById('val-idle-font-size').textContent = idleFontSize.toFixed(2);
   const idleTimeout = a.idle_timeout ?? 90;
@@ -1620,6 +1583,7 @@ window.addEventListener('message', e => {
 const PREVIEW_MODES = {
   kiosk:  { w: 1080, h: 1920 },   // 9:16 verticale
   mobile: { w:  390, h:  844 },   // iPhone-like
+  web:    { w:  800, h: 1280 },   // browser verticale
 };
 let _previewMode = 'kiosk';
 
@@ -1627,6 +1591,7 @@ function setPreviewMode(mode) {
   _previewMode = mode;
   document.getElementById('btn-mode-kiosk').classList.toggle('active',  mode === 'kiosk');
   document.getElementById('btn-mode-mobile').classList.toggle('active', mode === 'mobile');
+  document.getElementById('btn-mode-web').classList.toggle('active',    mode === 'web');
   const wrap = document.getElementById('preview-frame-wrap');
   wrap.className = `mode-${mode}`;
   _resizePreview();
@@ -1884,12 +1849,7 @@ async function saveAvatar() {
     chat_hide_input: document.getElementById('f-chat-hide-input').checked ? 1 : 0,
     chat_font:       document.getElementById('f-chat-font').value,
     chat_font_size:  parseFloat(document.getElementById('s-chat-font-size').value),
-    show_logo:       document.getElementById('f-show-logo').checked ? 1 : 0,
-    show_vad:        document.getElementById('f-show-vad').checked      ? 1 : 0,
     show_controls:     document.getElementById('f-show-controls').checked    ? 1 : 0,
-    show_header_left:  document.getElementById('f-show-header-left').checked ? 1 : 0,
-    header_color:    document.getElementById('f-header-color').value,
-    header_font:     document.getElementById('f-header-font').value,
     idle_timeout:    parseInt(document.getElementById('s-idle-timeout').value),
     idle_icon:       document.getElementById('f-idle-icon').value,
     idle_title:      document.getElementById('f-idle-title').value,
@@ -1935,6 +1895,14 @@ async function deleteAvatar() {
   currentId = null;
   document.getElementById('editor').classList.remove('visible');
   document.getElementById('empty-state').style.display = '';
+  // Ripulisce la preview
+  const previewWrap = document.getElementById('preview-frame-wrap');
+  const previewIframe = document.getElementById('preview-iframe');
+  const modeBar = document.getElementById('preview-mode-bar');
+  if (previewIframe) previewIframe.src = 'about:blank';
+  if (previewWrap) previewWrap.style.display = 'none';
+  if (modeBar) modeBar.style.display = 'none';
+  document.getElementById('preview-placeholder').style.display = '';
   renderList();
   toast('🗑 Avatar eliminato');
 }

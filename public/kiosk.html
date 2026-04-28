@@ -49,46 +49,7 @@
       position: absolute; top: 0; left: 0; right: 0;
       display: flex; align-items: center; justify-content: space-between;
       padding: 16px 28px;
-      background: linear-gradient(to bottom, rgba(10,10,15,0.7) 0%, transparent 100%);
       z-index: 10; pointer-events: none;
-    }
-
-    .logo {
-      font-size: 1rem;
-      font-weight: 700;
-      letter-spacing: 0.1em;
-      color: var(--header-color, var(--accent2));
-    }
-
-    #status-chip {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      background: rgba(30,30,42,0.7);
-      border: 1px solid var(--border);
-      border-radius: 20px;
-      padding: 6px 14px;
-      transition: all 0.3s;
-      backdrop-filter: blur(8px);
-      pointer-events: auto;
-    }
-
-    #status-chip.listening { border-color: var(--success); }
-    #status-chip.thinking  { border-color: var(--accent); }
-    #status-chip.speaking  { border-color: var(--warn); }
-
-    .status-dot {
-      width: 8px; height: 8px;
-      border-radius: 50%;
-      background: var(--success);
-      box-shadow: 0 0 8px var(--success);
-      flex-shrink: 0;
-    }
-
-    #status-label {
-      font-size: 0.78rem;
-      color: var(--header-color, var(--text-dim));
-      white-space: nowrap;
     }
 
     /* ─── Avatar Panel ──────────────────────────────── */
@@ -96,7 +57,7 @@
 
     /* ─── Loading spinner ───────────────────────── */
     #avatar-loader {
-      position: fixed; inset: 0; z-index: 999;
+      position: absolute; inset: 0; z-index: 999;
       display: flex; flex-direction: column;
       align-items: center; justify-content: center; gap: 16px;
       background: var(--bg); transition: opacity .5s;
@@ -164,7 +125,7 @@
     #interaction-panel.align-left   { left: 0;    right: auto; transform: none; }
     #interaction-panel.align-center { left: 50%;  right: auto; transform: translateX(-50%); }
     #interaction-panel.align-right  { left: auto; right: 0;    transform: none; }
-    #vad-section.hidden, #input-area.hidden { display: none !important; }
+    #input-area.hidden { display: none !important; }
 
     /* ─── Area risposta ─────────────────────────────── */
     #response-area {
@@ -342,30 +303,6 @@
     }
     .typing-indicator span:nth-child(2) { animation-delay: 0.2s; }
     .typing-indicator span:nth-child(3) { animation-delay: 0.4s; }
-
-    /* ─── VAD Status bar ────────────────────────────── */
-    #vad-section { display: flex; flex-direction: column; align-items: flex-start; gap: 4px; pointer-events: none; }
-
-    #vad-bars {
-      display: flex;
-      align-items: center;
-      gap: 3px;
-      height: 32px;
-    }
-
-    .vad-bar {
-      width: 4px;
-      border-radius: 2px;
-      background: var(--header-color, var(--border));
-      height: 6px;
-      transition: height 0.08s ease, background 0.2s;
-    }
-
-    #vad-bars.active .vad-bar { background: var(--success); }
-    #vad-bars.recording .vad-bar { background: var(--error); }
-    #vad-bars.mic-off .vad-bar { background: #6b7280; opacity: 1; }
-
-
 
     /* ─── Input testuale (fallback) ─────────────────── */
     #input-area { padding: 10px 20px 24px; padding-bottom: max(24px, env(safe-area-inset-bottom, 24px)); display: flex; gap: 10px; position: relative; z-index: 22; }
@@ -636,21 +573,10 @@
 <div id="app">
 
   <!-- Header -->
-  <div id="header">
-    <div id="header-left" style="display:flex;flex-direction:column;align-items:flex-start;gap:4px">
-      <div class="logo">AVATAR KIOSK</div>
-      <div id="vad-section">
-        <div id="vad-bars"><!-- generati da JS --></div>
-        <div id="status-chip">
-          <div class="status-dot" id="status-dot"></div>
-          <span id="status-label">In attesa...</span>
-        </div>
-      </div>
-    </div>
-  </div>
+  <div id="header"></div>
   <div id="controls-section">
     <button id="mic-btn" onclick="toggleMic()" title="Attiva/disattiva microfono"
-      style="position:fixed;top:16px;right:68px;background:rgba(248,113,113,.15);border:2px solid rgba(248,113,113,.4);
+      style="position:absolute;top:1.67vh;right:2.96vw;background:rgba(248,113,113,.15);border:2px solid rgba(248,113,113,.4);
              border-radius:50%;width:44px;height:44px;padding:0;display:flex;align-items:center;
              justify-content:center;cursor:pointer;transition:background .2s,border-color .2s;
              font-size:1.2rem;overflow:hidden;z-index:100">
@@ -659,7 +585,7 @@
       <div id="mic-wave" class="btn-wave" style="display:none"></div>
     </button>
     <button id="audio-btn" onclick="toggleAudio()" title="Attiva/disattiva audio"
-      style="position:fixed;top:16px;right:16px;background:rgba(34,211,160,.15);border:2px solid rgba(34,211,160,.5);
+      style="position:absolute;top:1.67vh;right:2.96vw;background:rgba(34,211,160,.15);border:2px solid rgba(34,211,160,.5);
              border-radius:50%;width:44px;height:44px;padding:0;display:flex;align-items:center;
              justify-content:center;cursor:pointer;transition:background .2s,border-color .2s;
              font-size:1.2rem;overflow:hidden;z-index:100">
@@ -836,7 +762,6 @@ const CONFIG = {
   idleTimeout:  90000,
   micEnabled:   false,
   audioEnabled: true,
-  showVad:      true,
   micIcon:      '',
   audioIcon:    '',
   _iconTs:      Date.now(),
@@ -1003,30 +928,10 @@ class VAD {
   }
 }
 
-// ═══════════════════════════════════════════════════════════════════════════
-//  VAD VISUALIZER (barre animate)
-// ═══════════════════════════════════════════════════════════════════════════
-const VAD_BAR_COUNT = 16;
-const vadBarsEl = document.getElementById('vad-bars');
-const vadBars = [];
-
-for (let i = 0; i < VAD_BAR_COUNT; i++) {
-  const bar = document.createElement('div');
-  bar.className = 'vad-bar';
-  vadBarsEl.appendChild(bar);
-  vadBars.push(bar);
-}
-
 let _lastVolume = 0;
 
 function updateVadVisualizer(rms) {
   _lastVolume = rms;
-  const norm = Math.min(rms / 0.08, 1);
-  vadBars.forEach((bar, i) => {
-    const wave = Math.sin((i / VAD_BAR_COUNT) * Math.PI);
-    const h = 4 + wave * norm * 28;
-    bar.style.height = h + 'px';
-  });
 }
 
 // ── Barre animate nei bottoni ──────────────────────────────────────────────
@@ -1069,14 +974,6 @@ function setAudioWaveVisible(show) {
 function applyWaveColors() {
   micWaveEl.style.setProperty('--wave-color', CONFIG.micWaveColor  || '#ffffff');
   audioWaveEl.style.setProperty('--wave-color', CONFIG.audioWaveColor || '#ffffff');
-}
-
-function setVadState(mode) {
-  const micOff = !CONFIG.micEnabled;
-  vadBarsEl.className = micOff ? 'mic-off' : '';
-  if (!micOff && mode === 'active')     vadBarsEl.classList.add('active');
-  if (!micOff && mode === 'recording')  vadBarsEl.classList.add('recording');
-
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -1395,27 +1292,17 @@ function startLipSync(audioEl, alignment) {
 //  GESTIONE STATO UI
 // ═══════════════════════════════════════════════════════════════════════════
 const MODE_CONFIG = {
-  idle:      { dot: '#22d3a0', label: 'In attesa...',         vad: 'idle' },
-  listening: { dot: '#22d3a0', label: '🎙 Ti sto ascoltando', vad: 'active' },
-  recording: { dot: '#f87171', label: '🔴 Registrazione...',  vad: 'recording' },
-  thinking:  { dot: '#a78bfa', label: '💭 Elaboro...',        vad: 'thinking' },
-  speaking:  { dot: '#fbbf24', label: '🔊 In risposta...',    vad: 'speaking' },
+  idle:      {},
+  listening: {},
+  recording: {},
+  thinking:  {},
+  speaking:  {},
 };
 
 const ACTIVE_MODES = new Set(['listening', 'recording', 'thinking', 'speaking']);
 
 function setMode(mode) {
   state.mode = mode;
-  const cfg = MODE_CONFIG[mode] || MODE_CONFIG.idle;
-
-  document.getElementById('status-dot').style.cssText =
-    `background:${cfg.dot}; box-shadow:0 0 8px ${cfg.dot}`;
-  document.getElementById('status-label').textContent = cfg.label;
-
-  const chip = document.getElementById('status-chip');
-  chip.className = mode;
-
-  setVadState(cfg.vad);
 
   setMicWaveVisible(CONFIG.micEnabled && mode === 'recording');
   setAudioWaveVisible(CONFIG.audioEnabled && mode === 'speaking');
@@ -1601,7 +1488,6 @@ document.addEventListener('DOMContentLoaded', () => {
   });
   updateMicBtn();
   updateAudioBtn();
-  // showVad viene applicato dopo initAvatar(); qui inizializziamo visibile
 });
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -1668,8 +1554,10 @@ function applyIconLayout(btnId, imgId, size, x, y, defaultRight, defaultTop=16) 
   if (!btn) return;
   btn.style.width  = size + 'px';
   btn.style.height = size + 'px';
-  btn.style.top    = (defaultTop + y) + 'px';
-  btn.style.right  = (defaultRight - x) + 'px';
+  // posizioni in vw/vh (calibrate su 1080×1920)
+  btn.style.top    = ((defaultTop + y) / 1920 * 100) + 'vh';
+  btn.style.left   = '';
+  btn.style.right  = ((defaultRight - x) / 1080 * 100) + 'vw';
   if (img) {
     const imgSize = Math.round(size * 0.64);
     img.style.width  = imgSize + 'px';
@@ -1695,21 +1583,28 @@ function updateMicBtn() {
   const btn = document.getElementById('mic-btn');
   if (!btn) return;
   _applyIconToBtn('mic-icon-img', 'mic-icon-fallback', CONFIG.micIcon);
-  applyIconLayout('mic-btn', 'mic-icon-img', CONFIG.micIconSize, CONFIG.micIconX, CONFIG.micIconY, 16, 16 + CONFIG.audioIconSize + 8);
+  // mic in alto a 32px dal top
+  const micTopVh  = (32 / 1920 * 100).toFixed(4);
+  const micRightVw = ((32 - CONFIG.micIconX) / 1080 * 100).toFixed(4);
+  const mic = document.getElementById('mic-btn');
+  if (mic) {
+    mic.style.width  = CONFIG.micIconSize + 'px';
+    mic.style.height = CONFIG.micIconSize + 'px';
+    mic.style.top    = `calc(${micTopVh}vh + ${CONFIG.micIconY}px)`;
+    mic.style.right  = micRightVw + 'vw';
+    mic.style.left   = '';
+    const img = document.getElementById('mic-icon-img');
+    if (img) { const s = Math.round(CONFIG.micIconSize * 0.64); img.style.width = s+'px'; img.style.height = s+'px'; }
+  }
   const img = document.getElementById('mic-icon-img');
   if (CONFIG.micEnabled) {
     btn.style.background  = 'rgba(34,211,160,.15)';
     btn.style.borderColor = 'rgba(34,211,160,.5)';
     if (img) img.style.filter = 'none';
-    vadBarsEl.classList.remove('mic-off');
-    setVadState(MODE_CONFIG[state.mode]?.vad ?? 'idle');
   } else {
     btn.style.background  = 'rgba(248,113,113,.15)';
     btn.style.borderColor = 'rgba(248,113,113,.4)';
     if (img) img.style.filter = 'grayscale(1) opacity(.45)';
-    vadBarsEl.classList.remove('active', 'recording');
-    vadBarsEl.classList.add('mic-off');
-    vadBars.forEach(b => b.style.height = '6px');
     setMicWaveVisible(false);
   }
 }
@@ -1718,7 +1613,20 @@ function updateAudioBtn() {
   const btn = document.getElementById('audio-btn');
   if (!btn) return;
   _applyIconToBtn('audio-icon-img', 'audio-icon-fallback', CONFIG.audioIcon);
-  applyIconLayout('audio-btn', 'audio-icon-img', CONFIG.audioIconSize, CONFIG.audioIconX, CONFIG.audioIconY, 16);
+  // audio sotto mic: top = mic_top(vh) + micSize(px) + gap(px)
+  const micTopVhAudio = (32 / 1920 * 100).toFixed(4);
+  const audioTopOffset = CONFIG.micIconSize + 24 + CONFIG.audioIconY;
+  const audioRightVw = ((32 - CONFIG.audioIconX) / 1080 * 100).toFixed(4);
+  const audio = document.getElementById('audio-btn');
+  if (audio) {
+    audio.style.width  = CONFIG.audioIconSize + 'px';
+    audio.style.height = CONFIG.audioIconSize + 'px';
+    audio.style.top    = `calc(${micTopVhAudio}vh + ${audioTopOffset}px)`;
+    audio.style.right  = audioRightVw + 'vw';
+    audio.style.left   = '';
+    const img = document.getElementById('audio-icon-img');
+    if (img) { const s = Math.round(CONFIG.audioIconSize * 0.64); img.style.width = s+'px'; img.style.height = s+'px'; }
+  }
   const img = document.getElementById('audio-icon-img');
   if (CONFIG.audioEnabled) {
     btn.style.background  = 'rgba(34,211,160,.15)';
@@ -1786,9 +1694,7 @@ async function _startVad() {
     // Se il mic è stato spento mentre getUserMedia era in attesa, ferma subito
     if (!CONFIG.micEnabled) { state.vad.stop(); state.vad = null; }
   } catch (err) {
-    setVadState('idle');
-    document.getElementById('status-label').textContent =
-      '⚠️ Mic non disponibile';
+    console.warn('⚠️ Mic non disponibile:', err);
   }
 }
 
@@ -2258,7 +2164,7 @@ window.addEventListener('message', e => {
       document.getElementById('avatar-panel').style.background =
         `radial-gradient(ellipse at 50% 60%, ${color}aa 0%, ${color} 70%)`;
     } else {
-      const stringKeys = ['chat_align', 'header_color', 'header_font', 'model_file', 'mic_icon', 'audio_icon', 'chat_font', 'mic_wave_color', 'audio_wave_color', 'idle_font', 'idle_icon_img', 'theme'];
+      const stringKeys = ['chat_align', 'model_file', 'mic_icon', 'audio_icon', 'chat_font', 'mic_wave_color', 'audio_wave_color', 'idle_font', 'idle_icon_img', 'theme'];
       const val = stringKeys.includes(msg.key) ? msg.value : parseFloat(msg.value);
       applyParamLive(msg.key, val);
     }
@@ -2317,27 +2223,6 @@ function applyTheme(theme) {
   document.documentElement.setAttribute('data-theme', valid.includes(theme) ? theme : 'viola');
 }
 
-function applyHeaderStyle(key, value) {
-  const header = document.getElementById('header');
-  if (key === 'header_color') {
-    header.style.setProperty('--header-color', value);
-  } else if (key === 'header_font') {
-    if (!value) {
-      header.style.fontFamily = '';
-      return;
-    }
-    // Carica da Google Fonts se non già presente
-    const id = 'gfont-' + value.replace(/\s+/g, '-');
-    if (!document.getElementById(id)) {
-      const link = document.createElement('link');
-      link.id   = id;
-      link.rel  = 'stylesheet';
-      link.href = `https://fonts.googleapis.com/css2?family=${encodeURIComponent(value)}&display=swap`;
-      document.head.appendChild(link);
-    }
-    header.style.fontFamily = `'${value}', sans-serif`;
-  }
-}
 
 const IDLE_ID_MAP = { idle_icon: 'idle-icon-emoji', idle_title: 'idle-title', idle_subtitle: 'idle-subtitle', idle_hint: 'idle-hint' };
 function applyIdleParam(key, value) {
@@ -2398,12 +2283,7 @@ function applyIdleParam(key, value) {
         if (d.chat_hide_input !== undefined) applyParamLive('chat_hide_input', d.chat_hide_input);
         if (d.chat_font       !== undefined) applyParamLive('chat_font',       d.chat_font);
         if (d.chat_font_size  !== undefined) applyParamLive('chat_font_size',  d.chat_font_size);
-        if (d.show_logo       !== undefined) applyParamLive('show_logo',       d.show_logo);
-        if (d.show_vad        !== undefined) applyParamLive('show_vad',        d.show_vad);
         if (d.show_controls    !== undefined) applyParamLive('show_controls',    d.show_controls);
-        if (d.show_header_left !== undefined) applyParamLive('show_header_left', d.show_header_left);
-        if (d.header_color    !== undefined) applyHeaderStyle('header_color',  d.header_color);
-        if (d.header_font     !== undefined) applyHeaderStyle('header_font',   d.header_font);
         if (d.theme           !== undefined) applyTheme(d.theme);
         if (d.idle_timeout   !== undefined) applyIdleParam('idle_timeout',  d.idle_timeout);
         if (d.idle_icon      !== undefined) applyIdleParam('idle_icon',     d.idle_icon);
@@ -2480,9 +2360,6 @@ function applyParamLive(key, v) {
       }
     },
     chat_font_size: () => { document.getElementById('interaction-panel')?.style.setProperty('--chat-font-size', v + 'rem'); },
-    show_logo:    () => { document.querySelector('.logo').style.display = parseInt(v) === 0 ? 'none' : ''; },
-    header_color: () => applyHeaderStyle('header_color', v),
-    header_font:  () => applyHeaderStyle('header_font',  v),
     model_file:   () => {
       const url = v ? `/${v}` : null;
       if (!url || url === CONFIG.avatarModelUrl) return;
@@ -2490,9 +2367,7 @@ function applyParamLive(key, v) {
       if (state.avatar) { scene.remove(state.avatar); state.avatar = null; state.mixer = null; state.mainAction = null; anim.bones = {}; }
       loadGLBAvatar(url + '?t=' + Date.now());
     },
-    show_vad:        () => { CONFIG.showVad = parseInt(v) !== 0; document.getElementById('vad-section').style.display = CONFIG.showVad ? '' : 'none'; },
     show_controls:     () => { document.getElementById('controls-section').style.display = parseInt(v) !== 0 ? 'flex' : 'none'; },
-    show_header_left:  () => { document.getElementById('header-left').style.display = parseInt(v) !== 0 ? '' : 'none'; },
     mic_icon:        () => { CONFIG.micIcon       = v;  CONFIG._iconTs = Date.now(); updateMicBtn(); },
     mic_icon_size:   () => { CONFIG.micIconSize   = +v; updateMicBtn(); },
     mic_icon_x:      () => { CONFIG.micIconX      = +v; updateMicBtn(); },
@@ -2520,7 +2395,6 @@ async function initAvatar() {
     CONFIG.avatarId      = AVATAR_ID;
     CONFIG.avatarName    = cfg.name;
     CONFIG.avatarModelUrl = cfg.model_file ? `/${cfg.model_file}` : null;
-    CONFIG.showVad       = cfg.show_vad !== 0;
     CONFIG.micIcon       = cfg.mic_icon        || '';
     CONFIG.micIconSize   = cfg.mic_icon_size   ?? 44;
     CONFIG.micIconX      = cfg.mic_icon_x      ?? 0;
@@ -2572,13 +2446,8 @@ async function initAvatar() {
     applyParamLive('chat_hide_input', cfg.chat_hide_input ?? 0);
     applyParamLive('chat_font',      cfg.chat_font      || '');
     applyParamLive('chat_font_size', cfg.chat_font_size ?? 1.0);
-    applyParamLive('show_logo',       cfg.show_logo       ?? 1);
-    applyParamLive('show_vad',        cfg.show_vad        ?? 1);
     applyParamLive('show_controls',   cfg.show_controls   ?? 1);
-    applyParamLive('show_header_left', cfg.show_header_left ?? 1);
     applyTheme(cfg.theme || 'viola');
-    applyHeaderStyle('header_color',  cfg.header_color    || '#a0a0b8');
-    applyHeaderStyle('header_font',   cfg.header_font     || '');
     updateMicBtn();
     updateAudioBtn();
 
@@ -2593,7 +2462,6 @@ async function initAvatar() {
     applyIdleParam('idle_font',      cfg.idle_font      || '');
     applyIdleParam('idle_font_size', cfg.idle_font_size ?? 1.0);
     CONFIG.idleTimeout = (cfg.idle_timeout ?? 90) * 1000;
-    document.querySelector('.logo').textContent = cfg.name.toUpperCase();
 
     // Aggiorna camera
     camera.position.set(0, CONFIG.cameraY, CONFIG.cameraZ);

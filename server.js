@@ -117,20 +117,20 @@ app.get('/api/avatar/:id', (req, res) => {
   const { id, name, background, model_file, idle_start, idle_end,
           speech_start, speech_end, avatar_scale, avatar_offset_x,
           avatar_offset_y, avatar_rot_y, camera_z, camera_y, camera_look_at_y,
-          overlay_color, overlay_opacity, overlay_height, chat_height, chat_bottom, chat_max_width, chat_align, chat_hide_input, show_logo, header_color, header_font,
+          overlay_color, overlay_opacity, overlay_height, chat_height, chat_bottom, chat_max_width, chat_align, chat_hide_input,
           idle_timeout, idle_icon, idle_icon_img, idle_title, idle_subtitle, idle_hint, idle_font, idle_font_size,
           chat_font, chat_font_size,
-          show_vad, show_controls, show_header_left,
+          show_controls,
           mic_icon, mic_icon_size, mic_icon_x, mic_icon_y,
           audio_icon, audio_icon_size, audio_icon_x, audio_icon_y,
           mic_wave_color, audio_wave_color, theme } = avatar;
   res.json({ id, name, background, model_file, idle_start, idle_end,
              speech_start, speech_end, avatar_scale, avatar_offset_x,
              avatar_offset_y, avatar_rot_y, camera_z, camera_y, camera_look_at_y,
-             overlay_color, overlay_opacity, overlay_height, chat_height, chat_bottom, chat_max_width, chat_align, chat_hide_input, show_logo, header_color, header_font,
+             overlay_color, overlay_opacity, overlay_height, chat_height, chat_bottom, chat_max_width, chat_align, chat_hide_input,
              idle_timeout, idle_icon, idle_icon_img, idle_title, idle_subtitle, idle_hint, idle_font, idle_font_size,
              chat_font, chat_font_size,
-             show_vad, show_controls, show_header_left,
+             show_controls,
              mic_icon, mic_icon_size, mic_icon_x, mic_icon_y,
              audio_icon, audio_icon_size, audio_icon_x, audio_icon_y,
              mic_wave_color, audio_wave_color, theme });
@@ -156,20 +156,20 @@ app.get('/api/preview/:id', (req, res) => {
   const { id, name, background, model_file, idle_start, idle_end,
           speech_start, speech_end, avatar_scale, avatar_offset_x,
           avatar_offset_y, avatar_rot_y, camera_z, camera_y, camera_look_at_y,
-          overlay_color, overlay_opacity, overlay_height, chat_height, chat_bottom, chat_max_width, chat_align, chat_hide_input, show_logo, header_color, header_font,
+          overlay_color, overlay_opacity, overlay_height, chat_height, chat_bottom, chat_max_width, chat_align, chat_hide_input,
           idle_timeout, idle_icon, idle_icon_img, idle_title, idle_subtitle, idle_hint, idle_font, idle_font_size,
           chat_font, chat_font_size,
-          show_vad, show_controls, show_header_left,
+          show_controls,
           mic_icon, mic_icon_size, mic_icon_x, mic_icon_y,
           audio_icon, audio_icon_size, audio_icon_x, audio_icon_y,
           mic_wave_color, audio_wave_color, theme } = avatar;
   res.json({ id, name, background, model_file, idle_start, idle_end,
              speech_start, speech_end, avatar_scale, avatar_offset_x,
              avatar_offset_y, avatar_rot_y, camera_z, camera_y, camera_look_at_y,
-             overlay_color, overlay_opacity, overlay_height, chat_height, chat_bottom, chat_max_width, chat_align, chat_hide_input, show_logo, header_color, header_font,
+             overlay_color, overlay_opacity, overlay_height, chat_height, chat_bottom, chat_max_width, chat_align, chat_hide_input,
              idle_timeout, idle_icon, idle_icon_img, idle_title, idle_subtitle, idle_hint, idle_font, idle_font_size,
              chat_font, chat_font_size,
-             show_vad, show_controls, show_header_left,
+             show_controls,
              mic_icon, mic_icon_size, mic_icon_x, mic_icon_y,
              audio_icon, audio_icon_size, audio_icon_x, audio_icon_y,
              mic_wave_color, audio_wave_color, theme });
@@ -247,7 +247,7 @@ app.post('/api/admin/avatars', (req, res) => {
           background = '#0a0a0f' } = req.body;
   db.prepare(`INSERT INTO avatars (id, name, voice_id, system_prompt, background,
               chat_font_size, idle_font_size, mic_icon_size, audio_icon_size, chat_bottom)
-              VALUES (?, ?, ?, ?, ?, 2.25, 2.25, 200, 200, 200)`).run(id, name, voice_id, system_prompt, background);
+              VALUES (?, ?, ?, ?, ?, 1.1, 1.1, 100, 100, 100)`).run(id, name, voice_id, system_prompt, background);
   res.json(db.prepare('SELECT * FROM avatars WHERE id = ?').get(id));
 });
 
@@ -255,14 +255,14 @@ app.put('/api/admin/avatars/:id', (req, res) => {
   const fields = ['name','voice_id','system_prompt','background','idle_start','idle_end',
                   'speech_start','speech_end','avatar_scale','avatar_offset_x','avatar_offset_y',
                   'avatar_rot_y','camera_z','camera_y','camera_look_at_y',
-                  'overlay_color','overlay_opacity','overlay_height','chat_height','chat_bottom','chat_max_width','chat_align','chat_hide_input','show_logo','header_color','header_font',
+                  'overlay_color','overlay_opacity','overlay_height','chat_height','chat_bottom','chat_max_width','chat_align','chat_hide_input',
                   'stt_api_key','stt_model','stt_language',
                   'tts_api_key','tts_model','tts_stability','tts_similarity',
                   'ai_provider','ai_max_tokens','anthropic_api_key','anthropic_model','openai_api_key','openai_model',
                   'avatar_mode','webhook_url','webhook_input_template','webhook_output_field','webhook_headers',
                   'idle_timeout','idle_icon','idle_title','idle_subtitle','idle_hint','idle_font','idle_font_size','theme',
                   'chat_font','chat_font_size',
-                  'show_vad','show_controls','show_header_left',
+                  'show_controls',
                   'mic_icon_size','mic_icon_x','mic_icon_y','mic_wave_color',
                   'audio_icon_size','audio_icon_x','audio_icon_y','audio_wave_color'];
   const updates = [];

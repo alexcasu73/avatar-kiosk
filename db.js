@@ -24,8 +24,6 @@ db.exec(`
     camera_z          REAL DEFAULT 3.5,
     camera_y          REAL DEFAULT 1.0,
     camera_look_at_y  REAL DEFAULT 1.0,
-    header_color      TEXT DEFAULT '#a0a0b8',
-    header_font       TEXT DEFAULT '',
     stt_api_key           TEXT DEFAULT '',
     stt_model             TEXT DEFAULT '',
     stt_language          TEXT DEFAULT '',
@@ -51,27 +49,24 @@ db.exec(`
     idle_subtitle     TEXT DEFAULT 'La tua assistente virtuale',
     idle_hint         TEXT DEFAULT '✨ Tocca per iniziare',
     idle_font         TEXT DEFAULT '',
-    idle_font_size    REAL DEFAULT 2.25,
+    idle_font_size    REAL DEFAULT 1.1,
     overlay_color     TEXT DEFAULT '#0a0a0f',
     overlay_opacity   REAL DEFAULT 0.75,
     overlay_height    REAL DEFAULT 65,
     chat_height       INTEGER DEFAULT 65,
-    chat_bottom       INTEGER DEFAULT 200,
+    chat_bottom       INTEGER DEFAULT 100,
     chat_max_width    INTEGER DEFAULT 100,
     chat_align        TEXT DEFAULT 'center',
     chat_hide_input   INTEGER DEFAULT 0,
     chat_font         TEXT DEFAULT '',
-    chat_font_size    REAL DEFAULT 2.25,
-    show_logo         INTEGER DEFAULT 1,
-    show_vad          INTEGER DEFAULT 1,
+    chat_font_size    REAL DEFAULT 1.1,
     show_controls     INTEGER DEFAULT 1,
-    show_header_left  INTEGER DEFAULT 1,
     mic_icon          TEXT DEFAULT '',
-    mic_icon_size     INTEGER DEFAULT 200,
+    mic_icon_size     INTEGER DEFAULT 100,
     mic_icon_x        INTEGER DEFAULT 0,
     mic_icon_y        INTEGER DEFAULT 0,
     audio_icon        TEXT DEFAULT '',
-    audio_icon_size   INTEGER DEFAULT 200,
+    audio_icon_size   INTEGER DEFAULT 100,
     audio_icon_x      INTEGER DEFAULT 0,
     audio_icon_y      INTEGER DEFAULT 0,
     mic_wave_color    TEXT DEFAULT '#ffffff',
@@ -85,10 +80,6 @@ db.exec(`
 
 // Migrazione: aggiunge colonne mancanti su DB esistenti
 const existing = db.prepare("PRAGMA table_info(avatars)").all().map(c => c.name);
-if (!existing.includes('header_color'))
-  db.exec("ALTER TABLE avatars ADD COLUMN header_color TEXT DEFAULT '#a0a0b8'");
-if (!existing.includes('header_font'))
-  db.exec("ALTER TABLE avatars ADD COLUMN header_font TEXT DEFAULT ''");
 if (!existing.includes('stt_api_key'))     db.exec("ALTER TABLE avatars ADD COLUMN stt_api_key TEXT DEFAULT ''");
 if (!existing.includes('stt_model'))       db.exec("ALTER TABLE avatars ADD COLUMN stt_model TEXT DEFAULT ''");
 if (!existing.includes('stt_language'))    db.exec("ALTER TABLE avatars ADD COLUMN stt_language TEXT DEFAULT ''");
@@ -126,29 +117,23 @@ if (!existing.includes('idle_timeout'))
 if (!existing.includes('chat_height'))
   db.exec("ALTER TABLE avatars ADD COLUMN chat_height INTEGER DEFAULT 65");
 if (!existing.includes('chat_bottom'))
-  db.exec("ALTER TABLE avatars ADD COLUMN chat_bottom INTEGER DEFAULT 200");
+  db.exec("ALTER TABLE avatars ADD COLUMN chat_bottom INTEGER DEFAULT 100");
 if (!existing.includes('chat_max_width'))
   db.exec("ALTER TABLE avatars ADD COLUMN chat_max_width INTEGER DEFAULT 100");
 if (!existing.includes('chat_align'))
   db.exec("ALTER TABLE avatars ADD COLUMN chat_align TEXT DEFAULT 'center'");
 if (!existing.includes('chat_hide_input'))
   db.exec("ALTER TABLE avatars ADD COLUMN chat_hide_input INTEGER DEFAULT 0");
-if (!existing.includes('show_logo'))
-  db.exec("ALTER TABLE avatars ADD COLUMN show_logo INTEGER DEFAULT 1");
 if (!existing.includes('chat_font'))
   db.exec("ALTER TABLE avatars ADD COLUMN chat_font TEXT DEFAULT ''");
 if (!existing.includes('chat_font_size'))
-  db.exec("ALTER TABLE avatars ADD COLUMN chat_font_size REAL DEFAULT 2.25");
-if (!existing.includes('show_vad'))
-  db.exec("ALTER TABLE avatars ADD COLUMN show_vad INTEGER DEFAULT 1");
+  db.exec("ALTER TABLE avatars ADD COLUMN chat_font_size REAL DEFAULT 1.1");
 if (!existing.includes('show_controls'))
   db.exec("ALTER TABLE avatars ADD COLUMN show_controls INTEGER DEFAULT 1");
-if (!existing.includes('show_header_left'))
-  db.exec("ALTER TABLE avatars ADD COLUMN show_header_left INTEGER DEFAULT 1");
 if (!existing.includes('mic_icon'))
   db.exec("ALTER TABLE avatars ADD COLUMN mic_icon TEXT DEFAULT ''");
 if (!existing.includes('mic_icon_size'))
-  db.exec("ALTER TABLE avatars ADD COLUMN mic_icon_size INTEGER DEFAULT 200");
+  db.exec("ALTER TABLE avatars ADD COLUMN mic_icon_size INTEGER DEFAULT 100");
 if (!existing.includes('mic_icon_x'))
   db.exec("ALTER TABLE avatars ADD COLUMN mic_icon_x INTEGER DEFAULT 0");
 if (!existing.includes('mic_icon_y'))
@@ -156,7 +141,7 @@ if (!existing.includes('mic_icon_y'))
 if (!existing.includes('audio_icon'))
   db.exec("ALTER TABLE avatars ADD COLUMN audio_icon TEXT DEFAULT ''");
 if (!existing.includes('audio_icon_size'))
-  db.exec("ALTER TABLE avatars ADD COLUMN audio_icon_size INTEGER DEFAULT 200");
+  db.exec("ALTER TABLE avatars ADD COLUMN audio_icon_size INTEGER DEFAULT 100");
 if (!existing.includes('audio_icon_x'))
   db.exec("ALTER TABLE avatars ADD COLUMN audio_icon_x INTEGER DEFAULT 0");
 if (!existing.includes('audio_icon_y'))
@@ -170,7 +155,7 @@ if (!existing.includes('idle_icon_img'))
 if (!existing.includes('idle_font'))
   db.exec("ALTER TABLE avatars ADD COLUMN idle_font TEXT DEFAULT ''");
 if (!existing.includes('idle_font_size'))
-  db.exec("ALTER TABLE avatars ADD COLUMN idle_font_size REAL DEFAULT 2.25");
+  db.exec("ALTER TABLE avatars ADD COLUMN idle_font_size REAL DEFAULT 1.1");
 if (!existing.includes('theme'))
   db.exec("ALTER TABLE avatars ADD COLUMN theme TEXT DEFAULT 'viola'");
 
