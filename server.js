@@ -98,6 +98,8 @@ function getAvatarConfig(avatarId) {
 }
 
 // ─── Route: Health check ──────────────────────────────────────────────────────
+app.get('/', (req, res) => res.redirect('/admin'));
+
 app.get('/api/health', (req, res) => {
   res.json({
     status: 'ok',
