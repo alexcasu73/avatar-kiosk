@@ -58,6 +58,16 @@ function requireAdmin(req, res, next) {
 
 app.use(cors());
 app.use(express.json());
+// Cache aggressiva per asset statici immutabili
+app.use('/lib', express.static(join(__dirname, 'public', 'lib'), {
+  maxAge: '30d', immutable: true,
+}));
+app.use('/models', express.static(join(__dirname, 'public', 'models'), {
+  maxAge: '7d',
+}));
+app.use('/backgrounds', express.static(join(__dirname, 'public', 'backgrounds'), {
+  maxAge: '7d',
+}));
 app.use(express.static(join(__dirname, 'public')));
 
 // ─── WebSocket ────────────────────────────────────────────────────────────────
