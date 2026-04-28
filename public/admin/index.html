@@ -1017,6 +1017,26 @@
               </div>
             </div>
           </div>
+          <div class="fields" style="gap:12px;margin-top:10px">
+            <div class="field">
+              <label>Colore onda mic</label>
+              <div style="display:flex;align-items:center;gap:8px">
+                <input type="color" id="f-mic-wave-color" value="#ffffff"
+                  oninput="document.getElementById('f-mic-wave-hex').textContent=this.value;
+                           sendToPreview({type:'avatarParam',key:'mic_wave_color',value:this.value})"/>
+                <span id="f-mic-wave-hex" style="font-size:.8rem;opacity:.7">#ffffff</span>
+              </div>
+            </div>
+            <div class="field">
+              <label>Colore onda audio</label>
+              <div style="display:flex;align-items:center;gap:8px">
+                <input type="color" id="f-audio-wave-color" value="#ffffff"
+                  oninput="document.getElementById('f-audio-wave-hex').textContent=this.value;
+                           sendToPreview({type:'avatarParam',key:'audio_wave_color',value:this.value})"/>
+                <span id="f-audio-wave-hex" style="font-size:.8rem;opacity:.7">#ffffff</span>
+              </div>
+            </div>
+          </div>
         </div>
 
         <div class="section">
@@ -1345,6 +1365,12 @@ function selectAvatar(id) {
   document.getElementById('val-audio-icon-x').textContent    = audX;
   document.getElementById('s-audio-icon-y').value            = audY;
   document.getElementById('val-audio-icon-y').textContent    = audY;
+  const micWaveColor  = a.mic_wave_color   || '#ffffff';
+  const audWaveColor  = a.audio_wave_color || '#ffffff';
+  document.getElementById('f-mic-wave-color').value    = micWaveColor;
+  document.getElementById('f-mic-wave-hex').textContent = micWaveColor;
+  document.getElementById('f-audio-wave-color').value    = audWaveColor;
+  document.getElementById('f-audio-wave-hex').textContent = audWaveColor;
   document.getElementById('f-idle-icon').value     = a.idle_icon     || '🤖';
   document.getElementById('f-idle-title').value    = a.idle_title    || '';
   document.getElementById('f-idle-subtitle').value = a.idle_subtitle || 'La tua assistente virtuale';
@@ -1741,9 +1767,11 @@ async function saveAvatar() {
     mic_icon_size:   parseInt(document.getElementById('s-mic-icon-size').value),
     mic_icon_x:      parseInt(document.getElementById('s-mic-icon-x').value),
     mic_icon_y:      parseInt(document.getElementById('s-mic-icon-y').value),
-    audio_icon_size: parseInt(document.getElementById('s-audio-icon-size').value),
-    audio_icon_x:    parseInt(document.getElementById('s-audio-icon-x').value),
-    audio_icon_y:    parseInt(document.getElementById('s-audio-icon-y').value),
+    audio_icon_size:  parseInt(document.getElementById('s-audio-icon-size').value),
+    audio_icon_x:     parseInt(document.getElementById('s-audio-icon-x').value),
+    audio_icon_y:     parseInt(document.getElementById('s-audio-icon-y').value),
+    mic_wave_color:   document.getElementById('f-mic-wave-color').value,
+    audio_wave_color: document.getElementById('f-audio-wave-color').value,
   };
   const updated = await api.put(`/api/admin/avatars/${currentId}`, body);
   avatars = avatars.map(a => a.id===currentId ? updated : a);

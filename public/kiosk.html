@@ -175,14 +175,17 @@
       scroll-behavior: smooth;
     }
 
+    #interaction-panel {
+      --chat-font-family: inherit;
+      --chat-font-size: 1rem;
+    }
+
     #chat-history {
       margin-top: auto;
       touch-action: pan-y;
       display: flex;
       flex-direction: column;
       gap: 12px;
-      --chat-font-family: inherit;
-      --chat-font-size: 1rem;
     }
 
     .transcript-bubble, .response-bubble-hist {
@@ -362,21 +365,59 @@
       border-radius: 14px;
       padding: 14px 18px;
       color: var(--text);
-      font-size: 1rem;
+      font-size: var(--chat-font-size, 1rem);
       outline: none;
-      font-family: inherit;
+      font-family: var(--chat-font-family, inherit);
       transition: border-color 0.2s;
       min-width: 0;
     }
     #text-input:focus { border-color: var(--accent); }
     #text-input::placeholder { color: var(--text-dim); }
 
+    /* ─── Forme d'onda nei bottoni mic/audio ─────────── */
+    .btn-wave {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 4px;
+      padding: 0 6px;
+      box-sizing: border-box;
+      pointer-events: none;
+      border-radius: 50%;
+      overflow: hidden;
+      background: transparent;
+    }
+    .btn-wave-bar {
+      flex: 1;
+      max-width: 5px;
+      border-radius: 3px;
+      background: var(--wave-color, #fff);
+      height: 4px;
+      transition: height 0.07s ease;
+    }
+    @keyframes wave-bar {
+      0%, 100% { height: 4px; }
+      50%       { height: 28px; }
+    }
+    .audio-wave .btn-wave-bar,
+    .mic-wave-anim .btn-wave-bar {
+      animation: wave-bar 0.7s ease-in-out infinite;
+    }
+    .audio-wave .btn-wave-bar:nth-child(2),
+    .mic-wave-anim .btn-wave-bar:nth-child(2) { animation-delay: 0.15s; }
+    .audio-wave .btn-wave-bar:nth-child(3),
+    .mic-wave-anim .btn-wave-bar:nth-child(3) { animation-delay: 0.3s;  }
+    .audio-wave .btn-wave-bar:nth-child(4),
+    .mic-wave-anim .btn-wave-bar:nth-child(4) { animation-delay: 0.15s; }
+
     #send-btn {
       background: var(--accent);
       border: none;
       border-radius: 14px;
       width: 52px;
-      height: 52px;
+      align-self: stretch;
       cursor: pointer;
       display: flex;
       align-items: center;
@@ -588,6 +629,7 @@
                font-size:1.2rem;overflow:hidden;z-index:11">
         <img id="mic-icon-img" src="" alt="🎙" style="width:28px;height:28px;object-fit:contain;display:none;filter:grayscale(1) opacity(.5)"/>
         <span id="mic-icon-fallback">🎙</span>
+        <div id="mic-wave" class="btn-wave" style="display:none"></div>
       </button>
       <button id="audio-btn" onclick="toggleAudio()" title="Attiva/disattiva audio"
         style="position:fixed;top:16px;right:16px;background:rgba(34,211,160,.15);border:2px solid rgba(34,211,160,.5);
@@ -596,6 +638,7 @@
                font-size:1.2rem;overflow:hidden;z-index:11">
         <img id="audio-icon-img" src="" alt="🔊" style="width:28px;height:28px;object-fit:contain;display:none"/>
         <span id="audio-icon-fallback">🔊</span>
+        <div id="audio-wave" class="btn-wave audio-wave" style="display:none"></div>
       </button>
     </div>
   </div>
@@ -957,6 +1000,48 @@ function updateVadVisualizer(rms) {
   });
 }
 
+// ── Barre animate nei bottoni ──────────────────────────────────────────────
+const MIC_WAVE_BARS = 4;
+const micWaveEl  = document.getElementById('mic-wave');
+const audioWaveEl = document.getElementById('audio-wave');
+const micWaveBars = [];
+
+for (let i = 0; i < MIC_WAVE_BARS; i++) {
+  const b = document.createElement('div');
+  b.className = 'btn-wave-bar';
+  micWaveEl.appendChild(b);
+  micWaveBars.push(b);
+}
+for (let i = 0; i < MIC_WAVE_BARS; i++) {
+  const b = document.createElement('div');
+  b.className = 'btn-wave-bar';
+  audioWaveEl.appendChild(b);
+}
+
+
+function setMicWaveVisible(show) {
+  micWaveEl.style.display = show ? 'flex' : 'none';
+  micWaveEl.classList.toggle('mic-wave-anim', show);
+  if (!show) micWaveBars.forEach(b => b.style.height = '4px');
+  const img = document.getElementById('mic-icon-img');
+  const fb  = document.getElementById('mic-icon-fallback');
+  if (img) img.style.opacity  = show ? '0' : '';
+  if (fb)  fb.style.opacity   = show ? '0' : '';
+}
+
+function setAudioWaveVisible(show) {
+  audioWaveEl.style.display = show ? 'flex' : 'none';
+  const img = document.getElementById('audio-icon-img');
+  const fb  = document.getElementById('audio-icon-fallback');
+  if (img) img.style.opacity  = show ? '0' : '';
+  if (fb)  fb.style.opacity   = show ? '0' : '';
+}
+
+function applyWaveColors() {
+  micWaveEl.style.setProperty('--wave-color', CONFIG.micWaveColor  || '#ffffff');
+  audioWaveEl.style.setProperty('--wave-color', CONFIG.audioWaveColor || '#ffffff');
+}
+
 function setVadState(mode) {
   const micOff = !CONFIG.micEnabled;
   vadBarsEl.className = micOff ? 'mic-off' : '';
@@ -1303,6 +1388,9 @@ function setMode(mode) {
 
   setVadState(cfg.vad);
 
+  setMicWaveVisible(CONFIG.micEnabled && mode === 'recording');
+  setAudioWaveVisible(CONFIG.audioEnabled && mode === 'speaking');
+
   if (ACTIVE_MODES.has(mode)) {
     // Qualsiasi attività: ferma il conto alla rovescia
     clearTimeout(_idleTimer);
@@ -1593,6 +1681,7 @@ function updateMicBtn() {
     vadBarsEl.classList.remove('active', 'recording');
     vadBarsEl.classList.add('mic-off');
     vadBars.forEach(b => b.style.height = '6px');
+    setMicWaveVisible(false);
   }
 }
 
@@ -1610,6 +1699,7 @@ function updateAudioBtn() {
     btn.style.background  = 'rgba(248,113,113,.15)';
     btn.style.borderColor = 'rgba(248,113,113,.4)';
     if (img) img.style.filter = 'grayscale(1) opacity(.45)';
+    setAudioWaveVisible(false);
   }
 }
 
@@ -2139,7 +2229,7 @@ window.addEventListener('message', e => {
       document.getElementById('avatar-panel').style.background =
         `radial-gradient(ellipse at 50% 60%, ${color}aa 0%, ${color} 70%)`;
     } else {
-      const stringKeys = ['chat_align', 'header_color', 'header_font', 'model_file', 'mic_icon', 'audio_icon', 'chat_font'];
+      const stringKeys = ['chat_align', 'header_color', 'header_font', 'model_file', 'mic_icon', 'audio_icon', 'chat_font', 'mic_wave_color', 'audio_wave_color'];
       const val = stringKeys.includes(msg.key) ? msg.value : parseFloat(msg.value);
       applyParamLive(msg.key, val);
     }
@@ -2307,7 +2397,7 @@ function applyParamLive(key, v) {
       document.getElementById('input-area').classList.toggle('hidden', parseInt(v) === 1);
     },
     chat_font:      () => {
-      const el = document.getElementById('chat-history');
+      const el = document.getElementById('interaction-panel');
       if (!el) return;
       if (v) {
         const link = document.getElementById('_chat-font-link') || document.createElement('link');
@@ -2319,7 +2409,7 @@ function applyParamLive(key, v) {
         el.style.setProperty('--chat-font-family', 'inherit');
       }
     },
-    chat_font_size: () => { document.getElementById('chat-history')?.style.setProperty('--chat-font-size', v + 'rem'); },
+    chat_font_size: () => { document.getElementById('interaction-panel')?.style.setProperty('--chat-font-size', v + 'rem'); },
     show_logo:    () => { document.querySelector('.logo').style.display = parseInt(v) === 0 ? 'none' : ''; },
     header_color: () => applyHeaderStyle('header_color', v),
     header_font:  () => applyHeaderStyle('header_font',  v),
@@ -2339,8 +2429,10 @@ function applyParamLive(key, v) {
     mic_icon_y:      () => { CONFIG.micIconY      = +v; updateMicBtn(); },
     audio_icon:      () => { CONFIG.audioIcon     = v;  CONFIG._iconTs = Date.now(); updateAudioBtn(); },
     audio_icon_size: () => { CONFIG.audioIconSize = +v; updateAudioBtn(); },
-    audio_icon_x:    () => { CONFIG.audioIconX    = +v; updateAudioBtn(); },
-    audio_icon_y:    () => { CONFIG.audioIconY    = +v; updateAudioBtn(); },
+    audio_icon_x:      () => { CONFIG.audioIconX    = +v; updateAudioBtn(); },
+    audio_icon_y:      () => { CONFIG.audioIconY    = +v; updateAudioBtn(); },
+    mic_wave_color:    () => { CONFIG.micWaveColor   = v; applyWaveColors(); },
+    audio_wave_color:  () => { CONFIG.audioWaveColor = v; applyWaveColors(); },
   };
 
   map[key]?.();
@@ -2364,9 +2456,12 @@ async function initAvatar() {
     CONFIG.micIconY      = cfg.mic_icon_y      ?? 0;
     CONFIG.audioIcon     = cfg.audio_icon      || '';
     CONFIG.audioIconSize = cfg.audio_icon_size ?? 44;
-    CONFIG.audioIconX    = cfg.audio_icon_x    ?? 0;
-    CONFIG.audioIconY    = cfg.audio_icon_y    ?? 0;
-    CONFIG._iconTs       = Date.now();
+    CONFIG.audioIconX      = cfg.audio_icon_x      ?? 0;
+    CONFIG.audioIconY      = cfg.audio_icon_y      ?? 0;
+    CONFIG.micWaveColor    = cfg.mic_wave_color    || '#ffffff';
+    CONFIG.audioWaveColor  = cfg.audio_wave_color  || '#ffffff';
+    CONFIG._iconTs         = Date.now();
+    applyWaveColors();
 
     // Animazioni
     ANIM_RANGE.idleStart   = cfg.idle_start;

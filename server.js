@@ -113,7 +113,8 @@ app.get('/api/avatar/:id', (req, res) => {
           chat_font, chat_font_size,
           show_vad, show_controls, show_header_left,
           mic_icon, mic_icon_size, mic_icon_x, mic_icon_y,
-          audio_icon, audio_icon_size, audio_icon_x, audio_icon_y } = avatar;
+          audio_icon, audio_icon_size, audio_icon_x, audio_icon_y,
+          mic_wave_color, audio_wave_color } = avatar;
   res.json({ id, name, background, model_file, idle_start, idle_end,
              speech_start, speech_end, avatar_scale, avatar_offset_x,
              avatar_offset_y, avatar_rot_y, camera_z, camera_y, camera_look_at_y,
@@ -122,7 +123,8 @@ app.get('/api/avatar/:id', (req, res) => {
              chat_font, chat_font_size,
              show_vad, show_controls, show_header_left,
              mic_icon, mic_icon_size, mic_icon_x, mic_icon_y,
-             audio_icon, audio_icon_size, audio_icon_x, audio_icon_y });
+             audio_icon, audio_icon_size, audio_icon_x, audio_icon_y,
+             mic_wave_color, audio_wave_color });
 });
 
 // ─── Route: Kiosk page ────────────────────────────────────────────────────────
@@ -150,7 +152,8 @@ app.get('/api/preview/:id', (req, res) => {
           chat_font, chat_font_size,
           show_vad, show_controls, show_header_left,
           mic_icon, mic_icon_size, mic_icon_x, mic_icon_y,
-          audio_icon, audio_icon_size, audio_icon_x, audio_icon_y } = avatar;
+          audio_icon, audio_icon_size, audio_icon_x, audio_icon_y,
+          mic_wave_color, audio_wave_color } = avatar;
   res.json({ id, name, background, model_file, idle_start, idle_end,
              speech_start, speech_end, avatar_scale, avatar_offset_x,
              avatar_offset_y, avatar_rot_y, camera_z, camera_y, camera_look_at_y,
@@ -159,7 +162,8 @@ app.get('/api/preview/:id', (req, res) => {
              chat_font, chat_font_size,
              show_vad, show_controls, show_header_left,
              mic_icon, mic_icon_size, mic_icon_x, mic_icon_y,
-             audio_icon, audio_icon_size, audio_icon_x, audio_icon_y });
+             audio_icon, audio_icon_size, audio_icon_x, audio_icon_y,
+             mic_wave_color, audio_wave_color });
 });
 
 // ─── Route: Admin login ───────────────────────────────────────────────────────
@@ -249,8 +253,8 @@ app.put('/api/admin/avatars/:id', (req, res) => {
                   'idle_timeout','idle_icon','idle_title','idle_subtitle','idle_hint',
                   'chat_font','chat_font_size',
                   'show_vad','show_controls','show_header_left',
-                  'mic_icon_size','mic_icon_x','mic_icon_y',
-                  'audio_icon_size','audio_icon_x','audio_icon_y'];
+                  'mic_icon_size','mic_icon_x','mic_icon_y','mic_wave_color',
+                  'audio_icon_size','audio_icon_x','audio_icon_y','audio_wave_color'];
   const updates = [];
   const values  = [];
   for (const f of fields) {

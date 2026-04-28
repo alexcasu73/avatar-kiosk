@@ -71,6 +71,8 @@ db.exec(`
     audio_icon_size   INTEGER DEFAULT 44,
     audio_icon_x      INTEGER DEFAULT 0,
     audio_icon_y      INTEGER DEFAULT 0,
+    mic_wave_color    TEXT DEFAULT '#ffffff',
+    audio_wave_color  TEXT DEFAULT '#ffffff',
     published         INTEGER DEFAULT 0,
     created_at        TEXT DEFAULT (datetime('now')),
     updated_at        TEXT DEFAULT (datetime('now'))
@@ -155,5 +157,9 @@ if (!existing.includes('audio_icon_x'))
   db.exec("ALTER TABLE avatars ADD COLUMN audio_icon_x INTEGER DEFAULT 0");
 if (!existing.includes('audio_icon_y'))
   db.exec("ALTER TABLE avatars ADD COLUMN audio_icon_y INTEGER DEFAULT 0");
+if (!existing.includes('mic_wave_color'))
+  db.exec("ALTER TABLE avatars ADD COLUMN mic_wave_color TEXT DEFAULT '#ffffff'");
+if (!existing.includes('audio_wave_color'))
+  db.exec("ALTER TABLE avatars ADD COLUMN audio_wave_color TEXT DEFAULT '#ffffff'");
 
 export default db;
