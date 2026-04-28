@@ -406,10 +406,27 @@
     #wizard-overlay { display:none; }
     #wizard-overlay.hidden { display:none; }
 
+    /* Backdrop quando form-panel è in modalità wizard */
+    #wizard-backdrop {
+      display:none;
+      position:fixed; inset:0; z-index:50;
+      background:rgba(5,5,10,.8); backdrop-filter:blur(4px);
+    }
+    #wizard-backdrop.active { display:block; }
+
+    /* form-panel in modalità wizard */
+    #form-panel.wizard-mode {
+      position:fixed; z-index:51;
+      top:50%; left:50%; transform:translate(-50%,-50%);
+      width:560px; max-width:95vw; max-height:90vh;
+      border-radius:20px; border:1px solid var(--border);
+      box-shadow:0 24px 80px rgba(0,0,0,.6);
+    }
+
     #wizard-banner {
       background:var(--surface); border-bottom:2px solid var(--accent);
       padding:14px 24px; display:flex; flex-direction:column; gap:10px;
-      position:sticky; top:0; z-index:15;
+      position:sticky; top:0; z-index:15; border-radius:20px 20px 0 0;
     }
     .wizard-top-row {
       display:flex; align-items:center; gap:10px;
@@ -433,7 +450,6 @@
     .wizard-nav {
       display:flex; align-items:center; gap:8px;
     }
-    .wizard-nav .spacer { flex:1; }
     .wizard-skip {
       font-size:.75rem; color:var(--text-dim); background:none; border:none;
       cursor:pointer; text-decoration:underline; padding:0;
@@ -446,6 +462,7 @@
 <!-- ── Wizard banner (sovrapposto al form-panel) ──────────────────────────── -->
 <div id="wizard-overlay" class="hidden"></div>
 
+<div id="wizard-backdrop" onclick="wizFinish()"></div>
 <div id="app">
 
   <!-- Sidebar -->
@@ -1341,9 +1358,11 @@ async function wizStart() {
   const a = await createAvatar_impl();
   _wizStep   = 0;
   _wizActive = true;
+  document.getElementById('wizard-backdrop').classList.add('active');
+  document.getElementById('form-panel').classList.add('wizard-mode');
   document.getElementById('wizard-banner').style.display = 'block';
+  document.getElementById('editor').classList.add('visible');
   wizRender();
-  // Espandi tutte le sezioni del tab corrente
   wizExpandCurrentTab();
 }
 
@@ -1388,6 +1407,8 @@ async function wizNext() {
 
 function wizFinish() {
   _wizActive = false;
+  document.getElementById('wizard-backdrop').classList.remove('active');
+  document.getElementById('form-panel').classList.remove('wizard-mode');
   document.getElementById('wizard-banner').style.display = 'none';
   toast('✅ Configurazione completata');
 }
