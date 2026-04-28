@@ -105,17 +105,22 @@ app.get('/api/health', (req, res) => {
 app.get('/api/avatar/:id', (req, res) => {
   const avatar = db.prepare('SELECT * FROM avatars WHERE id = ? AND published = 1').get(req.params.id);
   if (!avatar) return res.status(404).json({ error: 'Avatar non trovato o non pubblicato' });
-  // Non esporre dati sensibili
   const { id, name, background, model_file, idle_start, idle_end,
           speech_start, speech_end, avatar_scale, avatar_offset_x,
           avatar_offset_y, avatar_rot_y, camera_z, camera_y, camera_look_at_y,
           overlay_color, overlay_opacity, overlay_height, chat_height, chat_bottom, chat_max_width, chat_align, chat_hide_input, show_logo, header_color, header_font,
-          idle_timeout, idle_icon, idle_title, idle_subtitle, idle_hint } = avatar;
+          idle_timeout, idle_icon, idle_title, idle_subtitle, idle_hint,
+          show_vad, show_controls, show_header_left,
+          mic_icon, mic_icon_size, mic_icon_x, mic_icon_y,
+          audio_icon, audio_icon_size, audio_icon_x, audio_icon_y } = avatar;
   res.json({ id, name, background, model_file, idle_start, idle_end,
              speech_start, speech_end, avatar_scale, avatar_offset_x,
              avatar_offset_y, avatar_rot_y, camera_z, camera_y, camera_look_at_y,
-             overlay_color, overlay_opacity, overlay_height, chat_height, chat_bottom, chat_max_width, chat_align, chat_hide_input, show_logo, header_color, header_font, header_color, header_font,
-             idle_timeout, idle_icon, idle_title, idle_subtitle, idle_hint });
+             overlay_color, overlay_opacity, overlay_height, chat_height, chat_bottom, chat_max_width, chat_align, chat_hide_input, show_logo, header_color, header_font,
+             idle_timeout, idle_icon, idle_title, idle_subtitle, idle_hint,
+             show_vad, show_controls, show_header_left,
+             mic_icon, mic_icon_size, mic_icon_x, mic_icon_y,
+             audio_icon, audio_icon_size, audio_icon_x, audio_icon_y });
 });
 
 // ─── Route: Kiosk page ────────────────────────────────────────────────────────
@@ -139,12 +144,18 @@ app.get('/api/preview/:id', (req, res) => {
           speech_start, speech_end, avatar_scale, avatar_offset_x,
           avatar_offset_y, avatar_rot_y, camera_z, camera_y, camera_look_at_y,
           overlay_color, overlay_opacity, overlay_height, chat_height, chat_bottom, chat_max_width, chat_align, chat_hide_input, show_logo, header_color, header_font,
-          idle_timeout, idle_icon, idle_title, idle_subtitle, idle_hint } = avatar;
+          idle_timeout, idle_icon, idle_title, idle_subtitle, idle_hint,
+          show_vad, show_controls, show_header_left,
+          mic_icon, mic_icon_size, mic_icon_x, mic_icon_y,
+          audio_icon, audio_icon_size, audio_icon_x, audio_icon_y } = avatar;
   res.json({ id, name, background, model_file, idle_start, idle_end,
              speech_start, speech_end, avatar_scale, avatar_offset_x,
              avatar_offset_y, avatar_rot_y, camera_z, camera_y, camera_look_at_y,
-             overlay_color, overlay_opacity, overlay_height, chat_height, chat_bottom, chat_max_width, chat_align, chat_hide_input, show_logo, header_color, header_font, header_color, header_font,
-             idle_timeout, idle_icon, idle_title, idle_subtitle, idle_hint });
+             overlay_color, overlay_opacity, overlay_height, chat_height, chat_bottom, chat_max_width, chat_align, chat_hide_input, show_logo, header_color, header_font,
+             idle_timeout, idle_icon, idle_title, idle_subtitle, idle_hint,
+             show_vad, show_controls, show_header_left,
+             mic_icon, mic_icon_size, mic_icon_x, mic_icon_y,
+             audio_icon, audio_icon_size, audio_icon_x, audio_icon_y });
 });
 
 // ─── Route: Admin login ───────────────────────────────────────────────────────
@@ -231,7 +242,10 @@ app.put('/api/admin/avatars/:id', (req, res) => {
                   'tts_api_key','tts_model','tts_stability','tts_similarity',
                   'ai_provider','ai_max_tokens','anthropic_api_key','anthropic_model','openai_api_key','openai_model',
                   'avatar_mode','webhook_url','webhook_input_template','webhook_output_field','webhook_headers',
-                  'idle_timeout','idle_icon','idle_title','idle_subtitle','idle_hint'];
+                  'idle_timeout','idle_icon','idle_title','idle_subtitle','idle_hint',
+                  'show_vad','show_controls','show_header_left',
+                  'mic_icon_size','mic_icon_x','mic_icon_y',
+                  'audio_icon_size','audio_icon_x','audio_icon_y'];
   const updates = [];
   const values  = [];
   for (const f of fields) {

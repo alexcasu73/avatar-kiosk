@@ -58,8 +58,17 @@ db.exec(`
     chat_align        TEXT DEFAULT 'center',
     chat_hide_input   INTEGER DEFAULT 0,
     show_logo         INTEGER DEFAULT 1,
+    show_vad          INTEGER DEFAULT 1,
+    show_controls     INTEGER DEFAULT 1,
+    show_header_left  INTEGER DEFAULT 1,
     mic_icon          TEXT DEFAULT '',
+    mic_icon_size     INTEGER DEFAULT 44,
+    mic_icon_x        INTEGER DEFAULT 0,
+    mic_icon_y        INTEGER DEFAULT 0,
     audio_icon        TEXT DEFAULT '',
+    audio_icon_size   INTEGER DEFAULT 44,
+    audio_icon_x      INTEGER DEFAULT 0,
+    audio_icon_y      INTEGER DEFAULT 0,
     published         INTEGER DEFAULT 0,
     created_at        TEXT DEFAULT (datetime('now')),
     updated_at        TEXT DEFAULT (datetime('now'))
@@ -118,9 +127,27 @@ if (!existing.includes('chat_hide_input'))
   db.exec("ALTER TABLE avatars ADD COLUMN chat_hide_input INTEGER DEFAULT 0");
 if (!existing.includes('show_logo'))
   db.exec("ALTER TABLE avatars ADD COLUMN show_logo INTEGER DEFAULT 1");
+if (!existing.includes('show_vad'))
+  db.exec("ALTER TABLE avatars ADD COLUMN show_vad INTEGER DEFAULT 1");
+if (!existing.includes('show_controls'))
+  db.exec("ALTER TABLE avatars ADD COLUMN show_controls INTEGER DEFAULT 1");
+if (!existing.includes('show_header_left'))
+  db.exec("ALTER TABLE avatars ADD COLUMN show_header_left INTEGER DEFAULT 1");
 if (!existing.includes('mic_icon'))
   db.exec("ALTER TABLE avatars ADD COLUMN mic_icon TEXT DEFAULT ''");
+if (!existing.includes('mic_icon_size'))
+  db.exec("ALTER TABLE avatars ADD COLUMN mic_icon_size INTEGER DEFAULT 44");
+if (!existing.includes('mic_icon_x'))
+  db.exec("ALTER TABLE avatars ADD COLUMN mic_icon_x INTEGER DEFAULT 0");
+if (!existing.includes('mic_icon_y'))
+  db.exec("ALTER TABLE avatars ADD COLUMN mic_icon_y INTEGER DEFAULT 0");
 if (!existing.includes('audio_icon'))
   db.exec("ALTER TABLE avatars ADD COLUMN audio_icon TEXT DEFAULT ''");
+if (!existing.includes('audio_icon_size'))
+  db.exec("ALTER TABLE avatars ADD COLUMN audio_icon_size INTEGER DEFAULT 44");
+if (!existing.includes('audio_icon_x'))
+  db.exec("ALTER TABLE avatars ADD COLUMN audio_icon_x INTEGER DEFAULT 0");
+if (!existing.includes('audio_icon_y'))
+  db.exec("ALTER TABLE avatars ADD COLUMN audio_icon_y INTEGER DEFAULT 0");
 
 export default db;

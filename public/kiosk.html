@@ -322,7 +322,7 @@
     .typing-indicator span:nth-child(3) { animation-delay: 0.4s; }
 
     /* ─── VAD Status bar ────────────────────────────── */
-    #vad-section { display: flex; flex-direction: column; align-items: flex-end; gap: 4px; pointer-events: none; padding-top: env(safe-area-inset-top, 0); }
+    #vad-section { display: flex; flex-direction: column; align-items: flex-start; gap: 4px; pointer-events: none; }
 
     #vad-bars {
       display: flex;
@@ -343,11 +343,7 @@
     #vad-bars.recording .vad-bar { background: var(--error); }
     #vad-bars.mic-off .vad-bar { background: #6b7280; opacity: 1; }
 
-    #vad-label {
-      font-size: 0.78rem;
-      color: var(--header-color, var(--text-dim));
-      text-align: right;
-    }
+
 
     /* ─── Input testuale (fallback) ─────────────────── */
     #input-area { padding: 10px 20px 24px; padding-bottom: max(24px, env(safe-area-inset-bottom, 24px)); display: flex; gap: 10px; position: relative; z-index: 22; }
@@ -568,34 +564,33 @@
 
   <!-- Header -->
   <div id="header">
-    <div class="logo">AVATAR KIOSK</div>
-    <div style="display:flex;flex-direction:column;align-items:flex-end;gap:8px">
-      <div style="display:flex;align-items:center;gap:8px">
-        <button id="mic-btn" onclick="toggleMic()" title="Attiva/disattiva microfono"
-          style="background:rgba(248,113,113,.15);border:2px solid rgba(248,113,113,.4);
-                 border-radius:50%;width:44px;height:44px;padding:0;display:flex;align-items:center;
-                 justify-content:center;cursor:pointer;transition:all .2s;pointer-events:auto;
-                 font-size:1.2rem;overflow:hidden">
-          <img id="mic-icon-img" src="" alt="🎙" style="width:28px;height:28px;object-fit:contain;display:none;filter:grayscale(1) opacity(.5)"/>
-          <span id="mic-icon-fallback">🎙</span>
-        </button>
-        <button id="audio-btn" onclick="toggleAudio()" title="Attiva/disattiva audio"
-          style="background:rgba(34,211,160,.15);border:2px solid rgba(34,211,160,.5);
-                 border-radius:50%;width:44px;height:44px;padding:0;display:flex;align-items:center;
-                 justify-content:center;cursor:pointer;transition:all .2s;pointer-events:auto;
-                 font-size:1.2rem;overflow:hidden">
-          <img id="audio-icon-img" src="" alt="🔊" style="width:28px;height:28px;object-fit:contain;display:none"/>
-          <span id="audio-icon-fallback">🔊</span>
-        </button>
+    <div id="header-left" style="display:flex;flex-direction:column;align-items:flex-start;gap:4px">
+      <div class="logo">AVATAR KIOSK</div>
+      <div id="vad-section">
+        <div id="vad-bars"><!-- generati da JS --></div>
         <div id="status-chip">
           <div class="status-dot" id="status-dot"></div>
           <span id="status-label">In attesa...</span>
         </div>
       </div>
-      <div id="vad-section">
-        <div id="vad-bars"><!-- generati da JS --></div>
-        <span id="vad-label">Parla pure quando sei pronto</span>
-      </div>
+    </div>
+    <div id="controls-section">
+      <button id="mic-btn" onclick="toggleMic()" title="Attiva/disattiva microfono"
+        style="position:fixed;top:16px;right:68px;background:rgba(248,113,113,.15);border:2px solid rgba(248,113,113,.4);
+               border-radius:50%;width:44px;height:44px;padding:0;display:flex;align-items:center;
+               justify-content:center;cursor:pointer;transition:background .2s,border-color .2s;pointer-events:auto;
+               font-size:1.2rem;overflow:hidden;z-index:11">
+        <img id="mic-icon-img" src="" alt="🎙" style="width:28px;height:28px;object-fit:contain;display:none;filter:grayscale(1) opacity(.5)"/>
+        <span id="mic-icon-fallback">🎙</span>
+      </button>
+      <button id="audio-btn" onclick="toggleAudio()" title="Attiva/disattiva audio"
+        style="position:fixed;top:16px;right:16px;background:rgba(34,211,160,.15);border:2px solid rgba(34,211,160,.5);
+               border-radius:50%;width:44px;height:44px;padding:0;display:flex;align-items:center;
+               justify-content:center;cursor:pointer;transition:background .2s,border-color .2s;pointer-events:auto;
+               font-size:1.2rem;overflow:hidden;z-index:11">
+        <img id="audio-icon-img" src="" alt="🔊" style="width:28px;height:28px;object-fit:contain;display:none"/>
+        <span id="audio-icon-fallback">🔊</span>
+      </button>
     </div>
   </div>
 
@@ -763,9 +758,16 @@ const CONFIG = {
   idleTimeout:  90000,
   micEnabled:   false,
   audioEnabled: true,
+  showVad:      true,
   micIcon:      '',
   audioIcon:    '',
   _iconTs:      Date.now(),
+  micIconSize:  44,
+  micIconX:     0,
+  micIconY:     0,
+  audioIconSize: 44,
+  audioIconX:   0,
+  audioIconY:   0,
   avatarName:   'Sofia',
   avatarModelUrl: '/avatar.glb',
 
@@ -955,14 +957,6 @@ function setVadState(mode) {
   if (!micOff && mode === 'active')     vadBarsEl.classList.add('active');
   if (!micOff && mode === 'recording')  vadBarsEl.classList.add('recording');
 
-  const labels = {
-    idle:      'Tocca per iniziare',
-    active:    'Ti sto ascoltando...',
-    recording: '🔴 Sto registrando...',
-    thinking:  '💭 Sto elaborando...',
-    speaking:  '🔊 Risposta in corso...',
-  };
-  document.getElementById('vad-label').textContent = labels[mode] ?? '';
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -1484,6 +1478,7 @@ document.addEventListener('DOMContentLoaded', () => {
   });
   updateMicBtn();
   updateAudioBtn();
+  // showVad viene applicato dopo initAvatar(); qui inizializziamo visibile
 });
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -1543,6 +1538,22 @@ async function transcribeAndProcess(blob) {
 // ═══════════════════════════════════════════════════════════════════════════
 //  WAKE UP / IDLE
 // ═══════════════════════════════════════════════════════════════════════════
+// defaultRight: posizione right di default (px) per separare i due bottoni
+function applyIconLayout(btnId, imgId, size, x, y, defaultRight) {
+  const btn = document.getElementById(btnId);
+  const img = document.getElementById(imgId);
+  if (!btn) return;
+  btn.style.width  = size + 'px';
+  btn.style.height = size + 'px';
+  btn.style.top    = (16 + y) + 'px';
+  btn.style.right  = (defaultRight - x) + 'px';
+  if (img) {
+    const imgSize = Math.round(size * 0.64);
+    img.style.width  = imgSize + 'px';
+    img.style.height = imgSize + 'px';
+  }
+}
+
 function _applyIconToBtn(imgId, fallbackId, path) {
   const img      = document.getElementById(imgId);
   const fallback = document.getElementById(fallbackId);
@@ -1561,6 +1572,7 @@ function updateMicBtn() {
   const btn = document.getElementById('mic-btn');
   if (!btn) return;
   _applyIconToBtn('mic-icon-img', 'mic-icon-fallback', CONFIG.micIcon);
+  applyIconLayout('mic-btn', 'mic-icon-img', CONFIG.micIconSize, CONFIG.micIconX, CONFIG.micIconY, 68);
   const img = document.getElementById('mic-icon-img');
   if (CONFIG.micEnabled) {
     btn.style.background  = 'rgba(34,211,160,.15)';
@@ -1582,6 +1594,7 @@ function updateAudioBtn() {
   const btn = document.getElementById('audio-btn');
   if (!btn) return;
   _applyIconToBtn('audio-icon-img', 'audio-icon-fallback', CONFIG.audioIcon);
+  applyIconLayout('audio-btn', 'audio-icon-img', CONFIG.audioIconSize, CONFIG.audioIconX, CONFIG.audioIconY, 16);
   const img = document.getElementById('audio-icon-img');
   if (CONFIG.audioEnabled) {
     btn.style.background  = 'rgba(34,211,160,.15)';
@@ -1649,8 +1662,8 @@ async function _startVad() {
     if (!CONFIG.micEnabled) { state.vad.stop(); state.vad = null; }
   } catch (err) {
     setVadState('idle');
-    document.getElementById('vad-label').textContent =
-      '⚠️ Microfono non disponibile — usa la tastiera';
+    document.getElementById('status-label').textContent =
+      '⚠️ Mic non disponibile';
   }
 }
 
@@ -2222,6 +2235,9 @@ function applyIdleParam(key, value) {
         if (d.chat_align      !== undefined) applyParamLive('chat_align',      d.chat_align);
         if (d.chat_hide_input !== undefined) applyParamLive('chat_hide_input', d.chat_hide_input);
         if (d.show_logo       !== undefined) applyParamLive('show_logo',       d.show_logo);
+        if (d.show_vad        !== undefined) applyParamLive('show_vad',        d.show_vad);
+        if (d.show_controls    !== undefined) applyParamLive('show_controls',    d.show_controls);
+        if (d.show_header_left !== undefined) applyParamLive('show_header_left', d.show_header_left);
         if (d.header_color    !== undefined) applyHeaderStyle('header_color',  d.header_color);
         if (d.header_font     !== undefined) applyHeaderStyle('header_font',   d.header_font);
         if (d.idle_timeout   !== undefined) applyIdleParam('idle_timeout',  d.idle_timeout);
@@ -2292,8 +2308,17 @@ function applyParamLive(key, v) {
       if (state.avatar) { scene.remove(state.avatar); state.avatar = null; state.mixer = null; state.mainAction = null; anim.bones = {}; }
       loadGLBAvatar(url + '?t=' + Date.now());
     },
-    mic_icon:   () => { CONFIG.micIcon   = v; CONFIG._iconTs = Date.now(); updateMicBtn(); },
-    audio_icon: () => { CONFIG.audioIcon = v; CONFIG._iconTs = Date.now(); updateAudioBtn(); },
+    show_vad:        () => { CONFIG.showVad = parseInt(v) !== 0; document.getElementById('vad-section').style.display = CONFIG.showVad ? '' : 'none'; },
+    show_controls:     () => { document.getElementById('controls-section').style.display = parseInt(v) !== 0 ? 'flex' : 'none'; },
+    show_header_left:  () => { document.getElementById('header-left').style.display = parseInt(v) !== 0 ? '' : 'none'; },
+    mic_icon:        () => { CONFIG.micIcon       = v;  CONFIG._iconTs = Date.now(); updateMicBtn(); },
+    mic_icon_size:   () => { CONFIG.micIconSize   = +v; updateMicBtn(); },
+    mic_icon_x:      () => { CONFIG.micIconX      = +v; updateMicBtn(); },
+    mic_icon_y:      () => { CONFIG.micIconY      = +v; updateMicBtn(); },
+    audio_icon:      () => { CONFIG.audioIcon     = v;  CONFIG._iconTs = Date.now(); updateAudioBtn(); },
+    audio_icon_size: () => { CONFIG.audioIconSize = +v; updateAudioBtn(); },
+    audio_icon_x:    () => { CONFIG.audioIconX    = +v; updateAudioBtn(); },
+    audio_icon_y:    () => { CONFIG.audioIconY    = +v; updateAudioBtn(); },
   };
 
   map[key]?.();
@@ -2310,8 +2335,15 @@ async function initAvatar() {
     CONFIG.avatarId      = AVATAR_ID;
     CONFIG.avatarName    = cfg.name;
     CONFIG.avatarModelUrl = cfg.model_file ? `/${cfg.model_file}` : null;
-    CONFIG.micIcon       = cfg.mic_icon   || '';
-    CONFIG.audioIcon     = cfg.audio_icon || '';
+    CONFIG.showVad       = cfg.show_vad !== 0;
+    CONFIG.micIcon       = cfg.mic_icon        || '';
+    CONFIG.micIconSize   = cfg.mic_icon_size   ?? 44;
+    CONFIG.micIconX      = cfg.mic_icon_x      ?? 0;
+    CONFIG.micIconY      = cfg.mic_icon_y      ?? 0;
+    CONFIG.audioIcon     = cfg.audio_icon      || '';
+    CONFIG.audioIconSize = cfg.audio_icon_size ?? 44;
+    CONFIG.audioIconX    = cfg.audio_icon_x    ?? 0;
+    CONFIG.audioIconY    = cfg.audio_icon_y    ?? 0;
     CONFIG._iconTs       = Date.now();
 
     // Animazioni
@@ -2351,8 +2383,13 @@ async function initAvatar() {
     applyParamLive('chat_align',      cfg.chat_align      || 'center');
     applyParamLive('chat_hide_input', cfg.chat_hide_input ?? 0);
     applyParamLive('show_logo',       cfg.show_logo       ?? 1);
+    applyParamLive('show_vad',        cfg.show_vad        ?? 1);
+    applyParamLive('show_controls',   cfg.show_controls   ?? 1);
+    applyParamLive('show_header_left', cfg.show_header_left ?? 1);
     applyHeaderStyle('header_color',  cfg.header_color    || '#a0a0b8');
     applyHeaderStyle('header_font',   cfg.header_font     || '');
+    updateMicBtn();
+    updateAudioBtn();
 
     // UI
     document.getElementById('avatar-response-label').textContent = cfg.name.toUpperCase();

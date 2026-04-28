@@ -894,6 +894,21 @@
                 onchange="sendToPreview({type:'avatarParam',key:'show_logo',value:this.checked?1:0})"/>
               Mostra nome avatar in alto a sinistra
             </label>
+            <label style="display:flex;align-items:center;gap:10px;cursor:pointer;font-size:.78rem;color:var(--text-dim)">
+              <input type="checkbox" id="f-show-vad" checked
+                onchange="sendToPreview({type:'avatarParam',key:'show_vad',value:this.checked?1:0})"/>
+              Mostra forma d'onda e stato microfono
+            </label>
+            <label style="display:flex;align-items:center;gap:10px;cursor:pointer;font-size:.78rem;color:var(--text-dim)">
+              <input type="checkbox" id="f-show-controls" checked
+                onchange="sendToPreview({type:'avatarParam',key:'show_controls',value:this.checked?1:0})"/>
+              Mostra indicatori in alto a destra (mic / audio)
+            </label>
+            <label style="display:flex;align-items:center;gap:10px;cursor:pointer;font-size:.78rem;color:var(--text-dim)">
+              <input type="checkbox" id="f-show-header-left" checked
+                onchange="sendToPreview({type:'avatarParam',key:'show_header_left',value:this.checked?1:0})"/>
+              Mostra indicatori in alto a sinistra (nome / stato)
+            </label>
           </div>
         </div>
 
@@ -919,27 +934,69 @@
 
         <div class="section">
           <h3>Icone controlli</h3>
-          <div class="fields" style="gap:16px">
-            <div class="field">
-              <label>Icona Microfono</label>
-              <div style="display:flex;align-items:center;gap:10px">
-                <img id="preview-mic-icon" src="" alt="" style="width:40px;height:40px;object-fit:contain;border-radius:8px;background:#1a1a2e;padding:4px;display:none"/>
-                <label style="cursor:pointer;background:#2a2a4a;border:1px dashed #444;border-radius:8px;padding:8px 14px;font-size:.8rem;color:#aaa">
-                  📁 Carica immagine
-                  <input type="file" accept="image/*" style="display:none" onchange="uploadIcon('mic',this)"/>
-                </label>
-                <span id="mic-icon-label" style="font-size:.75rem;color:#666">Nessuna</span>
+
+          <!-- Microfono -->
+          <div style="margin-bottom:14px">
+            <div style="font-size:.78rem;color:#aaa;margin-bottom:8px;font-weight:600">Microfono</div>
+            <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px">
+              <img id="preview-mic-icon" src="" alt="" style="width:40px;height:40px;object-fit:contain;border-radius:8px;background:#1a1a2e;padding:4px;display:none"/>
+              <label style="cursor:pointer;background:#2a2a4a;border:1px dashed #444;border-radius:8px;padding:8px 14px;font-size:.8rem;color:#aaa">
+                📁 Carica immagine
+                <input type="file" accept="image/*" style="display:none" onchange="uploadIcon('mic',this)"/>
+              </label>
+              <span id="mic-icon-label" style="font-size:.75rem;color:#666">Nessuna</span>
+            </div>
+            <div class="fields" style="gap:10px">
+              <div class="field">
+                <label>Dimensione <span id="val-mic-icon-size">44</span>px</label>
+                <input type="range" id="s-mic-icon-size" min="20" max="120" step="2" value="44"
+                  oninput="document.getElementById('val-mic-icon-size').textContent=this.value;
+                           sendToPreview({type:'avatarParam',key:'mic_icon_size',value:this.value})"/>
+              </div>
+              <div class="field">
+                <label>Pos X <span id="val-mic-icon-x">0</span>px</label>
+                <input type="range" id="s-mic-icon-x" min="-200" max="200" step="1" value="0"
+                  oninput="document.getElementById('val-mic-icon-x').textContent=this.value;
+                           sendToPreview({type:'avatarParam',key:'mic_icon_x',value:this.value})"/>
+              </div>
+              <div class="field">
+                <label>Pos Y <span id="val-mic-icon-y">0</span>px</label>
+                <input type="range" id="s-mic-icon-y" min="-200" max="200" step="1" value="0"
+                  oninput="document.getElementById('val-mic-icon-y').textContent=this.value;
+                           sendToPreview({type:'avatarParam',key:'mic_icon_y',value:this.value})"/>
               </div>
             </div>
-            <div class="field">
-              <label>Icona Audio</label>
-              <div style="display:flex;align-items:center;gap:10px">
-                <img id="preview-audio-icon" src="" alt="" style="width:40px;height:40px;object-fit:contain;border-radius:8px;background:#1a1a2e;padding:4px;display:none"/>
-                <label style="cursor:pointer;background:#2a2a4a;border:1px dashed #444;border-radius:8px;padding:8px 14px;font-size:.8rem;color:#aaa">
-                  📁 Carica immagine
-                  <input type="file" accept="image/*" style="display:none" onchange="uploadIcon('audio',this)"/>
-                </label>
-                <span id="audio-icon-label" style="font-size:.75rem;color:#666">Nessuna</span>
+          </div>
+
+          <!-- Audio -->
+          <div>
+            <div style="font-size:.78rem;color:#aaa;margin-bottom:8px;font-weight:600">Audio</div>
+            <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px">
+              <img id="preview-audio-icon" src="" alt="" style="width:40px;height:40px;object-fit:contain;border-radius:8px;background:#1a1a2e;padding:4px;display:none"/>
+              <label style="cursor:pointer;background:#2a2a4a;border:1px dashed #444;border-radius:8px;padding:8px 14px;font-size:.8rem;color:#aaa">
+                📁 Carica immagine
+                <input type="file" accept="image/*" style="display:none" onchange="uploadIcon('audio',this)"/>
+              </label>
+              <span id="audio-icon-label" style="font-size:.75rem;color:#666">Nessuna</span>
+            </div>
+            <div class="fields" style="gap:10px">
+              <div class="field">
+                <label>Dimensione <span id="val-audio-icon-size">44</span>px</label>
+                <input type="range" id="s-audio-icon-size" min="20" max="120" step="2" value="44"
+                  oninput="document.getElementById('val-audio-icon-size').textContent=this.value;
+                           sendToPreview({type:'avatarParam',key:'audio_icon_size',value:this.value})"/>
+              </div>
+              <div class="field">
+                <label>Pos X <span id="val-audio-icon-x">0</span>px</label>
+                <input type="range" id="s-audio-icon-x" min="-200" max="200" step="1" value="0"
+                  oninput="document.getElementById('val-audio-icon-x').textContent=this.value;
+                           sendToPreview({type:'avatarParam',key:'audio_icon_x',value:this.value})"/>
+              </div>
+              <div class="field">
+                <label>Pos Y <span id="val-audio-icon-y">0</span>px</label>
+                <input type="range" id="s-audio-icon-y" min="-200" max="200" step="1" value="0"
+                  oninput="document.getElementById('val-audio-icon-y').textContent=this.value;
+                           sendToPreview({type:'avatarParam',key:'audio_icon_y',value:this.value})"/>
               </div>
             </div>
           </div>
@@ -1240,12 +1297,33 @@ function selectAvatar(id) {
   setChatAlign(a.chat_align || 'center');
   document.getElementById('f-chat-hide-input').checked = !!(a.chat_hide_input);
   document.getElementById('f-show-logo').checked = a.show_logo !== 0;
+  document.getElementById('f-show-vad').checked      = (a.show_vad      ?? 1) !== 0;
+  document.getElementById('f-show-controls').checked    = (a.show_controls    ?? 1) !== 0;
+  document.getElementById('f-show-header-left').checked = (a.show_header_left ?? 1) !== 0;
   const hColor = a.header_color || '#a0a0b8';
   document.getElementById('f-header-color').value   = hColor;
   document.getElementById('f-header-hex').textContent = hColor;
   document.getElementById('f-header-font').value    = a.header_font  || '';
   setIconPreview('mic',   a.mic_icon   || '');
   setIconPreview('audio', a.audio_icon || '');
+  const micSize  = a.mic_icon_size   ?? 44;
+  const micX     = a.mic_icon_x      ?? 0;
+  const micY     = a.mic_icon_y      ?? 0;
+  const audSize  = a.audio_icon_size ?? 44;
+  const audX     = a.audio_icon_x    ?? 0;
+  const audY     = a.audio_icon_y    ?? 0;
+  document.getElementById('s-mic-icon-size').value         = micSize;
+  document.getElementById('val-mic-icon-size').textContent = micSize;
+  document.getElementById('s-mic-icon-x').value            = micX;
+  document.getElementById('val-mic-icon-x').textContent    = micX;
+  document.getElementById('s-mic-icon-y').value            = micY;
+  document.getElementById('val-mic-icon-y').textContent    = micY;
+  document.getElementById('s-audio-icon-size').value         = audSize;
+  document.getElementById('val-audio-icon-size').textContent = audSize;
+  document.getElementById('s-audio-icon-x').value            = audX;
+  document.getElementById('val-audio-icon-x').textContent    = audX;
+  document.getElementById('s-audio-icon-y').value            = audY;
+  document.getElementById('val-audio-icon-y').textContent    = audY;
   document.getElementById('f-idle-icon').value     = a.idle_icon     || '🤖';
   document.getElementById('f-idle-title').value    = a.idle_title    || '';
   document.getElementById('f-idle-subtitle').value = a.idle_subtitle || 'La tua assistente virtuale';
@@ -1627,6 +1705,9 @@ async function saveAvatar() {
     chat_align:      setChatAlign._current,
     chat_hide_input: document.getElementById('f-chat-hide-input').checked ? 1 : 0,
     show_logo:       document.getElementById('f-show-logo').checked ? 1 : 0,
+    show_vad:        document.getElementById('f-show-vad').checked      ? 1 : 0,
+    show_controls:     document.getElementById('f-show-controls').checked    ? 1 : 0,
+    show_header_left:  document.getElementById('f-show-header-left').checked ? 1 : 0,
     header_color:    document.getElementById('f-header-color').value,
     header_font:     document.getElementById('f-header-font').value,
     idle_timeout:    parseInt(document.getElementById('s-idle-timeout').value),
@@ -1634,6 +1715,12 @@ async function saveAvatar() {
     idle_title:      document.getElementById('f-idle-title').value,
     idle_subtitle:   document.getElementById('f-idle-subtitle').value,
     idle_hint:       document.getElementById('f-idle-hint').value,
+    mic_icon_size:   parseInt(document.getElementById('s-mic-icon-size').value),
+    mic_icon_x:      parseInt(document.getElementById('s-mic-icon-x').value),
+    mic_icon_y:      parseInt(document.getElementById('s-mic-icon-y').value),
+    audio_icon_size: parseInt(document.getElementById('s-audio-icon-size').value),
+    audio_icon_x:    parseInt(document.getElementById('s-audio-icon-x').value),
+    audio_icon_y:    parseInt(document.getElementById('s-audio-icon-y').value),
   };
   const updated = await api.put(`/api/admin/avatars/${currentId}`, body);
   avatars = avatars.map(a => a.id===currentId ? updated : a);
