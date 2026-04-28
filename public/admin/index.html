@@ -540,6 +540,10 @@
           <input type="file" id="wiz-model-input" accept=".fbx" style="display:none"
             onchange="wizUploadModel(this.files[0])"/>
         </div>
+        <div id="wiz-preview-wrap" style="display:none;margin-top:14px;border-radius:12px;overflow:hidden;border:1px solid var(--border);height:280px;position:relative">
+          <iframe id="wiz-preview-iframe" style="width:100%;height:100%;border:none" src="about:blank"></iframe>
+          <div id="wiz-preview-loading" style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;background:var(--surface);font-size:.85rem;color:var(--text-dim)">⏳ Caricamento preview…</div>
+        </div>
         <p style="font-size:.75rem;color:var(--text-dim);margin-top:10px;text-align:center">oppure continua senza modello — verrà usato quello di default</p>
       </div>
 
@@ -1418,6 +1422,7 @@ function wizRender() {
     document.getElementById(`ws${i}`).style.display = i === _wizStep ? '' : 'none';
   document.getElementById('wiz-back').style.display = _wizStep > 0 ? '' : 'none';
   document.getElementById('wiz-next').textContent   = _wizStep === total-1 ? '✓ Crea avatar' : 'Avanti →';
+  document.getElementById('wiz-box').style.width    = _wizStep === 3 ? '560px' : '480px';
 }
 
 function wizAiMode(mode) {
@@ -1479,12 +1484,23 @@ function wizHandleModelDrop(e) {
 }
 
 async function wizUploadModel(file) {
-  if (!_wizAvatarId) { toast('⚠️ Avatar non ancora creato', 'error'); return; }
+  if (!_wizAvatarId) { toast('⚠️ Completa prima i passi precedenti', 'error'); return; }
+  document.getElementById('wiz-model-label').textContent = `⏳ Conversione in corso…`;
+  document.getElementById('wiz-model-drop').style.opacity = '0.5';
   const form = new FormData(); form.append('model', file);
-  const res = await fetch(`/api/admin/avatars/${_wizAvatarId}/upload-model`, { method:'POST', body:form });
+  const res  = await fetch(`/api/admin/avatars/${_wizAvatarId}/upload-model`, { method:'POST', body:form });
   const data = await res.json();
-  if (!res.ok) { toast('❌ ' + data.error, 'error'); return; }
+  document.getElementById('wiz-model-drop').style.opacity = '';
+  if (!res.ok) { document.getElementById('wiz-model-label').textContent='🎭 Trascina un file .fbx o clicca'; toast('❌ ' + data.error, 'error'); return; }
   document.getElementById('wiz-model-label').textContent = `✅ ${file.name}`;
+  // Mostra preview
+  const wrap    = document.getElementById('wiz-preview-wrap');
+  const iframe  = document.getElementById('wiz-preview-iframe');
+  const loading = document.getElementById('wiz-preview-loading');
+  wrap.style.display   = 'block';
+  loading.style.display = 'flex';
+  iframe.src = `/preview/${_wizAvatarId}?t=${Date.now()}`;
+  iframe.onload = () => { loading.style.display = 'none'; };
   toast('✅ Modello caricato');
 }
 
