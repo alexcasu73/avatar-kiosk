@@ -279,6 +279,17 @@
     .mini-btn.accent { color:var(--accent2); border-color:var(--accent); }
     .mini-btn.active { background:var(--accent); color:#fff; border-color:var(--accent); }
 
+    /* ── Model loader ───────────────────────────── */
+    .model-row { display:flex; gap:6px; align-items:center; }
+    .model-row input, .model-row select { flex:1; }
+    .model-row select {
+      background:var(--surface2); border:1px solid var(--border);
+      border-radius:10px; padding:10px 12px; color:var(--text);
+      font-size:.9rem; outline:none; cursor:pointer;
+    }
+    .model-row select:focus { border-color:var(--accent); }
+    .btn-load { padding:8px 10px; font-size:.75rem; flex-shrink:0; }
+
     /* ── Webhook blocks ─────────────────────────── */
     .webhook-block {
       background:var(--surface2);
@@ -513,7 +524,10 @@
             </div>
             <div class="field">
               <label>Modello</label>
-              <input type="text" id="f-stt-model" placeholder="whisper-1"/>
+              <div class="model-row">
+                <input type="text" id="f-stt-model" placeholder="whisper-1"/>
+                <button class="btn btn-neutral btn-load" onclick="loadModels('openai','f-stt-api-key','f-stt-model')">⟳ Carica</button>
+              </div>
             </div>
           </div>
         </div>
@@ -529,11 +543,17 @@
             </div>
             <div class="field">
               <label>Voice ID</label>
-              <input type="text" id="f-voice-id" placeholder="dNeMsqRAC759PyIQ40Vf"/>
+              <div class="model-row">
+                <input type="text" id="f-voice-id" placeholder="dNeMsqRAC759PyIQ40Vf"/>
+                <button class="btn btn-neutral btn-load" onclick="loadModels('elevenlabs-voices','f-tts-api-key','f-voice-id')">⟳ Carica</button>
+              </div>
             </div>
             <div class="field">
               <label>Modello</label>
-              <input type="text" id="f-tts-model" placeholder="eleven_multilingual_v2"/>
+              <div class="model-row">
+                <input type="text" id="f-tts-model" placeholder="eleven_multilingual_v2"/>
+                <button class="btn btn-neutral btn-load" onclick="loadModels('elevenlabs-models','f-tts-api-key','f-tts-model')">⟳ Carica</button>
+              </div>
             </div>
           </div>
           <div class="fields" style="gap:12px;margin-top:12px">
@@ -561,7 +581,10 @@
             </div>
             <div class="field">
               <label>Modello</label>
-              <input type="text" id="f-ai-model" placeholder="claude-sonnet-4-6"/>
+              <div class="model-row">
+                <input type="text" id="f-ai-model" placeholder="claude-sonnet-4-6"/>
+                <button class="btn btn-neutral btn-load" onclick="loadModels('anthropic','f-ai-api-key','f-ai-model')">⟳ Carica</button>
+              </div>
             </div>
             <div class="field">
               <label>Max tokens <span class="hint" style="margin:0">(0 = default)</span></label>
@@ -1265,6 +1288,46 @@ function openKiosk() {
   if (!currentId) return;
   window.open(`/k/${currentId}`, '_blank');
 }
+async function loadModels(provider, apiKeyFieldId, targetFieldId) {
+  const keyField = document.getElementById(apiKeyFieldId);
+  const apiKey   = keyField.value.trim();
+  if (!apiKey) { toast('⚠️ Inserisci prima l\'API Key', 'error'); return; }
+
+  const targetInput = document.getElementById(targetFieldId);
+  const currentVal  = targetInput.value;
+  targetInput.disabled = true;
+  targetInput.placeholder = '⏳ Caricamento...';
+
+  try {
+    const res  = await api.post('/api/admin/fetch-models', { provider, apiKey });
+    if (res.error) throw new Error(res.error);
+
+    // Sostituisce l'input con un select
+    const select = document.createElement('select');
+    select.id = targetFieldId;
+    select.className = targetInput.className;
+    res.models.forEach(m => {
+      const opt = document.createElement('option');
+      opt.value = m.id;
+      opt.textContent = m.name;
+      if (m.id === currentVal) opt.selected = true;
+      select.appendChild(opt);
+    });
+    // Opzione vuota iniziale se nessuno selezionato
+    if (!currentVal) {
+      const empty = document.createElement('option');
+      empty.value = ''; empty.textContent = '— Seleziona —'; empty.selected = true;
+      select.insertBefore(empty, select.firstChild);
+    }
+    targetInput.replaceWith(select);
+    toast(`✅ ${res.models.length} opzioni caricate`);
+  } catch (e) {
+    targetInput.disabled = false;
+    targetInput.placeholder = provider.includes('whisper') || provider === 'openai' ? 'whisper-1' : '';
+    toast(`❌ ${e.message}`, 'error');
+  }
+}
+
 function switchTab(name) {
   document.querySelectorAll('.tab-btn').forEach((b,i) => {
     const names = ['generale','ai','aspetto','avatar3d'];

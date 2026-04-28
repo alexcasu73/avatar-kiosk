@@ -317,6 +317,61 @@ app.post('/api/stt', multer({ storage: multer.memoryStorage() }).single('audio')
   }
 });
 
+// ─── Route: Fetch modelli (admin) ────────────────────────────────────────────
+app.post('/api/admin/fetch-models', async (req, res) => {
+  try {
+    const { provider, apiKey } = req.body;
+    if (!provider || !apiKey) return res.status(400).json({ error: 'provider e apiKey obbligatori' });
+
+    if (provider === 'openai') {
+      const r = await fetch('https://api.openai.com/v1/models', {
+        headers: { Authorization: `Bearer ${apiKey}` },
+      });
+      if (!r.ok) throw new Error(`OpenAI: ${await r.text()}`);
+      const data = await r.json();
+      const models = data.data
+        .filter(m => m.id.includes('whisper') || m.id.includes('transcri'))
+        .map(m => ({ id: m.id, name: m.id }))
+        .sort((a,b) => a.id.localeCompare(b.id));
+      return res.json({ models });
+    }
+
+    if (provider === 'elevenlabs-models') {
+      const r = await fetch('https://api.elevenlabs.io/v1/models', {
+        headers: { 'xi-api-key': apiKey },
+      });
+      if (!r.ok) throw new Error(`ElevenLabs: ${await r.text()}`);
+      const data = await r.json();
+      const models = data.map(m => ({ id: m.model_id, name: m.name }));
+      return res.json({ models });
+    }
+
+    if (provider === 'elevenlabs-voices') {
+      const r = await fetch('https://api.elevenlabs.io/v1/voices', {
+        headers: { 'xi-api-key': apiKey },
+      });
+      if (!r.ok) throw new Error(`ElevenLabs: ${await r.text()}`);
+      const data = await r.json();
+      const models = data.voices.map(v => ({ id: v.voice_id, name: v.name }));
+      return res.json({ models });
+    }
+
+    if (provider === 'anthropic') {
+      const r = await fetch('https://api.anthropic.com/v1/models', {
+        headers: { 'x-api-key': apiKey, 'anthropic-version': '2023-06-01' },
+      });
+      if (!r.ok) throw new Error(`Anthropic: ${await r.text()}`);
+      const data = await r.json();
+      const models = data.data.map(m => ({ id: m.id, name: m.display_name || m.id }));
+      return res.json({ models });
+    }
+
+    res.status(400).json({ error: `Provider '${provider}' non supportato` });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
 // ─── Route: Test webhook (admin) ─────────────────────────────────────────────
 app.post('/api/admin/webhook-test', async (req, res) => {
   try {
