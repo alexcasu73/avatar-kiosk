@@ -26,6 +26,11 @@ db.exec(`
     camera_look_at_y  REAL DEFAULT 1.0,
     header_color      TEXT DEFAULT '#a0a0b8',
     header_font       TEXT DEFAULT '',
+    avatar_mode           TEXT DEFAULT 'embedded',
+    webhook_url           TEXT DEFAULT '',
+    webhook_input_template TEXT DEFAULT '{"query":"{{query}}"}',
+    webhook_output_field  TEXT DEFAULT 'response',
+    webhook_headers       TEXT DEFAULT '{}',
     idle_timeout      INTEGER DEFAULT 90,
     idle_icon         TEXT DEFAULT '🤖',
     idle_title        TEXT DEFAULT '',
@@ -52,6 +57,16 @@ if (!existing.includes('header_color'))
   db.exec("ALTER TABLE avatars ADD COLUMN header_color TEXT DEFAULT '#a0a0b8'");
 if (!existing.includes('header_font'))
   db.exec("ALTER TABLE avatars ADD COLUMN header_font TEXT DEFAULT ''");
+if (!existing.includes('avatar_mode'))
+  db.exec("ALTER TABLE avatars ADD COLUMN avatar_mode TEXT DEFAULT 'embedded'");
+if (!existing.includes('webhook_url'))
+  db.exec("ALTER TABLE avatars ADD COLUMN webhook_url TEXT DEFAULT ''");
+if (!existing.includes('webhook_input_template'))
+  db.exec(`ALTER TABLE avatars ADD COLUMN webhook_input_template TEXT DEFAULT '{"query":"{{query}}"}'`);
+if (!existing.includes('webhook_output_field'))
+  db.exec("ALTER TABLE avatars ADD COLUMN webhook_output_field TEXT DEFAULT 'response'");
+if (!existing.includes('webhook_headers'))
+  db.exec("ALTER TABLE avatars ADD COLUMN webhook_headers TEXT DEFAULT '{}'");
 if (!existing.includes('idle_timeout'))
   db.exec("ALTER TABLE avatars ADD COLUMN idle_timeout INTEGER DEFAULT 90");
 if (!existing.includes('chat_height'))

@@ -206,6 +206,7 @@ app.put('/api/admin/avatars/:id', (req, res) => {
                   'speech_start','speech_end','avatar_scale','avatar_offset_x','avatar_offset_y',
                   'avatar_rot_y','camera_z','camera_y','camera_look_at_y',
                   'overlay_color','overlay_opacity','overlay_height','chat_height','chat_bottom','chat_max_width','chat_align','chat_hide_input','show_logo','header_color','header_font',
+                  'avatar_mode','webhook_url','webhook_input_template','webhook_output_field','webhook_headers',
                   'idle_timeout','idle_icon','idle_title','idle_subtitle','idle_hint'];
   const updates = [];
   const values  = [];
@@ -303,13 +304,104 @@ app.post('/api/stt', multer({ storage: multer.memoryStorage() }).single('audio')
   }
 });
 
-// ─── Route: Chat (con supporto avatar specifico) ──────────────────────────────
+// ─── Route: Test webhook (admin) ─────────────────────────────────────────────
+app.post('/api/admin/webhook-test', async (req, res) => {
+  try {
+    const { url, inputTemplate, outputField, headers: extraHdrs, message } = req.body;
+    if (!url) return res.status(400).json({ error: 'URL mancante' });
+    const testMsg   = message || 'test';
+    const template  = inputTemplate || '{"query":"{{query}}"}';
+    const sid       = uuidv4();
+    const timestamp = new Date().toISOString();
+    const esc = s => s.replace(/\\/g,'\\\\').replace(/"/g,'\\"');
+    const jsonStr = template
+      .replace(/\{\{query\}\}/g,      esc(testMsg))
+      .replace(/\{\{session_id\}\}/g, esc(sid))
+      .replace(/\{\{user_id\}\}/g,    esc(uuidv4()))
+      .replace(/\{\{timestamp\}\}/g,  esc(timestamp))
+      .replace(/\{\{temp_id\}\}/g,    `temp_test_${Date.now()}`);
+    let body;
+    try { body = JSON.parse(jsonStr); } catch { return res.status(400).json({ error: 'Template JSON non valido' }); }
+    let extraHeaders = {};
+    try { extraHeaders = typeof extraHdrs === 'string' ? JSON.parse(extraHdrs) : (extraHdrs || {}); } catch {}
+    const whRes = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json', ...extraHeaders }, body: JSON.stringify(body) });
+    if (!whRes.ok) throw new Error(`HTTP ${whRes.status}: ${await whRes.text()}`);
+    const rawText = await whRes.text();
+    if (!rawText?.trim()) throw new Error('Body vuoto — aggiungi un nodo "Respond to Webhook" nel workflow n8n');
+    let data;
+    try { data = JSON.parse(rawText); } catch { throw new Error(`Risposta non è JSON valido: ${rawText.slice(0,200)}`); }
+    const reply = getNestedField(data, outputField || 'response');
+    if (reply == null) throw new Error(`Campo '${outputField}' non trovato.\nRisposta ricevuta:\n${JSON.stringify(data, null, 2)}`);
+    res.json({ reply: String(reply), raw: data });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// ─── Helper: estrae valore da oggetto con dot-notation (es. "output.text") ─────
+function getNestedField(obj, path) {
+  return path.split('.').reduce((cur, k) => {
+    if (cur == null) return undefined;
+    // Se il valore corrente è una stringa JSON, la parsa automaticamente
+    if (typeof cur === 'string') {
+      try { cur = JSON.parse(cur); } catch { return undefined; }
+    }
+    const idx = Number(k);
+    return Array.isArray(cur) && !isNaN(idx) ? cur[idx] : cur[k];
+  }, obj);
+}
+
+// ─── Route: Chat (embedded o webhook) ────────────────────────────────────────
 app.post('/api/chat', async (req, res) => {
   try {
     const { message, sessionId, avatarId } = req.body;
     if (!message) return res.status(400).json({ error: 'Messaggio mancante' });
 
     const avatar = getAvatarConfig(avatarId);
+
+    // ── Modalità Webhook ──────────────────────────────────────────────────────
+    if (avatar?.avatar_mode === 'webhook') {
+      const url      = avatar.webhook_url;
+      const template = avatar.webhook_input_template || '{"query":"{{query}}"}';
+      const outField = avatar.webhook_output_field   || 'response';
+      if (!url) return res.status(400).json({ error: 'Webhook URL non configurato' });
+
+      const sid       = sessionId || uuidv4();
+      const userId    = uuidv4();
+      const timestamp = new Date().toISOString();
+      const tempId    = `temp_${Date.now()}_${Math.random().toString(36).slice(2,8)}`;
+
+      const esc = s => s.replace(/\\/g,'\\\\').replace(/"/g,'\\"');
+      const jsonStr = template
+        .replace(/\{\{query\}\}/g,      esc(message))
+        .replace(/\{\{session_id\}\}/g, esc(sid))
+        .replace(/\{\{user_id\}\}/g,    esc(userId))
+        .replace(/\{\{timestamp\}\}/g,  esc(timestamp))
+        .replace(/\{\{temp_id\}\}/g,    esc(tempId));
+
+      let body;
+      try { body = JSON.parse(jsonStr); }
+      catch { return res.status(400).json({ error: 'Template JSON non valido' }); }
+
+      let extraHeaders = {};
+      try { extraHeaders = JSON.parse(avatar.webhook_headers || '{}'); } catch {}
+
+      const whRes = await fetch(url, {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json', ...extraHeaders },
+        body:    JSON.stringify(body),
+      });
+      if (!whRes.ok) throw new Error(`Webhook error ${whRes.status}: ${await whRes.text()}`);
+      const rawText = await whRes.text();
+      if (!rawText?.trim()) throw new Error('Il webhook ha risposto con body vuoto — assicurati che il workflow n8n abbia un nodo "Respond to Webhook"');
+      let whData;
+      try { whData = JSON.parse(rawText); } catch { throw new Error(`Risposta non è JSON valido: ${rawText.slice(0,200)}`); }
+      const reply  = getNestedField(whData, outField);
+      if (reply == null) throw new Error(`Campo '${outField}' non trovato. Risposta: ${JSON.stringify(whData)}`);
+      return res.json({ reply: String(reply), sessionId: sid });
+    }
+
+    // ── Modalità Embedded (Claude) ────────────────────────────────────────────
     const baseName   = avatar?.name || AVATAR_NAME;
     const basePrompt = avatar?.system_prompt || DEFAULT_SYSTEM_PROMPT;
     const systemPrompt = `Il tuo nome è ${baseName}. Non presentarti ad ogni risposta.\n\n${basePrompt}`;
@@ -328,7 +420,7 @@ app.post('/api/chat', async (req, res) => {
     history.push({ role: 'assistant', content: reply });
     res.json({ reply, sessionId: sid });
   } catch (error) {
-    console.error('Claude error:', error);
+    console.error('Chat error:', error);
     res.status(500).json({ error: error.message });
   }
 });

@@ -329,6 +329,43 @@
         </div>
       </div>
 
+      <!-- Modalità AI -->
+      <div class="section">
+        <h3>Modalità AI</h3>
+        <div class="field" style="margin-bottom:16px">
+          <div class="btn-row" style="gap:6px">
+            <button id="mode-embedded-btn" class="btn btn-neutral active" onclick="setAvatarMode('embedded')">⚙️ Embedded</button>
+            <button id="mode-webhook-btn"  class="btn btn-neutral"        onclick="setAvatarMode('webhook')">🔗 Webhook</button>
+          </div>
+        </div>
+        <div id="webhook-fields" style="display:none">
+          <div class="field">
+            <label>Webhook URL</label>
+            <input type="text" id="f-webhook-url" placeholder="https://n8n.example.com/webhook/..."/>
+          </div>
+          <div class="field">
+            <label>JSON di input <span class="hint" style="margin:0">usa <code>{{query}}</code> dove va la domanda</span></label>
+            <textarea id="f-webhook-input-template" rows="4"
+              style="width:100%;font-family:monospace;font-size:.8rem;background:#0a0a0f;border:1px solid var(--border);border-radius:8px;color:#e0e0e0;padding:10px;resize:vertical"
+              placeholder='{"query":"{{query}}"}'
+            >{"query":"{{query}}"}</textarea>
+          </div>
+          <div class="field">
+            <label>Campo output <span class="hint" style="margin:0">(dove leggere la risposta — dot-notation es. <code>output.text</code>)</span></label>
+            <input type="text" id="f-webhook-output-field" placeholder="response" value="response"/>
+          </div>
+          <div class="field">
+            <label>Header HTTP custom <span class="hint" style="margin:0">(JSON, es. per autenticazione)</span></label>
+            <textarea id="f-webhook-headers" rows="3"
+              style="width:100%;font-family:monospace;font-size:.8rem;background:#0a0a0f;border:1px solid var(--border);border-radius:8px;color:#e0e0e0;padding:10px;resize:vertical"
+              placeholder='{"Authorization":"Bearer xxx"}'
+            >{}</textarea>
+          </div>
+          <button class="btn btn-neutral" style="margin-top:4px" onclick="testWebhook()">🧪 Testa webhook</button>
+          <div id="webhook-test-result" style="margin-top:8px;font-size:.78rem;color:var(--text-dim)"></div>
+        </div>
+      </div>
+
       <!-- Dati base -->
       <div class="section">
         <h3>Configurazione</h3>
@@ -675,6 +712,12 @@ function selectAvatar(id) {
   document.getElementById('editor-title').textContent = a.name;
 
   // Campi testo
+  setAvatarMode(a.avatar_mode || 'embedded');
+  document.getElementById('f-webhook-url').value              = a.webhook_url              || '';
+  document.getElementById('f-webhook-input-template').value   = a.webhook_input_template   || '{"query":"{{query}}"}';
+  document.getElementById('f-webhook-output-field').value     = a.webhook_output_field     || 'response';
+  document.getElementById('f-webhook-headers').value          = a.webhook_headers          || '{}';
+  document.getElementById('webhook-test-result').textContent = '';
   document.getElementById('f-name').value    = a.name;
   document.getElementById('f-voice-id').value= a.voice_id || '';
   document.getElementById('f-prompt').value  = a.system_prompt || '';
@@ -908,6 +951,11 @@ async function createAvatar() {
 async function saveAvatar() {
   if (!currentId) return;
   const body = {
+    avatar_mode:          setAvatarMode._current,
+    webhook_url:             document.getElementById('f-webhook-url').value.trim(),
+    webhook_input_template:  document.getElementById('f-webhook-input-template').value.trim() || '{"query":"{{query}}"}',
+    webhook_output_field:    document.getElementById('f-webhook-output-field').value.trim() || 'response',
+    webhook_headers:         document.getElementById('f-webhook-headers').value.trim() || '{}',
     name:            document.getElementById('f-name').value,
     voice_id:        document.getElementById('f-voice-id').value,
     system_prompt:   document.getElementById('f-prompt').value,
@@ -1026,6 +1074,35 @@ function openKiosk() {
   if (!currentId) return;
   window.open(`/k/${currentId}`, '_blank');
 }
+function setAvatarMode(mode) {
+  ['embedded','webhook'].forEach(m => {
+    document.getElementById(`mode-${m}-btn`).classList.toggle('active', m === mode);
+  });
+  document.getElementById('webhook-fields').style.display = mode === 'webhook' ? 'block' : 'none';
+  setAvatarMode._current = mode;
+}
+setAvatarMode._current = 'embedded';
+
+async function testWebhook() {
+  const url           = document.getElementById('f-webhook-url').value.trim();
+  const inputTemplate = document.getElementById('f-webhook-input-template').value.trim();
+  const outputField   = document.getElementById('f-webhook-output-field').value.trim() || 'response';
+  const headers       = document.getElementById('f-webhook-headers').value.trim();
+  const result        = document.getElementById('webhook-test-result');
+  if (!url) { result.textContent = '⚠️ Inserisci un URL'; return; }
+  result.textContent = '⏳ Test in corso...';
+  try {
+    const res  = await api.post('/api/admin/webhook-test', { url, inputTemplate, outputField, headers, message: 'test' });
+    result.style.color = res.reply !== 'undefined' ? 'var(--success)' : 'var(--error)';
+    result.textContent = res.reply !== 'undefined'
+      ? `✅ Risposta: "${res.reply}"`
+      : `⚠️ Campo output non trovato — risposta grezza: ${JSON.stringify(res)}`;
+  } catch (e) {
+    result.style.color = 'var(--error)';
+    result.textContent = `❌ ${e.message}`;
+  }
+}
+
 function setChatAlign(val) {
   ['left','center','right'].forEach(a => {
     document.getElementById(`align-${a}-btn`).classList.toggle('active', a === val);
