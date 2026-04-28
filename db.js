@@ -34,9 +34,11 @@ db.exec(`
     tts_stability         REAL DEFAULT -1,
     tts_similarity        REAL DEFAULT -1,
     ai_provider           TEXT DEFAULT 'anthropic',
-    ai_api_key            TEXT DEFAULT '',
-    ai_model              TEXT DEFAULT '',
     ai_max_tokens         INTEGER DEFAULT 0,
+    anthropic_api_key     TEXT DEFAULT '',
+    anthropic_model       TEXT DEFAULT '',
+    openai_api_key        TEXT DEFAULT '',
+    openai_model          TEXT DEFAULT '',
     avatar_mode           TEXT DEFAULT 'embedded',
     webhook_url           TEXT DEFAULT '',
     webhook_input_template TEXT DEFAULT '{"query":"{{query}}"}',
@@ -75,10 +77,18 @@ if (!existing.includes('tts_api_key'))     db.exec("ALTER TABLE avatars ADD COLU
 if (!existing.includes('tts_model'))       db.exec("ALTER TABLE avatars ADD COLUMN tts_model TEXT DEFAULT ''");
 if (!existing.includes('tts_stability'))   db.exec("ALTER TABLE avatars ADD COLUMN tts_stability REAL DEFAULT -1");
 if (!existing.includes('tts_similarity'))  db.exec("ALTER TABLE avatars ADD COLUMN tts_similarity REAL DEFAULT -1");
-if (!existing.includes('ai_provider'))   db.exec("ALTER TABLE avatars ADD COLUMN ai_provider TEXT DEFAULT 'anthropic'");
-if (!existing.includes('ai_api_key'))      db.exec("ALTER TABLE avatars ADD COLUMN ai_api_key TEXT DEFAULT ''");
-if (!existing.includes('ai_model'))        db.exec("ALTER TABLE avatars ADD COLUMN ai_model TEXT DEFAULT ''");
-if (!existing.includes('ai_max_tokens'))   db.exec("ALTER TABLE avatars ADD COLUMN ai_max_tokens INTEGER DEFAULT 0");
+if (!existing.includes('ai_provider'))      db.exec("ALTER TABLE avatars ADD COLUMN ai_provider TEXT DEFAULT 'anthropic'");
+if (!existing.includes('ai_max_tokens'))    db.exec("ALTER TABLE avatars ADD COLUMN ai_max_tokens INTEGER DEFAULT 0");
+if (!existing.includes('anthropic_api_key')) db.exec("ALTER TABLE avatars ADD COLUMN anthropic_api_key TEXT DEFAULT ''");
+if (!existing.includes('anthropic_model'))   db.exec("ALTER TABLE avatars ADD COLUMN anthropic_model TEXT DEFAULT ''");
+if (!existing.includes('openai_api_key'))    db.exec("ALTER TABLE avatars ADD COLUMN openai_api_key TEXT DEFAULT ''");
+if (!existing.includes('openai_model'))      db.exec("ALTER TABLE avatars ADD COLUMN openai_model TEXT DEFAULT ''");
+// Migra vecchi campi ai_api_key/ai_model se presenti
+if (existing.includes('ai_api_key')) {
+  db.exec("UPDATE avatars SET anthropic_api_key = ai_api_key WHERE anthropic_api_key = '' AND ai_api_key != ''");
+  db.exec("UPDATE avatars SET anthropic_model = ai_model WHERE anthropic_model = '' AND ai_model != '' AND ai_provider = 'anthropic'");
+  db.exec("UPDATE avatars SET openai_model = ai_model WHERE openai_model = '' AND ai_model != '' AND ai_provider = 'openai'");
+}
 if (!existing.includes('avatar_mode'))
   db.exec("ALTER TABLE avatars ADD COLUMN avatar_mode TEXT DEFAULT 'embedded'");
 if (!existing.includes('webhook_url'))

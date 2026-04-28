@@ -214,7 +214,7 @@ app.put('/api/admin/avatars/:id', (req, res) => {
                   'overlay_color','overlay_opacity','overlay_height','chat_height','chat_bottom','chat_max_width','chat_align','chat_hide_input','show_logo','header_color','header_font',
                   'stt_api_key','stt_model','stt_language',
                   'tts_api_key','tts_model','tts_stability','tts_similarity',
-                  'ai_provider','ai_api_key','ai_model','ai_max_tokens',
+                  'ai_provider','ai_max_tokens','anthropic_api_key','anthropic_model','openai_api_key','openai_model',
                   'avatar_mode','webhook_url','webhook_input_template','webhook_output_field','webhook_headers',
                   'idle_timeout','idle_icon','idle_title','idle_subtitle','idle_hint'];
   const updates = [];
@@ -504,8 +504,8 @@ app.post('/api/chat', async (req, res) => {
     let reply;
 
     if (aiProvider === 'openai') {
-      const aiKey   = avatar?.ai_api_key || process.env.OPENAI_API_KEY;
-      const aiModel = avatar?.ai_model   || 'gpt-4o';
+      const aiKey   = avatar?.openai_api_key || process.env.OPENAI_API_KEY;
+      const aiModel = avatar?.openai_model   || 'gpt-4o';
       const msgs = [{ role: 'system', content: systemPrompt }, ...history];
       const r = await fetch('https://api.openai.com/v1/chat/completions', {
         method: 'POST',
@@ -516,8 +516,8 @@ app.post('/api/chat', async (req, res) => {
       const data = await r.json();
       reply = data.choices[0].message.content;
     } else {
-      const aiKey   = avatar?.ai_api_key || process.env.ANTHROPIC_API_KEY;
-      const aiModel = avatar?.ai_model   || CLAUDE_MODEL;
+      const aiKey   = avatar?.anthropic_api_key || process.env.ANTHROPIC_API_KEY;
+      const aiModel = avatar?.anthropic_model   || CLAUDE_MODEL;
       const aiClient = aiKey !== process.env.ANTHROPIC_API_KEY
         ? new Anthropic({ apiKey: aiKey }) : anthropic;
       const response = await aiClient.messages.create({

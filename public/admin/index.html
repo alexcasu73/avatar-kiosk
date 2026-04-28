@@ -279,6 +279,30 @@
     .mini-btn.accent { color:var(--accent2); border-color:var(--accent); }
     .mini-btn.active { background:var(--accent); color:#fff; border-color:var(--accent); }
 
+    /* ── Provider cards ─────────────────────────── */
+    .provider-card {
+      border:2px solid var(--border); border-radius:12px;
+      padding:14px 16px; display:flex; flex-direction:column; gap:10px;
+      transition:border-color .2s, background .2s;
+      position:relative;
+    }
+    .provider-card.active {
+      border-color:var(--accent);
+      background:rgba(108,99,255,.06);
+    }
+    .provider-card-header {
+      display:flex; align-items:center; justify-content:space-between;
+    }
+    .provider-name {
+      font-size:.8rem; font-weight:700; letter-spacing:.04em;
+    }
+    .provider-badge {
+      font-size:.65rem; font-weight:700; padding:2px 8px;
+      border-radius:10px; letter-spacing:.06em;
+      background:var(--accent); color:#fff;
+    }
+    .provider-badge.hidden { display:none; }
+
     /* ── Model loader ───────────────────────────── */
     .model-row { display:flex; gap:6px; align-items:center; width:100%; }
     .model-row input, .model-row select { flex:1; min-width:0; }
@@ -575,31 +599,55 @@
         <!-- AI Agent -->
         <div class="section" id="ai-agent-section">
           <h3>AI Agent</h3>
-          <p style="font-size:.72rem;color:var(--text-dim);margin-bottom:12px">Attivo solo in modalità Embedded. Lascia vuoto per i default da <code>.env</code></p>
-          <div class="field" style="margin-bottom:12px">
-            <label>Provider</label>
-            <div style="display:flex;gap:6px">
-              <button id="ai-provider-anthropic" class="btn btn-neutral active" style="flex:1" onclick="setAiProvider('anthropic')">Anthropic</button>
-              <button id="ai-provider-openai"    class="btn btn-neutral"        style="flex:1" onclick="setAiProvider('openai')">OpenAI</button>
+          <p style="font-size:.72rem;color:var(--text-dim);margin-bottom:14px">Attivo in modalità Embedded. Lascia vuoto per i default da <code>.env</code></p>
+
+          <div style="display:flex;flex-direction:column;gap:10px">
+
+            <!-- Anthropic -->
+            <div class="provider-card active" id="card-anthropic">
+              <div class="provider-card-header">
+                <span class="provider-name">Anthropic — Claude</span>
+                <span class="provider-badge" id="badge-anthropic">● IN USO</span>
+              </div>
+              <div class="field">
+                <label>API Key</label>
+                <input type="password" id="f-anthropic-api-key" placeholder="default da .env"/>
+              </div>
+              <div class="field">
+                <label>Modello</label>
+                <div class="model-row">
+                  <input type="text" id="f-anthropic-model" placeholder="claude-sonnet-4-6"/>
+                  <button class="btn btn-neutral btn-load" onclick="loadModels('anthropic','f-anthropic-api-key','f-anthropic-model')">⟳ Carica</button>
+                </div>
+              </div>
+              <button class="btn btn-neutral" onclick="setAiProvider('anthropic')" id="use-anthropic-btn" style="display:none">Usa Anthropic</button>
             </div>
+
+            <!-- OpenAI -->
+            <div class="provider-card" id="card-openai">
+              <div class="provider-card-header">
+                <span class="provider-name">OpenAI — GPT</span>
+                <span class="provider-badge hidden" id="badge-openai">● IN USO</span>
+              </div>
+              <div class="field">
+                <label>API Key</label>
+                <input type="password" id="f-openai-api-key" placeholder="default da .env"/>
+              </div>
+              <div class="field">
+                <label>Modello</label>
+                <div class="model-row">
+                  <input type="text" id="f-openai-model" placeholder="gpt-4o"/>
+                  <button class="btn btn-neutral btn-load" onclick="loadModels('openai-gpt','f-openai-api-key','f-openai-model')">⟳ Carica</button>
+                </div>
+              </div>
+              <button class="btn btn-neutral" onclick="setAiProvider('openai')" id="use-openai-btn">Usa OpenAI</button>
+            </div>
+
           </div>
-          <div class="fields" style="gap:12px;margin-bottom:12px">
-            <div class="field">
-              <label>API Key</label>
-              <input type="password" id="f-ai-api-key" placeholder="default da .env"/>
-            </div>
-            <div class="field">
-              <label>Max tokens <span class="hint" style="margin:0">(0 = default)</span></label>
-              <input type="number" id="f-ai-max-tokens" placeholder="512" min="0" max="4096"/>
-            </div>
-          </div>
-          <div class="field">
-            <label>Modello</label>
-            <div class="model-row">
-              <input type="text" id="f-ai-model" placeholder="claude-sonnet-4-6"/>
-              <button class="btn btn-neutral btn-load" id="btn-load-ai-model"
-                onclick="loadModels(setAiProvider._current==='openai'?'openai-gpt':'anthropic','f-ai-api-key','f-ai-model')">⟳ Carica</button>
-            </div>
+
+          <div class="field" style="margin-top:12px">
+            <label>Max tokens <span class="hint" style="margin:0">(0 = default .env)</span></label>
+            <input type="number" id="f-ai-max-tokens" placeholder="512" min="0" max="4096"/>
           </div>
         </div>
 
@@ -928,9 +976,11 @@ function selectAvatar(id) {
   document.getElementById('v-tts-similarity').textContent = sim.toFixed(2);
   // AI Agent
   setAiProvider(a.ai_provider || 'anthropic');
-  document.getElementById('f-ai-api-key').value   = a.ai_api_key   || '';
-  document.getElementById('f-ai-model').value     = a.ai_model     || '';
-  document.getElementById('f-ai-max-tokens').value= a.ai_max_tokens > 0 ? a.ai_max_tokens : '';
+  document.getElementById('f-anthropic-api-key').value = a.anthropic_api_key || '';
+  document.getElementById('f-anthropic-model').value   = a.anthropic_model   || '';
+  document.getElementById('f-openai-api-key').value    = a.openai_api_key    || '';
+  document.getElementById('f-openai-model').value      = a.openai_model      || '';
+  document.getElementById('f-ai-max-tokens').value     = a.ai_max_tokens > 0 ? a.ai_max_tokens : '';
   document.getElementById('f-prompt').value  = a.system_prompt || '';
 
   // Sfondo
@@ -1172,10 +1222,12 @@ async function saveAvatar() {
     tts_model:       document.getElementById('f-tts-model').value.trim(),
     tts_stability:   parseFloat(document.getElementById('s-tts-stability').value),
     tts_similarity:  parseFloat(document.getElementById('s-tts-similarity').value),
-    ai_provider:     setAiProvider._current,
-    ai_api_key:      document.getElementById('f-ai-api-key').value.trim(),
-    ai_model:        document.getElementById('f-ai-model').value.trim(),
-    ai_max_tokens:   parseInt(document.getElementById('f-ai-max-tokens').value) || 0,
+    ai_provider:        setAiProvider._current,
+    anthropic_api_key:  document.getElementById('f-anthropic-api-key').value.trim(),
+    anthropic_model:    document.getElementById('f-anthropic-model').value.trim(),
+    openai_api_key:     document.getElementById('f-openai-api-key').value.trim(),
+    openai_model:       document.getElementById('f-openai-model').value.trim(),
+    ai_max_tokens:      parseInt(document.getElementById('f-ai-max-tokens').value) || 0,
     avatar_mode:          setAvatarMode._current,
     webhook_url:             document.getElementById('f-webhook-url').value.trim(),
     webhook_input_template:  document.getElementById('f-webhook-input-template').value.trim() || '{"query":"{{query}}"}',
@@ -1354,12 +1406,12 @@ function switchTab(name) {
 function setAiProvider(provider) {
   setAiProvider._current = provider;
   ['anthropic','openai'].forEach(p => {
-    document.getElementById(`ai-provider-${p}`)
-      .classList.toggle('active', p === provider);
+    const active = p === provider;
+    document.getElementById(`card-${p}`).classList.toggle('active', active);
+    document.getElementById(`badge-${p}`).classList.toggle('hidden', !active);
+    const useBtn = document.getElementById(`use-${p}-btn`);
+    if (useBtn) useBtn.style.display = active ? 'none' : '';
   });
-  const placeholders = { anthropic: 'claude-sonnet-4-6', openai: 'gpt-4o' };
-  const modelInput = document.getElementById('f-ai-model');
-  if (modelInput.tagName === 'INPUT') modelInput.placeholder = placeholders[provider];
 }
 setAiProvider._current = 'anthropic';
 
