@@ -376,7 +376,6 @@
     .tab-bar {
       display:flex; gap:2px;
       background:var(--surface2); border-radius:10px; padding:3px;
-      margin-bottom:16px; position:sticky; top:56px; z-index:9;
     }
     .tab-btn {
       flex:1; padding:7px 4px; border:none; border-radius:8px;
@@ -440,12 +439,15 @@
       </div>
 
       <!-- Tab bar -->
-      <div class="tab-bar">
-        <button class="tab-btn active" onclick="switchTab('generale')">Generale</button>
-        <button class="tab-btn"        onclick="switchTab('ai')">AI</button>
-        <button class="tab-btn"        onclick="switchTab('aspetto')">Aspetto</button>
-        <button class="tab-btn"        onclick="switchTab('avatar3d')">Avatar 3D</button>
-        <button class="tab-btn" onclick="toggleAllSections()" id="expand-all-btn" style="color:var(--accent2)">Espandi</button>
+      <div style="display:flex;gap:8px;align-items:center;margin-bottom:16px;position:sticky;top:56px;z-index:9">
+        <div class="tab-bar" style="flex:1;margin-bottom:0">
+          <button class="tab-btn active" onclick="switchTab('generale')">Generale</button>
+          <button class="tab-btn"        onclick="switchTab('ai')">AI</button>
+          <button class="tab-btn"        onclick="switchTab('aspetto')">Aspetto</button>
+          <button class="tab-btn"        onclick="switchTab('avatar3d')">Avatar 3D</button>
+        </div>
+        <button class="btn btn-neutral" onclick="toggleAllSections()" id="expand-all-btn"
+          style="font-size:.72rem;padding:7px 12px;flex-shrink:0">Espandi</button>
       </div>
 
       <!-- ═══ TAB: GENERALE ════════════════════════════════════════════════════ -->
