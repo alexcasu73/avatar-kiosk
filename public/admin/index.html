@@ -364,21 +364,23 @@
           <button class="btn btn-neutral" style="margin-top:4px" onclick="testWebhook()">🧪 Testa webhook</button>
           <div id="webhook-test-result" style="margin-top:8px;font-size:.78rem;color:var(--text-dim)"></div>
         </div>
+
+        <div style="border-top:1px solid var(--border);margin-top:16px;padding-top:16px">
+          <div class="field" style="margin-bottom:12px">
+            <label>Nome avatar</label>
+            <input type="text" id="f-name" placeholder="Es. Sofia"/>
+          </div>
+          <div class="field">
+            <label>ElevenLabs Voice ID</label>
+            <input type="text" id="f-voice-id" placeholder="dNeMsqRAC759PyIQ40Vf"/>
+          </div>
+        </div>
       </div>
 
-      <!-- Dati base -->
+      <!-- System Prompt -->
       <div class="section">
-        <h3>Configurazione</h3>
-        <div class="field" style="margin-bottom:12px">
-          <label>Nome avatar</label>
-          <input type="text" id="f-name" placeholder="Es. Sofia"/>
-        </div>
-        <div class="field" style="margin-bottom:12px">
-          <label>ElevenLabs Voice ID</label>
-          <input type="text" id="f-voice-id" placeholder="dNeMsqRAC759PyIQ40Vf"/>
-        </div>
+        <h3>System Prompt</h3>
         <div class="field">
-          <label>System Prompt</label>
           <textarea id="f-prompt" placeholder="Sei Sofia, un'assistente virtuale..."></textarea>
         </div>
       </div>
