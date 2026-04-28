@@ -89,7 +89,7 @@
 
     /* ─── Loading spinner ───────────────────────── */
     #avatar-loader {
-      position: absolute; inset: 0; z-index: 5;
+      position: fixed; inset: 0; z-index: 999;
       display: flex; flex-direction: column;
       align-items: center; justify-content: center; gap: 16px;
       background: var(--bg); transition: opacity .5s;
@@ -581,11 +581,12 @@
   </div>
 
     <!-- Avatar -->
+    <div id="avatar-loader">
+      <div class="loader-ring"></div>
+      <span class="loader-text">Caricamento avatar…</span>
+    </div>
+
     <div id="avatar-panel">
-      <div id="avatar-loader">
-        <div class="loader-ring"></div>
-        <span class="loader-text">Caricamento avatar…</span>
-      </div>
       <canvas id="avatar-canvas"></canvas>
 
       <!-- Pannello impostazioni avatar -->
