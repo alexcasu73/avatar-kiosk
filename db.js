@@ -24,6 +24,8 @@ db.exec(`
     camera_z          REAL DEFAULT 3.5,
     camera_y          REAL DEFAULT 1.0,
     camera_look_at_y  REAL DEFAULT 1.0,
+    header_color      TEXT DEFAULT '#a0a0b8',
+    header_font       TEXT DEFAULT '',
     idle_timeout      INTEGER DEFAULT 90,
     idle_icon         TEXT DEFAULT '🤖',
     idle_title        TEXT DEFAULT '',
@@ -46,6 +48,10 @@ db.exec(`
 
 // Migrazione: aggiunge colonne mancanti su DB esistenti
 const existing = db.prepare("PRAGMA table_info(avatars)").all().map(c => c.name);
+if (!existing.includes('header_color'))
+  db.exec("ALTER TABLE avatars ADD COLUMN header_color TEXT DEFAULT '#a0a0b8'");
+if (!existing.includes('header_font'))
+  db.exec("ALTER TABLE avatars ADD COLUMN header_font TEXT DEFAULT ''");
 if (!existing.includes('idle_timeout'))
   db.exec("ALTER TABLE avatars ADD COLUMN idle_timeout INTEGER DEFAULT 90");
 if (!existing.includes('chat_height'))

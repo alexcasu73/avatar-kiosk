@@ -31,6 +31,25 @@ const DEFAULT_VOICE_ID = process.env.ELEVENLABS_VOICE_ID || '';
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 const sessions  = new Map();
 
+// ─── Admin auth ───────────────────────────────────────────────────────────────
+const ADMIN_USER     = process.env.ADMIN_USER     || 'admin';
+const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'changeme';
+const adminTokens    = new Map(); // token → expiry
+
+function genToken() { return uuidv4() + uuidv4(); }
+function isAdminAuth(req) {
+  const token = req.headers.cookie?.match(/admin_token=([^;]+)/)?.[1];
+  if (!token) return false;
+  const exp = adminTokens.get(token);
+  if (!exp || Date.now() > exp) { adminTokens.delete(token); return false; }
+  return true;
+}
+function requireAdmin(req, res, next) {
+  if (isAdminAuth(req)) return next();
+  if (req.path.startsWith('/api/')) return res.status(401).json({ error: 'Non autorizzato' });
+  res.redirect('/admin/login');
+}
+
 app.use(cors());
 app.use(express.json());
 app.use(express.static(join(__dirname, 'public')));
@@ -69,12 +88,12 @@ app.get('/api/avatar/:id', (req, res) => {
   const { id, name, background, model_file, idle_start, idle_end,
           speech_start, speech_end, avatar_scale, avatar_offset_x,
           avatar_offset_y, avatar_rot_y, camera_z, camera_y, camera_look_at_y,
-          overlay_color, overlay_opacity, overlay_height, chat_height, chat_bottom, chat_max_width, chat_align, chat_hide_input, show_logo,
+          overlay_color, overlay_opacity, overlay_height, chat_height, chat_bottom, chat_max_width, chat_align, chat_hide_input, show_logo, header_color, header_font,
           idle_timeout, idle_icon, idle_title, idle_subtitle, idle_hint } = avatar;
   res.json({ id, name, background, model_file, idle_start, idle_end,
              speech_start, speech_end, avatar_scale, avatar_offset_x,
              avatar_offset_y, avatar_rot_y, camera_z, camera_y, camera_look_at_y,
-             overlay_color, overlay_opacity, overlay_height, chat_height, chat_bottom, chat_max_width, chat_align, chat_hide_input, show_logo,
+             overlay_color, overlay_opacity, overlay_height, chat_height, chat_bottom, chat_max_width, chat_align, chat_hide_input, show_logo, header_color, header_font, header_color, header_font,
              idle_timeout, idle_icon, idle_title, idle_subtitle, idle_hint });
 });
 
@@ -98,21 +117,76 @@ app.get('/api/preview/:id', (req, res) => {
   const { id, name, background, model_file, idle_start, idle_end,
           speech_start, speech_end, avatar_scale, avatar_offset_x,
           avatar_offset_y, avatar_rot_y, camera_z, camera_y, camera_look_at_y,
-          overlay_color, overlay_opacity, overlay_height, chat_height, chat_bottom, chat_max_width, chat_align, chat_hide_input, show_logo,
+          overlay_color, overlay_opacity, overlay_height, chat_height, chat_bottom, chat_max_width, chat_align, chat_hide_input, show_logo, header_color, header_font,
           idle_timeout, idle_icon, idle_title, idle_subtitle, idle_hint } = avatar;
   res.json({ id, name, background, model_file, idle_start, idle_end,
              speech_start, speech_end, avatar_scale, avatar_offset_x,
              avatar_offset_y, avatar_rot_y, camera_z, camera_y, camera_look_at_y,
-             overlay_color, overlay_opacity, overlay_height, chat_height, chat_bottom, chat_max_width, chat_align, chat_hide_input, show_logo,
+             overlay_color, overlay_opacity, overlay_height, chat_height, chat_bottom, chat_max_width, chat_align, chat_hide_input, show_logo, header_color, header_font, header_color, header_font,
              idle_timeout, idle_icon, idle_title, idle_subtitle, idle_hint });
 });
 
+// ─── Route: Admin login ───────────────────────────────────────────────────────
+app.get('/admin/login', (req, res) => {
+  if (isAdminAuth(req)) return res.redirect('/admin');
+  res.send(`<!DOCTYPE html><html lang="it"><head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Admin Login</title>
+<style>
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{min-height:100vh;display:flex;align-items:center;justify-content:center;
+       background:#0a0a0f;font-family:system-ui,sans-serif;color:#e0e0e0}
+  .card{background:#13131a;border:1px solid #2a2a3a;border-radius:16px;padding:40px;width:340px}
+  h1{font-size:1.2rem;font-weight:700;margin-bottom:28px;color:#fff;letter-spacing:.05em}
+  label{display:block;font-size:.75rem;color:#888;margin-bottom:6px}
+  input{width:100%;padding:10px 14px;background:#0a0a0f;border:1px solid #2a2a3a;
+        border-radius:8px;color:#e0e0e0;font-size:.95rem;margin-bottom:18px;outline:none}
+  input:focus{border-color:#6c63ff}
+  button{width:100%;padding:12px;background:#6c63ff;color:#fff;border:none;
+         border-radius:8px;font-size:1rem;font-weight:600;cursor:pointer}
+  button:hover{background:#857af7}
+  .err{color:#f87171;font-size:.82rem;margin-top:14px;text-align:center}
+</style></head><body>
+<div class="card">
+  <h1>🔐 Avatar Kiosk Admin</h1>
+  <form method="POST" action="/admin/login">
+    <label>Username</label>
+    <input type="text" name="username" autocomplete="username" required autofocus/>
+    <label>Password</label>
+    <input type="password" name="password" autocomplete="current-password" required/>
+    <button type="submit">Accedi</button>
+    ${req.query.err ? '<p class="err">Credenziali non valide</p>' : ''}
+  </form>
+</div></body></html>`);
+});
+
+app.use(express.urlencoded({ extended: false }));
+
+app.post('/admin/login', (req, res) => {
+  const { username, password } = req.body;
+  if (username !== ADMIN_USER || password !== ADMIN_PASSWORD)
+    return res.redirect('/admin/login?err=1');
+  const token = genToken();
+  adminTokens.set(token, Date.now() + 8 * 60 * 60 * 1000); // 8 ore
+  res.setHeader('Set-Cookie', `admin_token=${token}; HttpOnly; Path=/; SameSite=Strict; Max-Age=28800`);
+  res.redirect('/admin');
+});
+
+app.post('/admin/logout', (req, res) => {
+  const token = req.headers.cookie?.match(/admin_token=([^;]+)/)?.[1];
+  if (token) adminTokens.delete(token);
+  res.setHeader('Set-Cookie', 'admin_token=; HttpOnly; Path=/; Max-Age=0');
+  res.redirect('/admin/login');
+});
+
 // ─── Route: Admin page ────────────────────────────────────────────────────────
-app.get('/admin', (req, res) => {
+app.get('/admin', requireAdmin, (req, res) => {
   res.sendFile(join(__dirname, 'public', 'admin', 'index.html'));
 });
 
 // ─── CRUD Avatar ──────────────────────────────────────────────────────────────
+app.use('/api/admin', requireAdmin);
+
 app.get('/api/admin/avatars', (req, res) => {
   const avatars = db.prepare('SELECT * FROM avatars ORDER BY created_at DESC').all();
   res.json(avatars);
@@ -131,7 +205,7 @@ app.put('/api/admin/avatars/:id', (req, res) => {
   const fields = ['name','voice_id','system_prompt','background','idle_start','idle_end',
                   'speech_start','speech_end','avatar_scale','avatar_offset_x','avatar_offset_y',
                   'avatar_rot_y','camera_z','camera_y','camera_look_at_y',
-                  'overlay_color','overlay_opacity','overlay_height','chat_height','chat_bottom','chat_max_width','chat_align','chat_hide_input','show_logo',
+                  'overlay_color','overlay_opacity','overlay_height','chat_height','chat_bottom','chat_max_width','chat_align','chat_hide_input','show_logo','header_color','header_font',
                   'idle_timeout','idle_icon','idle_title','idle_subtitle','idle_hint'];
   const updates = [];
   const values  = [];

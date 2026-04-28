@@ -47,7 +47,7 @@
       font-size: 1rem;
       font-weight: 700;
       letter-spacing: 0.1em;
-      color: var(--accent2);
+      color: var(--header-color, var(--accent2));
     }
 
     #status-chip {
@@ -77,7 +77,7 @@
 
     #status-label {
       font-size: 0.78rem;
-      color: var(--text-dim);
+      color: var(--header-color, var(--text-dim));
       white-space: nowrap;
     }
 
@@ -301,7 +301,7 @@
     .typing-indicator span:nth-child(3) { animation-delay: 0.4s; }
 
     /* ─── VAD Status bar ────────────────────────────── */
-    #vad-section { padding: 10px 24px; display: flex; flex-direction: column; align-items: center; gap: 8px; position: relative; z-index: 22; }
+    #vad-section { display: flex; flex-direction: column; align-items: flex-end; gap: 4px; pointer-events: none; }
 
     #vad-bars {
       display: flex;
@@ -313,7 +313,7 @@
     .vad-bar {
       width: 4px;
       border-radius: 2px;
-      background: var(--border);
+      background: var(--header-color, var(--border));
       height: 6px;
       transition: height 0.08s ease, background 0.2s;
     }
@@ -322,9 +322,9 @@
     #vad-bars.recording .vad-bar { background: var(--error); }
 
     #vad-label {
-      font-size: 0.82rem;
-      color: var(--text-dim);
-      text-align: center;
+      font-size: 0.78rem;
+      color: var(--header-color, var(--text-dim));
+      text-align: right;
     }
 
     /* ─── Input testuale (fallback) ─────────────────── */
@@ -547,9 +547,15 @@
   <!-- Header -->
   <div id="header">
     <div class="logo">AVATAR KIOSK</div>
-    <div id="status-chip">
-      <div class="status-dot" id="status-dot"></div>
-      <span id="status-label">In attesa...</span>
+    <div style="display:flex;flex-direction:column;align-items:flex-end;gap:8px">
+      <div id="status-chip">
+        <div class="status-dot" id="status-dot"></div>
+        <span id="status-label">In attesa...</span>
+      </div>
+      <div id="vad-section">
+        <div id="vad-bars"><!-- generati da JS --></div>
+        <span id="vad-label">Parla pure quando sei pronto</span>
+      </div>
     </div>
   </div>
 
@@ -672,14 +678,6 @@
         </div>
       </div>
 
-      <!-- VAD visualizer -->
-      <div id="vad-section">
-        <div id="vad-bars">
-          <!-- generati da JS -->
-        </div>
-        <span id="vad-label">Parla pure quando sei pronto</span>
-      </div>
-
       <!-- Input testo fallback -->
       <div id="input-area">
         <input
@@ -734,7 +732,7 @@ const CONFIG = {
   // VAD
   vadThreshold:        0.012,   // RMS energy (0–1); aumenta in ambienti rumorosi
   vadSilenceDuration:  1300,    // ms di silenzio per considerare la frase terminata
-  vadMinSpeechDuration: 350,    // ms minimi di parlato per inviare
+  vadMinSpeechDuration: 150,    // ms minimi di parlato per inviare
 };
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -834,16 +832,29 @@ class VAD {
 
     if (!this._speaking) {
       if (rms > this.threshold) {
-        if (!this._speechStart) this._speechStart = now;
+        if (!this._speechStart) {
+          // Avvia la registrazione subito per non perdere la prima parola
+          this._speechStart = now;
+          this._chunks = [];
+          this._recorder.start();
+        }
         if (now - this._speechStart >= this.minSpeechDuration) {
           this._speaking = true;
           this._silenceStart = null;
-          this._chunks = [];
-          this._recorder.start();
           this.onSpeechStart();
         }
       } else {
-        this._speechStart = null;
+        if (this._speechStart && !this._speaking) {
+          // Parlato troppo breve: scarta
+          this._speechStart = null;
+          if (this._recorder.state === 'recording') {
+            this._recorder.ondataavailable = () => {};
+            this._recorder.stop();
+            this._recorder.ondataavailable = e => { if (e.data.size > 0) this._chunks.push(e.data); };
+          }
+          this._chunks = [];
+        }
+        if (!this._speechStart) { /* nessun reset necessario */ }
       }
     } else {
       if (rms < this.threshold) {
@@ -1945,7 +1956,7 @@ window.addEventListener('message', e => {
       document.getElementById('avatar-panel').style.background =
         `radial-gradient(ellipse at 50% 60%, ${color}aa 0%, ${color} 70%)`;
     } else {
-      const stringKeys = ['chat_align'];
+      const stringKeys = ['chat_align', 'header_color', 'header_font'];
       const val = stringKeys.includes(msg.key) ? msg.value : parseFloat(msg.value);
       applyParamLive(msg.key, val);
     }
@@ -1999,6 +2010,28 @@ window.addEventListener('message', e => {
   }
 });
 
+function applyHeaderStyle(key, value) {
+  const header = document.getElementById('header');
+  if (key === 'header_color') {
+    header.style.setProperty('--header-color', value);
+  } else if (key === 'header_font') {
+    if (!value) {
+      header.style.fontFamily = '';
+      return;
+    }
+    // Carica da Google Fonts se non già presente
+    const id = 'gfont-' + value.replace(/\s+/g, '-');
+    if (!document.getElementById(id)) {
+      const link = document.createElement('link');
+      link.id   = id;
+      link.rel  = 'stylesheet';
+      link.href = `https://fonts.googleapis.com/css2?family=${encodeURIComponent(value)}&display=swap`;
+      document.head.appendChild(link);
+    }
+    header.style.fontFamily = `'${value}', sans-serif`;
+  }
+}
+
 const IDLE_ID_MAP = { idle_icon: 'idle-icon', idle_title: 'idle-title', idle_subtitle: 'idle-subtitle', idle_hint: 'idle-hint' };
 function applyIdleParam(key, value) {
   if (key === 'idle_timeout') {
@@ -2025,6 +2058,8 @@ function applyIdleParam(key, value) {
         if (d.chat_align      !== undefined) applyParamLive('chat_align',      d.chat_align);
         if (d.chat_hide_input !== undefined) applyParamLive('chat_hide_input', d.chat_hide_input);
         if (d.show_logo       !== undefined) applyParamLive('show_logo',       d.show_logo);
+        if (d.header_color    !== undefined) applyHeaderStyle('header_color',  d.header_color);
+        if (d.header_font     !== undefined) applyHeaderStyle('header_font',   d.header_font);
         if (d.idle_timeout   !== undefined) applyIdleParam('idle_timeout',  d.idle_timeout);
         if (d.idle_icon      !== undefined) applyIdleParam('idle_icon',     d.idle_icon);
         if (d.idle_title    !== undefined) applyIdleParam('idle_title',    d.idle_title    || `Ciao! Sono ${d.name || ''}`);
@@ -2081,11 +2116,11 @@ function applyParamLive(key, v) {
       p.classList.add(`align-${v}`);
     },
     chat_hide_input: () => {
-      const hide = parseInt(v) === 1;
-      document.getElementById('vad-section').classList.toggle('hidden', hide);
-      document.getElementById('input-area').classList.toggle('hidden', hide);
+      document.getElementById('input-area').classList.toggle('hidden', parseInt(v) === 1);
     },
-    show_logo: () => { document.querySelector('.logo').style.display = parseInt(v) === 0 ? 'none' : ''; },
+    show_logo:    () => { document.querySelector('.logo').style.display = parseInt(v) === 0 ? 'none' : ''; },
+    header_color: () => applyHeaderStyle('header_color', v),
+    header_font:  () => applyHeaderStyle('header_font',  v),
   };
 
   map[key]?.();
@@ -2140,6 +2175,8 @@ async function initAvatar() {
     applyParamLive('chat_align',      cfg.chat_align      || 'center');
     applyParamLive('chat_hide_input', cfg.chat_hide_input ?? 0);
     applyParamLive('show_logo',       cfg.show_logo       ?? 1);
+    applyHeaderStyle('header_color',  cfg.header_color    || '#a0a0b8');
+    applyHeaderStyle('header_font',   cfg.header_font     || '');
 
     // UI
     document.getElementById('avatar-response-label').textContent = cfg.name.toUpperCase();

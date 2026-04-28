@@ -289,6 +289,12 @@
       <p>Backoffice</p>
     </div>
     <button id="new-btn" onclick="createAvatar()">+ Nuovo Avatar</button>
+    <form method="POST" action="/admin/logout" style="margin-top:auto;padding:16px 12px 0">
+      <button type="submit" style="width:100%;padding:8px;background:rgba(248,113,113,.1);
+        color:#f87171;border:1px solid #f87171;border-radius:8px;cursor:pointer;font-size:.8rem">
+        🚪 Logout
+      </button>
+    </form>
     <div id="avatar-list"></div>
   </div>
 
@@ -388,7 +394,7 @@
           <label style="display:flex;align-items:center;gap:10px;cursor:pointer">
             <input type="checkbox" id="f-chat-hide-input"
               onchange="sendToPreview({type:'avatarParam',key:'chat_hide_input',value:this.checked?1:0})"/>
-            Nascondi input vocale/testo
+            Nascondi input testo
           </label>
         </div>
         <div class="field" style="margin-top:4px">
@@ -397,6 +403,29 @@
               onchange="sendToPreview({type:'avatarParam',key:'show_logo',value:this.checked?1:0})"/>
             Mostra nome avatar in alto a sinistra
           </label>
+        </div>
+      </div>
+
+      <!-- Indicatori header -->
+      <div class="section">
+        <h3>Indicatori in alto</h3>
+        <p style="font-size:.75rem;color:var(--text-dim);margin-bottom:12px;">
+          Colore e font di logo, stato e onda sonora
+        </p>
+        <div class="field" style="margin-bottom:12px">
+          <label>Colore testo</label>
+          <div class="color-row">
+            <input type="color" id="f-header-color" value="#a0a0b8"
+              class="color-input"
+              oninput="document.getElementById('f-header-hex').textContent=this.value;
+                       sendToPreview({type:'avatarParam',key:'header_color',value:this.value})"/>
+            <span id="f-header-hex" class="color-hex">#a0a0b8</span>
+          </div>
+        </div>
+        <div class="field">
+          <label>Font <span class="hint" style="margin:0">(nome Google Font o CSS, vuoto = default)</span></label>
+          <input type="text" id="f-header-font" placeholder="es. Roboto, Montserrat, serif"
+            oninput="sendToPreview({type:'avatarParam',key:'header_font',value:this.value})"/>
         </div>
       </div>
 
@@ -696,6 +725,10 @@ function selectAvatar(id) {
   setChatAlign(a.chat_align || 'center');
   document.getElementById('f-chat-hide-input').checked = !!(a.chat_hide_input);
   document.getElementById('f-show-logo').checked = a.show_logo !== 0;
+  const hColor = a.header_color || '#a0a0b8';
+  document.getElementById('f-header-color').value   = hColor;
+  document.getElementById('f-header-hex').textContent = hColor;
+  document.getElementById('f-header-font').value    = a.header_font  || '';
   document.getElementById('f-idle-icon').value     = a.idle_icon     || '🤖';
   document.getElementById('f-idle-title').value    = a.idle_title    || '';
   document.getElementById('f-idle-subtitle').value = a.idle_subtitle || 'La tua assistente virtuale';
@@ -897,6 +930,8 @@ async function saveAvatar() {
     chat_align:      setChatAlign._current,
     chat_hide_input: document.getElementById('f-chat-hide-input').checked ? 1 : 0,
     show_logo:       document.getElementById('f-show-logo').checked ? 1 : 0,
+    header_color:    document.getElementById('f-header-color').value,
+    header_font:     document.getElementById('f-header-font').value,
     idle_timeout:    parseInt(document.getElementById('s-idle-timeout').value),
     idle_icon:       document.getElementById('f-idle-icon').value,
     idle_title:      document.getElementById('f-idle-title').value,
