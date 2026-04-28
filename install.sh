@@ -74,6 +74,18 @@ ok "Dipendenze installate"
 if [ ! -f ".env" ]; then
   cp .env.example .env
   info "File .env creato da .env.example"
+
+  echo ""
+  echo "── Credenziali pannello Admin ──────────────────────────"
+  read -r -p "  Username admin [default: admin]: " INPUT_USER
+  INPUT_USER="${INPUT_USER:-admin}"
+  read -r -s -p "  Password admin [default: changeme]: " INPUT_PASS
+  echo ""
+  INPUT_PASS="${INPUT_PASS:-changeme}"
+  sed -i "s/^ADMIN_USER=.*/ADMIN_USER=${INPUT_USER}/" .env
+  sed -i "s/^ADMIN_PASSWORD=.*/ADMIN_PASSWORD=${INPUT_PASS}/" .env
+  ok "Credenziali admin impostate"
+
   echo ""
   echo -e "${YELLOW}  ⚠️  CONFIGURA LE API KEY nel file .env prima di avviare:${NC}"
   echo "     - ANTHROPIC_API_KEY"
