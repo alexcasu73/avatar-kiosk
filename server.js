@@ -669,6 +669,17 @@ app.delete('/api/session/:id', (req, res) => {
 });
 
 // ─── Avvio server ─────────────────────────────────────────────────────────────
+server.on('error', (err) => {
+  if (err.code === 'EADDRINUSE') {
+    console.error(`\n[ERRORE] Porta ${PORT} già in uso.`);
+    console.error(`  Controlla con: sudo lsof -i :${PORT}`);
+    console.error(`  Oppure ferma il servizio: sudo systemctl stop avatar-kiosk\n`);
+    process.exit(1);
+  } else {
+    throw err;
+  }
+});
+
 server.listen(PORT, () => {
   console.log(`\n🤖 Avatar Kiosk Platform`);
   console.log(`   → Kiosk:    http://localhost:${PORT}/k/{id}`);

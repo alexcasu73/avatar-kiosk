@@ -61,6 +61,12 @@ PORT="${PORT:-3000}"
 info "Avvio server Node.js sulla porta $PORT..."
 (while true; do
   node server.js
+  EXIT_CODE=$?
+  if [ $EXIT_CODE -eq 1 ]; then
+    # Uscita con codice 1 = errore fatale (es. porta occupata), non riavviare
+    echo ""
+    err "Server terminato con errore fatale. Controlla i log sopra."
+  fi
   echo ""
   info "Server terminato, riavvio tra 2 secondi..."
   sleep 2
