@@ -86,10 +86,42 @@
     #preview-panel {
       flex:1; position:relative;
       background:#0a0a0f;
-      display:flex; align-items:center; justify-content:center;
+      display:flex; flex-direction:column; align-items:center; justify-content:flex-start;
+      overflow:hidden;
+    }
+    #preview-mode-bar {
+      width:100%; display:flex; align-items:center; justify-content:center;
+      gap:8px; padding:10px 16px; box-sizing:border-box;
+      background:rgba(13,13,20,.95); border-bottom:1px solid var(--border);
+      flex-shrink:0; z-index:2;
+    }
+    #preview-mode-bar button {
+      background:transparent; border:1px solid var(--border);
+      color:var(--text-dim); border-radius:8px;
+      padding:5px 16px; font-size:.78rem; cursor:pointer;
+      transition:background .15s, color .15s, border-color .15s;
+    }
+    #preview-mode-bar button.active {
+      background:var(--accent); border-color:var(--accent); color:#fff;
+    }
+    #preview-viewport {
+      flex:1; display:flex; align-items:center; justify-content:center;
+      width:100%; overflow:hidden; position:relative;
+    }
+    #preview-frame-wrap {
+      position:relative; overflow:hidden; flex-shrink:0;
+      box-shadow: 0 0 40px rgba(0,0,0,.8);
+    }
+    #preview-frame-wrap.mode-kiosk {
+      /* 9:16 verticale — calcolato via JS */
+    }
+    #preview-frame-wrap.mode-mobile {
+      border-radius:36px;
+      border:6px solid #2a2a3e;
     }
     #preview-iframe {
-      width:100%; height:100%; border:none;
+      position:absolute; top:0; left:0;
+      border:none; transform-origin:top left;
     }
     #preview-placeholder {
       color:var(--text-dim); font-size:.9rem; text-align:center;
@@ -99,7 +131,7 @@
       position:absolute; bottom:0; left:0; right:0;
       background:rgba(13,13,20,.9); border-top:1px solid var(--border);
       padding:8px 16px; display:flex; align-items:center; gap:8px;
-      font-size:.75rem; color:var(--text-dim);
+      font-size:.75rem; color:var(--text-dim); z-index:3;
     }
 
     #empty-state {
@@ -966,19 +998,19 @@
             <div class="fields" style="gap:10px">
               <div class="field">
                 <label>Dimensione <span id="val-mic-icon-size">44</span>px</label>
-                <input type="range" id="s-mic-icon-size" min="20" max="120" step="2" value="44"
+                <input type="range" id="s-mic-icon-size" min="10" max="300" step="2" value="44"
                   oninput="document.getElementById('val-mic-icon-size').textContent=this.value;
                            sendToPreview({type:'avatarParam',key:'mic_icon_size',value:this.value})"/>
               </div>
               <div class="field">
                 <label>Pos X <span id="val-mic-icon-x">0</span>px</label>
-                <input type="range" id="s-mic-icon-x" min="-200" max="200" step="1" value="0"
+                <input type="range" id="s-mic-icon-x" min="-600" max="600" step="1" value="0"
                   oninput="document.getElementById('val-mic-icon-x').textContent=this.value;
                            sendToPreview({type:'avatarParam',key:'mic_icon_x',value:this.value})"/>
               </div>
               <div class="field">
                 <label>Pos Y <span id="val-mic-icon-y">0</span>px</label>
-                <input type="range" id="s-mic-icon-y" min="-200" max="200" step="1" value="0"
+                <input type="range" id="s-mic-icon-y" min="-600" max="600" step="1" value="0"
                   oninput="document.getElementById('val-mic-icon-y').textContent=this.value;
                            sendToPreview({type:'avatarParam',key:'mic_icon_y',value:this.value})"/>
               </div>
@@ -999,19 +1031,19 @@
             <div class="fields" style="gap:10px">
               <div class="field">
                 <label>Dimensione <span id="val-audio-icon-size">44</span>px</label>
-                <input type="range" id="s-audio-icon-size" min="20" max="120" step="2" value="44"
+                <input type="range" id="s-audio-icon-size" min="10" max="300" step="2" value="44"
                   oninput="document.getElementById('val-audio-icon-size').textContent=this.value;
                            sendToPreview({type:'avatarParam',key:'audio_icon_size',value:this.value})"/>
               </div>
               <div class="field">
                 <label>Pos X <span id="val-audio-icon-x">0</span>px</label>
-                <input type="range" id="s-audio-icon-x" min="-200" max="200" step="1" value="0"
+                <input type="range" id="s-audio-icon-x" min="-600" max="600" step="1" value="0"
                   oninput="document.getElementById('val-audio-icon-x').textContent=this.value;
                            sendToPreview({type:'avatarParam',key:'audio_icon_x',value:this.value})"/>
               </div>
               <div class="field">
                 <label>Pos Y <span id="val-audio-icon-y">0</span>px</label>
-                <input type="range" id="s-audio-icon-y" min="-200" max="200" step="1" value="0"
+                <input type="range" id="s-audio-icon-y" min="-600" max="600" step="1" value="0"
                   oninput="document.getElementById('val-audio-icon-y').textContent=this.value;
                            sendToPreview({type:'avatarParam',key:'audio_icon_y',value:this.value})"/>
               </div>
@@ -1185,11 +1217,19 @@
 
     <!-- Preview 3D -->
     <div id="preview-panel">
-      <div id="preview-placeholder">
-        <div class="icon">🎭</div>
-        <p>Seleziona un avatar per la preview</p>
+      <div id="preview-mode-bar" style="display:none">
+        <button id="btn-mode-kiosk"  class="active" onclick="setPreviewMode('kiosk')">📺 Kiosk 9:16</button>
+        <button id="btn-mode-mobile" onclick="setPreviewMode('mobile')">📱 Smartphone</button>
       </div>
-      <iframe id="preview-iframe" style="display:none"></iframe>
+      <div id="preview-viewport">
+        <div id="preview-placeholder">
+          <div class="icon">🎭</div>
+          <p>Seleziona un avatar per la preview</p>
+        </div>
+        <div id="preview-frame-wrap" class="mode-kiosk" style="display:none">
+          <iframe id="preview-iframe"></iframe>
+        </div>
+      </div>
       <div id="preview-bar" style="display:none">
         🔴 Preview live — le modifiche agli slider si applicano in tempo reale
       </div>
@@ -1527,20 +1567,66 @@ window.addEventListener('message', e => {
   }
 });
 
-function loadPreview(id) {
+// ── Dimensioni logiche per ogni modalità preview ──────────────────────────────
+const PREVIEW_MODES = {
+  kiosk:  { w: 1080, h: 1920 },   // 9:16 verticale
+  mobile: { w:  390, h:  844 },   // iPhone-like
+};
+let _previewMode = 'kiosk';
+
+function setPreviewMode(mode) {
+  _previewMode = mode;
+  document.getElementById('btn-mode-kiosk').classList.toggle('active',  mode === 'kiosk');
+  document.getElementById('btn-mode-mobile').classList.toggle('active', mode === 'mobile');
+  const wrap = document.getElementById('preview-frame-wrap');
+  wrap.className = `mode-${mode}`;
+  _resizePreview();
+}
+
+function _resizePreview() {
+  const wrap   = document.getElementById('preview-frame-wrap');
+  const vp     = document.getElementById('preview-viewport');
+  if (wrap.style.display === 'none') return;
+
+  const { w: LW, h: LH } = PREVIEW_MODES[_previewMode];
+  const modeBarH = document.getElementById('preview-mode-bar').offsetHeight || 0;
+  const barH     = document.getElementById('preview-bar').offsetHeight || 0;
+  const vpW  = vp.clientWidth  - 32;
+  const vpH  = vp.clientHeight - 32;
+
+  const scale = Math.min(vpW / LW, vpH / LH);
+  const dispW = Math.round(LW * scale);
+  const dispH = Math.round(LH * scale);
+
+  wrap.style.width  = dispW + 'px';
+  wrap.style.height = dispH + 'px';
+
   const iframe = document.getElementById('preview-iframe');
+  iframe.style.width  = LW + 'px';
+  iframe.style.height = LH + 'px';
+  iframe.style.transform = `scale(${scale})`;
+}
+
+function loadPreview(id) {
+  const iframe      = document.getElementById('preview-iframe');
   const placeholder = document.getElementById('preview-placeholder');
-  const bar = document.getElementById('preview-bar');
+  const bar         = document.getElementById('preview-bar');
+  const wrap        = document.getElementById('preview-frame-wrap');
+  const modeBar     = document.getElementById('preview-mode-bar');
   iframe.src = `/preview/${id}?t=${Date.now()}`;
-  iframe.style.display = 'block';
   placeholder.style.display = 'none';
-  bar.style.display = 'flex';
+  wrap.style.display        = 'block';
+  bar.style.display         = 'flex';
+  modeBar.style.display     = 'flex';
+  _resizePreview();
   stopPlayRange();
 }
 
 function reloadPreview() {
   if (currentId) loadPreview(currentId);
 }
+
+window.addEventListener('resize', () => { if (currentId) _resizePreview(); });
 
 // ── Wizard ────────────────────────────────────────────────────────────────────
 let _wizStep = 0;

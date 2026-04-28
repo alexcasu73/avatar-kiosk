@@ -240,7 +240,7 @@
     }
 
     .response-bubble-hist .label {
-      font-size: 0.7rem;
+      font-size: calc(var(--chat-font-size) * 0.6);
       font-weight: 700;
       opacity: 0.6;
       text-transform: uppercase;
@@ -271,13 +271,14 @@
       color: #fff;
       border-radius: 18px 18px 4px 18px;
       padding: 14px 18px;
-      font-size: 1.05rem;
+      font-size: var(--chat-font-size);
+      font-family: var(--chat-font-family);
       line-height: 1.5;
       display: none;
     }
 
     #transcript-bubble .label {
-      font-size: 0.7rem;
+      font-size: calc(var(--chat-font-size) * 0.6);
       font-weight: 700;
       opacity: 0.7;
       text-transform: uppercase;
@@ -293,14 +294,15 @@
       border: 1px solid var(--border);
       border-radius: 18px 18px 18px 4px;
       padding: 18px 20px;
-      font-size: 1.15rem;
+      font-size: var(--chat-font-size);
+      font-family: var(--chat-font-family);
       line-height: 1.6;
       display: none;
       backdrop-filter: blur(8px);
     }
 
     #response-bubble .label {
-      font-size: 0.7rem;
+      font-size: calc(var(--chat-font-size) * 0.6);
       font-weight: 700;
       opacity: 0.6;
       text-transform: uppercase;
@@ -313,19 +315,22 @@
     .typing-indicator {
       align-self: flex-start;
       display: none;
-      gap: 5px;
-      padding: 16px 20px;
+      gap: calc(var(--chat-font-size) * 0.35);
+      padding: calc(var(--chat-font-size) * 0.75) calc(var(--chat-font-size) * 1.4);
       background: rgba(30,30,42,0.6);
       border-radius: 18px 18px 18px 4px;
       border: 1px solid var(--border);
       backdrop-filter: blur(8px);
+      font-family: var(--chat-font-family);
     }
-    .typing-indicator.visible { display: flex; }
+    .typing-indicator.visible { display: flex; align-items: center; }
     .typing-indicator span {
-      width: 7px; height: 7px;
+      width: calc(var(--chat-font-size) * 0.38);
+      height: calc(var(--chat-font-size) * 0.38);
       background: var(--accent2);
       border-radius: 50%;
       animation: typing 1.2s infinite;
+      flex-shrink: 0;
     }
     .typing-indicator span:nth-child(2) { animation-delay: 0.2s; }
     .typing-indicator span:nth-child(3) { animation-delay: 0.4s; }
