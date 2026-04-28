@@ -917,10 +917,20 @@ function setVadState(mode) {
 //  THREE.JS — SCENA
 // ═══════════════════════════════════════════════════════════════════════════
 const canvas = document.getElementById('avatar-canvas');
-const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true });
-renderer.setPixelRatio(window.devicePixelRatio);
-renderer.outputEncoding = THREE.sRGBEncoding;
-renderer.shadowMap.enabled = true;
+// Rileva capacità GPU: disabilita antialias su hardware lento
+const _gl = document.createElement('canvas').getContext('webgl');
+const _dbg = _gl?.getExtension('WEBGL_debug_renderer_info');
+const _gpuRenderer = _dbg ? _gl.getParameter(_dbg.UNMASKED_RENDERER_WEBGL) : '';
+const _isLowEnd = /Intel.*HD|Intel.*UHD 6[0-5]|SwiftShader|llvmpipe/i.test(_gpuRenderer);
+const renderer = new THREE.WebGLRenderer({
+  canvas,
+  antialias:       !_isLowEnd,
+  alpha:           true,
+  powerPreference: 'high-performance',
+});
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, _isLowEnd ? 1 : 1.5));
+renderer.outputEncoding  = THREE.sRGBEncoding;
+renderer.shadowMap.enabled = false; // le shadow costano molto su NUC/low-end
 
 const scene  = new THREE.Scene();
 const camera = new THREE.PerspectiveCamera(45, 1, 0.1, 100);
@@ -1053,8 +1063,14 @@ function startRenderLoop() {
   // Salva Y base del modello dopo il posizionamento
   if (state.avatar) anim.baseY = state.avatar.position.y;
 
-  (function tick() {
+  const _targetFPS  = _isLowEnd ? 24 : 30;
+  const _frameMs    = 1000 / _targetFPS;
+  let   _lastFrame  = 0;
+
+  (function tick(now) {
     requestAnimationFrame(tick);
+    if (now - _lastFrame < _frameMs) return;
+    _lastFrame = now;
     const delta = clock.getDelta();
     const now   = Date.now();
 
