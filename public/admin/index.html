@@ -969,8 +969,8 @@
                 oninput="sendToPreview({type:'avatarParam',key:'chat_font',value:this.value})"/>
             </div>
             <div class="field">
-              <label>Grandezza <span id="val-chat-font-size">1.0</span>rem</label>
-              <input type="range" id="s-chat-font-size" min="0.6" max="2.5" step="0.05" value="1.0"
+              <label>Grandezza <span id="val-chat-font-size">1.5</span>rem</label>
+              <input type="range" id="s-chat-font-size" min="0.6" max="2.5" step="0.05" value="1.5"
                 oninput="document.getElementById('val-chat-font-size').textContent=parseFloat(this.value).toFixed(2);
                          sendToPreview({type:'avatarParam',key:'chat_font_size',value:this.value})"/>
             </div>
@@ -1013,8 +1013,8 @@
             </div>
             <div class="fields" style="gap:10px">
               <div class="field">
-                <label>Dimensione <span id="val-mic-icon-size">44</span>px</label>
-                <input type="range" id="s-mic-icon-size" min="10" max="300" step="2" value="44"
+                <label>Dimensione <span id="val-mic-icon-size">66</span>px</label>
+                <input type="range" id="s-mic-icon-size" min="10" max="300" step="2" value="66"
                   oninput="document.getElementById('val-mic-icon-size').textContent=this.value;
                            sendToPreview({type:'avatarParam',key:'mic_icon_size',value:this.value})"/>
               </div>
@@ -1046,8 +1046,8 @@
             </div>
             <div class="fields" style="gap:10px">
               <div class="field">
-                <label>Dimensione <span id="val-audio-icon-size">44</span>px</label>
-                <input type="range" id="s-audio-icon-size" min="10" max="300" step="2" value="44"
+                <label>Dimensione <span id="val-audio-icon-size">66</span>px</label>
+                <input type="range" id="s-audio-icon-size" min="10" max="300" step="2" value="66"
                   oninput="document.getElementById('val-audio-icon-size').textContent=this.value;
                            sendToPreview({type:'avatarParam',key:'audio_icon_size',value:this.value})"/>
               </div>
@@ -1121,8 +1121,8 @@
                 oninput="sendToPreview({type:'idleParam',key:'idle_font',value:this.value})"/>
             </div>
             <div class="field">
-              <label>Grandezza testo <span id="val-idle-font-size">1.0</span>rem</label>
-              <input type="range" id="s-idle-font-size" min="0.5" max="3.0" step="0.05" value="1.0"
+              <label>Grandezza testo <span id="val-idle-font-size">1.5</span>rem</label>
+              <input type="range" id="s-idle-font-size" min="0.5" max="3.0" step="0.05" value="1.5"
                 oninput="document.getElementById('val-idle-font-size').textContent=parseFloat(this.value).toFixed(2);
                          sendToPreview({type:'idleParam',key:'idle_font_size',value:this.value})"/>
             </div>
@@ -1418,7 +1418,7 @@ function selectAvatar(id) {
   setChatAlign(a.chat_align || 'center');
   document.getElementById('f-chat-hide-input').checked = !!(a.chat_hide_input);
   document.getElementById('f-chat-font').value            = a.chat_font      || '';
-  const cfs = a.chat_font_size ?? 1.0;
+  const cfs = a.chat_font_size ?? 1.5;
   document.getElementById('s-chat-font-size').value         = cfs;
   document.getElementById('val-chat-font-size').textContent = parseFloat(cfs).toFixed(2);
   document.getElementById('f-show-logo').checked = a.show_logo !== 0;
@@ -1431,10 +1431,10 @@ function selectAvatar(id) {
   document.getElementById('f-header-font').value    = a.header_font  || '';
   setIconPreview('mic',   a.mic_icon   || '');
   setIconPreview('audio', a.audio_icon || '');
-  const micSize  = a.mic_icon_size   ?? 44;
+  const micSize  = a.mic_icon_size   ?? 66;
   const micX     = a.mic_icon_x      ?? 0;
   const micY     = a.mic_icon_y      ?? 0;
-  const audSize  = a.audio_icon_size ?? 44;
+  const audSize  = a.audio_icon_size ?? 66;
   const audX     = a.audio_icon_x    ?? 0;
   const audY     = a.audio_icon_y    ?? 0;
   document.getElementById('s-mic-icon-size').value         = micSize;
@@ -1461,7 +1461,7 @@ function selectAvatar(id) {
   document.getElementById('f-idle-subtitle').value = a.idle_subtitle || 'La tua assistente virtuale';
   document.getElementById('f-idle-hint').value     = a.idle_hint     || '✨ Tocca per iniziare';
   document.getElementById('f-idle-font').value     = a.idle_font     || '';
-  const idleFontSize = a.idle_font_size ?? 1.0;
+  const idleFontSize = a.idle_font_size ?? 1.5;
   document.getElementById('s-idle-font-size').value         = idleFontSize;
   document.getElementById('val-idle-font-size').textContent = idleFontSize.toFixed(2);
   const idleTimeout = a.idle_timeout ?? 90;
