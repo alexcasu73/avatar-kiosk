@@ -279,6 +279,41 @@
     .mini-btn.accent { color:var(--accent2); border-color:var(--accent); }
     .mini-btn.active { background:var(--accent); color:#fff; border-color:var(--accent); }
 
+    /* ── Webhook blocks ─────────────────────────── */
+    .webhook-block {
+      background:var(--surface2);
+      border:1px solid var(--border);
+      border-radius:10px;
+      padding:12px 14px;
+      display:flex; flex-direction:column; gap:6px;
+    }
+    .webhook-block-title {
+      font-size:.7rem; font-weight:700; text-transform:uppercase;
+      letter-spacing:.08em; color:var(--accent2);
+    }
+    .webhook-block-hint {
+      font-size:.72rem; color:var(--text-dim); line-height:1.4;
+    }
+    .webhook-block-hint code {
+      background:var(--surface3); border-radius:4px;
+      padding:1px 5px; font-size:.7rem; color:var(--accent2);
+    }
+    .mono-area {
+      width:100%; font-family:monospace; font-size:.8rem;
+      background:var(--surface); border:1px solid var(--border);
+      border-radius:8px; color:var(--text); padding:10px;
+      resize:vertical; outline:none; transition:border-color .2s;
+      line-height:1.5;
+    }
+    .mono-area:focus { border-color:var(--accent); }
+    .mono-input {
+      width:100%; font-family:monospace; font-size:.85rem;
+      background:var(--surface); border:1px solid var(--border);
+      border-radius:8px; color:var(--text); padding:9px 12px;
+      outline:none; transition:border-color .2s;
+    }
+    .mono-input:focus { border-color:var(--accent); }
+
     /* ── Tab system ─────────────────────────────── */
     .tab-bar {
       display:flex; gap:2px;
@@ -373,10 +408,6 @@
               <label>Nome avatar</label>
               <input type="text" id="f-name" placeholder="Es. Sofia"/>
             </div>
-            <div class="field">
-              <label>ElevenLabs Voice ID</label>
-              <input type="text" id="f-voice-id" placeholder="dNeMsqRAC759PyIQ40Vf"/>
-            </div>
           </div>
         </div>
 
@@ -421,31 +452,41 @@
             <button id="mode-apply-btn" class="btn btn-primary" onclick="applyAvatarMode()" style="display:none">✓ Applica</button>
           </div>
         </div>
-        <div id="webhook-fields" style="display:none">
+        <div id="webhook-fields" style="display:none;flex-direction:column;gap:12px;margin-top:4px">
+
+          <!-- URL -->
           <div class="field">
-            <label>Webhook URL</label>
+            <label>Endpoint URL</label>
             <input type="text" id="f-webhook-url" placeholder="https://n8n.example.com/webhook/..."/>
           </div>
-          <div class="field">
-            <label>JSON di input <span class="hint" style="margin:0">usa <code>{{query}}</code> dove va la domanda</span></label>
-            <textarea id="f-webhook-input-template" rows="4"
-              style="width:100%;font-family:monospace;font-size:.8rem;background:#0a0a0f;border:1px solid var(--border);border-radius:8px;color:#e0e0e0;padding:10px;resize:vertical"
-              placeholder='{"query":"{{query}}"}'
-            >{"query":"{{query}}"}</textarea>
-          </div>
-          <div class="field">
-            <label>Campo output <span class="hint" style="margin:0">(dove leggere la risposta — dot-notation es. <code>output.text</code>)</span></label>
-            <input type="text" id="f-webhook-output-field" placeholder="response" value="response"/>
-          </div>
-          <div class="field">
-            <label>Header HTTP custom <span class="hint" style="margin:0">(JSON, es. per autenticazione)</span></label>
-            <textarea id="f-webhook-headers" rows="3"
-              style="width:100%;font-family:monospace;font-size:.8rem;background:#0a0a0f;border:1px solid var(--border);border-radius:8px;color:#e0e0e0;padding:10px;resize:vertical"
+
+          <!-- HEADERS -->
+          <div class="webhook-block">
+            <div class="webhook-block-title">Headers</div>
+            <div class="webhook-block-hint">Autenticazione e metadata — JSON chiave/valore</div>
+            <textarea id="f-webhook-headers" rows="3" class="mono-area"
               placeholder='{"Authorization":"Bearer xxx"}'
             >{}</textarea>
           </div>
-          <button class="btn btn-neutral" style="margin-top:4px" onclick="testWebhook()">🧪 Testa webhook</button>
-          <div id="webhook-test-result" style="margin-top:8px;font-size:.78rem;color:var(--text-dim)"></div>
+
+          <!-- BODY -->
+          <div class="webhook-block">
+            <div class="webhook-block-title">Body</div>
+            <div class="webhook-block-hint">Payload POST — usa <code>{{query}}</code> per la domanda, <code>{{session_id}}</code> <code>{{user_id}}</code> <code>{{timestamp}}</code> per i metadati</div>
+            <textarea id="f-webhook-input-template" rows="6" class="mono-area"
+              placeholder='{"query":"{{query}}"}'
+            >{"query":"{{query}}"}</textarea>
+          </div>
+
+          <!-- RESPONSE -->
+          <div class="webhook-block">
+            <div class="webhook-block-title">Response</div>
+            <div class="webhook-block-hint">Percorso nel JSON di risposta del webhook — es. se ricevi <code>{"output":"testo"}</code> scrivi <code>output</code>. Per array: <code>0.output</code>. Per annidato: <code>data.result.text</code></div>
+            <input type="text" id="f-webhook-output-field" class="mono-input" placeholder="response" value="response"/>
+          </div>
+
+          <button class="btn btn-neutral" onclick="testWebhook()">🧪 Testa webhook</button>
+          <div id="webhook-test-result" style="font-size:.78rem;color:var(--text-dim)"></div>
         </div>
 
         </div><!-- /.section Modalità AI -->
@@ -454,6 +495,78 @@
           <h3>System Prompt</h3>
           <div class="field">
             <textarea id="f-prompt" placeholder="Sei Sofia, un'assistente virtuale..." style="min-height:120px"></textarea>
+          </div>
+        </div>
+
+        <!-- STT -->
+        <div class="section">
+          <h3>Speech to Text</h3>
+          <p style="font-size:.72rem;color:var(--text-dim);margin-bottom:12px">Whisper (OpenAI) — lascia vuoto per usare i default da <code>.env</code></p>
+          <div class="fields" style="gap:12px">
+            <div class="field">
+              <label>API Key</label>
+              <input type="password" id="f-stt-api-key" placeholder="default da .env"/>
+            </div>
+            <div class="field">
+              <label>Lingua</label>
+              <input type="text" id="f-stt-language" placeholder="it"/>
+            </div>
+            <div class="field">
+              <label>Modello</label>
+              <input type="text" id="f-stt-model" placeholder="whisper-1"/>
+            </div>
+          </div>
+        </div>
+
+        <!-- TTS -->
+        <div class="section">
+          <h3>Text to Speech</h3>
+          <p style="font-size:.72rem;color:var(--text-dim);margin-bottom:12px">ElevenLabs — lascia vuoto per usare i default da <code>.env</code></p>
+          <div class="fields" style="gap:12px">
+            <div class="field">
+              <label>API Key</label>
+              <input type="password" id="f-tts-api-key" placeholder="default da .env"/>
+            </div>
+            <div class="field">
+              <label>Voice ID</label>
+              <input type="text" id="f-voice-id" placeholder="dNeMsqRAC759PyIQ40Vf"/>
+            </div>
+            <div class="field">
+              <label>Modello</label>
+              <input type="text" id="f-tts-model" placeholder="eleven_multilingual_v2"/>
+            </div>
+          </div>
+          <div class="fields" style="gap:12px;margin-top:12px">
+            <div class="slider-field">
+              <label>Stability <span id="v-tts-stability">—</span></label>
+              <input type="range" min="0" max="1" step="0.05" id="s-tts-stability" value="0.5"
+                oninput="document.getElementById('v-tts-stability').textContent=parseFloat(this.value).toFixed(2)"/>
+            </div>
+            <div class="slider-field">
+              <label>Similarity <span id="v-tts-similarity">—</span></label>
+              <input type="range" min="0" max="1" step="0.05" id="s-tts-similarity" value="0.75"
+                oninput="document.getElementById('v-tts-similarity').textContent=parseFloat(this.value).toFixed(2)"/>
+            </div>
+          </div>
+        </div>
+
+        <!-- AI Agent -->
+        <div class="section" id="ai-agent-section">
+          <h3>AI Agent</h3>
+          <p style="font-size:.72rem;color:var(--text-dim);margin-bottom:12px">Claude (Anthropic) — attivo solo in modalità Embedded. Lascia vuoto per i default da <code>.env</code></p>
+          <div class="fields" style="gap:12px">
+            <div class="field">
+              <label>API Key</label>
+              <input type="password" id="f-ai-api-key" placeholder="default da .env"/>
+            </div>
+            <div class="field">
+              <label>Modello</label>
+              <input type="text" id="f-ai-model" placeholder="claude-sonnet-4-6"/>
+            </div>
+            <div class="field">
+              <label>Max tokens <span class="hint" style="margin:0">(0 = default)</span></label>
+              <input type="number" id="f-ai-max-tokens" placeholder="512" min="0" max="4096"/>
+            </div>
           </div>
         </div>
 
@@ -765,8 +878,25 @@ function selectAvatar(id) {
   document.getElementById('f-webhook-output-field').value     = a.webhook_output_field     || 'response';
   document.getElementById('f-webhook-headers').value          = a.webhook_headers          || '{}';
   document.getElementById('webhook-test-result').textContent = '';
-  document.getElementById('f-name').value    = a.name;
-  document.getElementById('f-voice-id').value= a.voice_id || '';
+  document.getElementById('f-name').value         = a.name;
+  // STT
+  document.getElementById('f-stt-api-key').value  = a.stt_api_key  || '';
+  document.getElementById('f-stt-model').value    = a.stt_model    || '';
+  document.getElementById('f-stt-language').value = a.stt_language || '';
+  // TTS
+  document.getElementById('f-tts-api-key').value  = a.tts_api_key  || '';
+  document.getElementById('f-voice-id').value     = a.voice_id     || '';
+  document.getElementById('f-tts-model').value    = a.tts_model    || '';
+  const stab = a.tts_stability  >= 0 ? a.tts_stability  : 0.5;
+  const sim  = a.tts_similarity >= 0 ? a.tts_similarity : 0.75;
+  document.getElementById('s-tts-stability').value  = stab;
+  document.getElementById('v-tts-stability').textContent = stab.toFixed(2);
+  document.getElementById('s-tts-similarity').value = sim;
+  document.getElementById('v-tts-similarity').textContent = sim.toFixed(2);
+  // AI Agent
+  document.getElementById('f-ai-api-key').value   = a.ai_api_key   || '';
+  document.getElementById('f-ai-model').value     = a.ai_model     || '';
+  document.getElementById('f-ai-max-tokens').value= a.ai_max_tokens > 0 ? a.ai_max_tokens : '';
   document.getElementById('f-prompt').value  = a.system_prompt || '';
 
   // Sfondo
@@ -1000,6 +1130,16 @@ async function createAvatar() {
 async function saveAvatar() {
   if (!currentId) return;
   const body = {
+    stt_api_key:     document.getElementById('f-stt-api-key').value.trim(),
+    stt_model:       document.getElementById('f-stt-model').value.trim(),
+    stt_language:    document.getElementById('f-stt-language').value.trim(),
+    tts_api_key:     document.getElementById('f-tts-api-key').value.trim(),
+    tts_model:       document.getElementById('f-tts-model').value.trim(),
+    tts_stability:   parseFloat(document.getElementById('s-tts-stability').value),
+    tts_similarity:  parseFloat(document.getElementById('s-tts-similarity').value),
+    ai_api_key:      document.getElementById('f-ai-api-key').value.trim(),
+    ai_model:        document.getElementById('f-ai-model').value.trim(),
+    ai_max_tokens:   parseInt(document.getElementById('f-ai-max-tokens').value) || 0,
     avatar_mode:          setAvatarMode._current,
     webhook_url:             document.getElementById('f-webhook-url').value.trim(),
     webhook_input_template:  document.getElementById('f-webhook-input-template').value.trim() || '{"query":"{{query}}"}',
@@ -1137,7 +1277,7 @@ function switchTab(name) {
 
 function setAvatarMode(mode) {
   setAvatarMode._current = mode;
-  document.getElementById('webhook-fields').style.display = mode === 'webhook' ? 'block' : 'none';
+  document.getElementById('webhook-fields').style.display = mode === 'webhook' ? 'flex' : 'none';
   _refreshModeBtns();
 }
 setAvatarMode._current  = 'embedded';

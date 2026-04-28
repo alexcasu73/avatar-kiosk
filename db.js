@@ -26,6 +26,16 @@ db.exec(`
     camera_look_at_y  REAL DEFAULT 1.0,
     header_color      TEXT DEFAULT '#a0a0b8',
     header_font       TEXT DEFAULT '',
+    stt_api_key           TEXT DEFAULT '',
+    stt_model             TEXT DEFAULT '',
+    stt_language          TEXT DEFAULT '',
+    tts_api_key           TEXT DEFAULT '',
+    tts_model             TEXT DEFAULT '',
+    tts_stability         REAL DEFAULT -1,
+    tts_similarity        REAL DEFAULT -1,
+    ai_api_key            TEXT DEFAULT '',
+    ai_model              TEXT DEFAULT '',
+    ai_max_tokens         INTEGER DEFAULT 0,
     avatar_mode           TEXT DEFAULT 'embedded',
     webhook_url           TEXT DEFAULT '',
     webhook_input_template TEXT DEFAULT '{"query":"{{query}}"}',
@@ -57,6 +67,16 @@ if (!existing.includes('header_color'))
   db.exec("ALTER TABLE avatars ADD COLUMN header_color TEXT DEFAULT '#a0a0b8'");
 if (!existing.includes('header_font'))
   db.exec("ALTER TABLE avatars ADD COLUMN header_font TEXT DEFAULT ''");
+if (!existing.includes('stt_api_key'))     db.exec("ALTER TABLE avatars ADD COLUMN stt_api_key TEXT DEFAULT ''");
+if (!existing.includes('stt_model'))       db.exec("ALTER TABLE avatars ADD COLUMN stt_model TEXT DEFAULT ''");
+if (!existing.includes('stt_language'))    db.exec("ALTER TABLE avatars ADD COLUMN stt_language TEXT DEFAULT ''");
+if (!existing.includes('tts_api_key'))     db.exec("ALTER TABLE avatars ADD COLUMN tts_api_key TEXT DEFAULT ''");
+if (!existing.includes('tts_model'))       db.exec("ALTER TABLE avatars ADD COLUMN tts_model TEXT DEFAULT ''");
+if (!existing.includes('tts_stability'))   db.exec("ALTER TABLE avatars ADD COLUMN tts_stability REAL DEFAULT -1");
+if (!existing.includes('tts_similarity'))  db.exec("ALTER TABLE avatars ADD COLUMN tts_similarity REAL DEFAULT -1");
+if (!existing.includes('ai_api_key'))      db.exec("ALTER TABLE avatars ADD COLUMN ai_api_key TEXT DEFAULT ''");
+if (!existing.includes('ai_model'))        db.exec("ALTER TABLE avatars ADD COLUMN ai_model TEXT DEFAULT ''");
+if (!existing.includes('ai_max_tokens'))   db.exec("ALTER TABLE avatars ADD COLUMN ai_max_tokens INTEGER DEFAULT 0");
 if (!existing.includes('avatar_mode'))
   db.exec("ALTER TABLE avatars ADD COLUMN avatar_mode TEXT DEFAULT 'embedded'");
 if (!existing.includes('webhook_url'))

@@ -1458,6 +1458,7 @@ function stopCurrentAudio() {
 async function transcribeAndProcess(blob) {
   const formData = new FormData();
   formData.append('audio', blob, 'recording.webm');
+  if (CONFIG.avatarId) formData.append('avatarId', CONFIG.avatarId);
 
   try {
     const res  = await fetch(`${CONFIG.serverUrl}/api/stt`, { method: 'POST', body: formData });

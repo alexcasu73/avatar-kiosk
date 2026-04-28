@@ -26,7 +26,13 @@ const CLAUDE_MODEL = process.env.CLAUDE_MODEL || 'claude-sonnet-4-6';
 const AVATAR_NAME  = process.env.AVATAR_NAME  || 'Sofia';
 const DEFAULT_SYSTEM_PROMPT = process.env.AVATAR_SYSTEM_PROMPT ||
   `Sei ${AVATAR_NAME}, un'assistente virtuale professionale su un totem interattivo. Rispondi in modo chiaro, conciso e amichevole. Max 3 frasi.`;
-const DEFAULT_VOICE_ID = process.env.ELEVENLABS_VOICE_ID || '';
+const DEFAULT_VOICE_ID   = process.env.ELEVENLABS_VOICE_ID || '';
+const DEFAULT_STT_MODEL  = process.env.STT_MODEL    || 'whisper-1';
+const DEFAULT_STT_LANG   = process.env.STT_LANGUAGE || 'it';
+const DEFAULT_TTS_MODEL  = process.env.TTS_MODEL    || 'eleven_multilingual_v2';
+const DEFAULT_TTS_STAB   = parseFloat(process.env.TTS_STABILITY  || '0.5');
+const DEFAULT_TTS_SIM    = parseFloat(process.env.TTS_SIMILARITY || '0.75');
+const DEFAULT_AI_TOKENS  = parseInt(process.env.AI_MAX_TOKENS    || '512');
 
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 const sessions  = new Map();
@@ -206,6 +212,9 @@ app.put('/api/admin/avatars/:id', (req, res) => {
                   'speech_start','speech_end','avatar_scale','avatar_offset_x','avatar_offset_y',
                   'avatar_rot_y','camera_z','camera_y','camera_look_at_y',
                   'overlay_color','overlay_opacity','overlay_height','chat_height','chat_bottom','chat_max_width','chat_align','chat_hide_input','show_logo','header_color','header_font',
+                  'stt_api_key','stt_model','stt_language',
+                  'tts_api_key','tts_model','tts_stability','tts_similarity',
+                  'ai_api_key','ai_model','ai_max_tokens',
                   'avatar_mode','webhook_url','webhook_input_template','webhook_output_field','webhook_headers',
                   'idle_timeout','idle_icon','idle_title','idle_subtitle','idle_hint'];
   const updates = [];
@@ -286,13 +295,17 @@ app.post('/api/admin/avatars/:id/upload-background', uploadBg.single('background
 app.post('/api/stt', multer({ storage: multer.memoryStorage() }).single('audio'), async (req, res) => {
   try {
     if (!req.file) return res.status(400).json({ error: 'Nessun file audio ricevuto' });
+    const avatar   = getAvatarConfig(req.body?.avatarId);
+    const sttKey   = avatar?.stt_api_key  || process.env.OPENAI_API_KEY;
+    const sttModel = avatar?.stt_model    || DEFAULT_STT_MODEL;
+    const sttLang  = avatar?.stt_language || DEFAULT_STT_LANG;
     const formData = new FormData();
     formData.append('file', new Blob([req.file.buffer], { type: req.file.mimetype || 'audio/webm' }), 'audio.webm');
-    formData.append('model', 'whisper-1');
-    formData.append('language', 'it');
+    formData.append('model', sttModel);
+    formData.append('language', sttLang);
     const response = await fetch('https://api.openai.com/v1/audio/transcriptions', {
       method: 'POST',
-      headers: { Authorization: `Bearer ${process.env.OPENAI_API_KEY}` },
+      headers: { Authorization: `Bearer ${sttKey}` },
       body: formData,
     });
     if (!response.ok) throw new Error(`Whisper error: ${await response.text()}`);
@@ -412,8 +425,13 @@ app.post('/api/chat', async (req, res) => {
     history.push({ role: 'user', content: message });
     if (history.length > 10) history.splice(0, history.length - 10);
 
-    const response = await anthropic.messages.create({
-      model: CLAUDE_MODEL, max_tokens: 512,
+    const aiKey    = avatar?.ai_api_key   || process.env.ANTHROPIC_API_KEY;
+    const aiModel  = avatar?.ai_model     || CLAUDE_MODEL;
+    const aiTokens = avatar?.ai_max_tokens > 0 ? avatar.ai_max_tokens : DEFAULT_AI_TOKENS;
+    const aiClient = aiKey !== process.env.ANTHROPIC_API_KEY
+      ? new Anthropic({ apiKey: aiKey }) : anthropic;
+    const response = await aiClient.messages.create({
+      model: aiModel, max_tokens: aiTokens,
       system: systemPrompt, messages: history,
     });
     const reply = response.content[0].text;
@@ -431,8 +449,12 @@ app.post('/api/tts', async (req, res) => {
     const { text, avatarId } = req.body;
     if (!text) return res.status(400).json({ error: 'Testo mancante' });
 
-    const avatar  = getAvatarConfig(avatarId);
-    const voiceId = avatar?.voice_id || DEFAULT_VOICE_ID;
+    const avatar     = getAvatarConfig(avatarId);
+    const voiceId    = avatar?.voice_id    || DEFAULT_VOICE_ID;
+    const ttsKey     = avatar?.tts_api_key || process.env.ELEVENLABS_API_KEY;
+    const ttsModel   = avatar?.tts_model   || DEFAULT_TTS_MODEL;
+    const ttsStab    = (avatar?.tts_stability  >= 0) ? avatar.tts_stability  : DEFAULT_TTS_STAB;
+    const ttsSim     = (avatar?.tts_similarity >= 0) ? avatar.tts_similarity : DEFAULT_TTS_SIM;
     if (!voiceId) return res.status(400).json({ error: 'Voice ID non configurato' });
 
     const spokenText = text
@@ -452,9 +474,9 @@ app.post('/api/tts', async (req, res) => {
       `https://api.elevenlabs.io/v1/text-to-speech/${voiceId}/with-timestamps`,
       {
         method: 'POST',
-        headers: { 'xi-api-key': process.env.ELEVENLABS_API_KEY, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ text: spokenText, model_id: 'eleven_multilingual_v2',
-          voice_settings: { stability: 0.5, similarity_boost: 0.75 } }),
+        headers: { 'xi-api-key': ttsKey, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text: spokenText, model_id: ttsModel,
+          voice_settings: { stability: ttsStab, similarity_boost: ttsSim } }),
       }
     );
     if (!response.ok) throw new Error(`ElevenLabs error: ${await response.text()}`);
