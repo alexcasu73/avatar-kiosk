@@ -74,18 +74,6 @@ ok "Dipendenze installate"
 if [ ! -f ".env" ]; then
   cp .env.example .env
   info "File .env creato da .env.example"
-
-  echo ""
-  echo "── Credenziali pannello Admin ──────────────────────────"
-  read -r -p "  Username admin [default: admin]: " INPUT_USER
-  INPUT_USER="${INPUT_USER:-admin}"
-  read -r -s -p "  Password admin [default: changeme]: " INPUT_PASS
-  echo ""
-  INPUT_PASS="${INPUT_PASS:-changeme}"
-  sed -i "s/^ADMIN_USER=.*/ADMIN_USER=${INPUT_USER}/" .env
-  sed -i "s/^ADMIN_PASSWORD=.*/ADMIN_PASSWORD=${INPUT_PASS}/" .env
-  ok "Credenziali admin impostate"
-
   echo ""
   echo -e "${YELLOW}  ⚠️  CONFIGURA LE API KEY nel file .env prima di avviare:${NC}"
   echo "     - ANTHROPIC_API_KEY"
@@ -95,6 +83,30 @@ if [ ! -f ".env" ]; then
 else
   ok ".env già presente"
 fi
+
+# ── Credenziali admin ─────────────────────────────────────────────────────
+echo ""
+echo "── Credenziali pannello Admin ──────────────────────────────"
+CURRENT_USER=$(grep -E '^ADMIN_USER=' .env | cut -d= -f2 || echo "admin")
+CURRENT_PASS=$(grep -E '^ADMIN_PASSWORD=' .env | cut -d= -f2 || echo "changeme")
+read -r -p "  Username admin [attuale: ${CURRENT_USER}]: " INPUT_USER
+INPUT_USER="${INPUT_USER:-$CURRENT_USER}"
+read -r -s -p "  Password admin (lascia vuoto per mantenere): " INPUT_PASS
+echo ""
+INPUT_PASS="${INPUT_PASS:-$CURRENT_PASS}"
+
+# Aggiorna o aggiungi i campi nel .env
+if grep -q '^ADMIN_USER=' .env; then
+  sed -i "s|^ADMIN_USER=.*|ADMIN_USER=${INPUT_USER}|" .env
+else
+  echo "ADMIN_USER=${INPUT_USER}" >> .env
+fi
+if grep -q '^ADMIN_PASSWORD=' .env; then
+  sed -i "s|^ADMIN_PASSWORD=.*|ADMIN_PASSWORD=${INPUT_PASS}|" .env
+else
+  echo "ADMIN_PASSWORD=${INPUT_PASS}" >> .env
+fi
+ok "Credenziali admin: utente=${INPUT_USER}"
 
 # ── Directory dati ────────────────────────────────────────────────────────
 mkdir -p public/models public/backgrounds public/icons
