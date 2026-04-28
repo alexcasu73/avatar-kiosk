@@ -258,21 +258,37 @@ const uploadFbx = multer({ storage: multer.diskStorage({
 }) });
 
 app.post('/api/admin/avatars/:id/upload-model', uploadFbx.single('model'), async (req, res) => {
-  const tmpFbx = join(__dirname, 'public', 'models', `${req.params.id}_tmp.fbx`);
-  const outGlb = join(__dirname, 'public', 'models', `${req.params.id}.glb`);
+  const tmpFbx  = join(__dirname, 'public', 'models', `${req.params.id}_tmp.fbx`);
+  const rawGlb  = join(__dirname, 'public', 'models', `${req.params.id}_raw.glb`);
+  const outGlb  = join(__dirname, 'public', 'models', `${req.params.id}.glb`);
   try {
     if (!req.file) return res.status(400).json({ error: 'Nessun file ricevuto' });
     const assimp = '/opt/homebrew/bin/assimp';
     const { execFile } = await import('child_process');
     const { promisify } = await import('util');
-    await promisify(execFile)(assimp, ['export', tmpFbx, outGlb]);
+
+    // 1. FBX → GLB grezzo
+    await promisify(execFile)(assimp, ['export', tmpFbx, rawGlb]);
     fs.unlinkSync(tmpFbx);
+
+    // 2. GLB → GLB con compressione Draco
+    const { processGlb } = await import('gltf-pipeline');
+    const glbBuf = fs.readFileSync(rawGlb);
+    const result = await processGlb(glbBuf, { dracoOptions: { compressionLevel: 7 } });
+    fs.writeFileSync(outGlb, result.glb);
+    fs.unlinkSync(rawGlb);
+
+    const originalKB  = Math.round(glbBuf.length / 1024);
+    const compressedKB = Math.round(result.glb.length / 1024);
+    console.log(`GLB Draco: ${originalKB}KB → ${compressedKB}KB (-${Math.round((1-compressedKB/originalKB)*100)}%)`);
+
     const modelFile = `models/${req.params.id}.glb`;
     db.prepare("UPDATE avatars SET model_file = ?, updated_at = datetime('now') WHERE id = ?")
       .run(modelFile, req.params.id);
-    res.json({ ok: true, model_file: modelFile });
+    res.json({ ok: true, model_file: modelFile, originalKB, compressedKB });
   } catch (err) {
     if (fs.existsSync(tmpFbx)) fs.unlinkSync(tmpFbx);
+    if (fs.existsSync(rawGlb)) fs.unlinkSync(rawGlb);
     res.status(500).json({ error: 'Conversione fallita: ' + err.message });
   }
 });

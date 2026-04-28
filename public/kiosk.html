@@ -707,6 +707,7 @@
 <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/DRACOLoader.js"></script>
 
 <script>
 // ═══════════════════════════════════════════════════════════════════════════
@@ -1848,6 +1849,9 @@ cameraLookAtY: ${CONFIG.cameraLookAtY.toFixed(1)},`;
 // ═══════════════════════════════════════════════════════════════════════════
 function loadGLBAvatar(url) {
   const loader = new THREE.GLTFLoader();
+  const draco  = new THREE.DRACOLoader();
+  draco.setDecoderPath('https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/libs/draco/');
+  loader.setDRACOLoader(draco);
   loader.load(
     url,
     gltf => {
