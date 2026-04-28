@@ -67,11 +67,11 @@ db.exec(`
     show_controls     INTEGER DEFAULT 1,
     show_header_left  INTEGER DEFAULT 1,
     mic_icon          TEXT DEFAULT '',
-    mic_icon_size     INTEGER DEFAULT 99,
+    mic_icon_size     INTEGER DEFAULT 200,
     mic_icon_x        INTEGER DEFAULT 0,
     mic_icon_y        INTEGER DEFAULT 0,
     audio_icon        TEXT DEFAULT '',
-    audio_icon_size   INTEGER DEFAULT 99,
+    audio_icon_size   INTEGER DEFAULT 200,
     audio_icon_x      INTEGER DEFAULT 0,
     audio_icon_y      INTEGER DEFAULT 0,
     mic_wave_color    TEXT DEFAULT '#ffffff',
@@ -148,7 +148,7 @@ if (!existing.includes('show_header_left'))
 if (!existing.includes('mic_icon'))
   db.exec("ALTER TABLE avatars ADD COLUMN mic_icon TEXT DEFAULT ''");
 if (!existing.includes('mic_icon_size'))
-  db.exec("ALTER TABLE avatars ADD COLUMN mic_icon_size INTEGER DEFAULT 99");
+  db.exec("ALTER TABLE avatars ADD COLUMN mic_icon_size INTEGER DEFAULT 200");
 if (!existing.includes('mic_icon_x'))
   db.exec("ALTER TABLE avatars ADD COLUMN mic_icon_x INTEGER DEFAULT 0");
 if (!existing.includes('mic_icon_y'))
@@ -156,7 +156,7 @@ if (!existing.includes('mic_icon_y'))
 if (!existing.includes('audio_icon'))
   db.exec("ALTER TABLE avatars ADD COLUMN audio_icon TEXT DEFAULT ''");
 if (!existing.includes('audio_icon_size'))
-  db.exec("ALTER TABLE avatars ADD COLUMN audio_icon_size INTEGER DEFAULT 99");
+  db.exec("ALTER TABLE avatars ADD COLUMN audio_icon_size INTEGER DEFAULT 200");
 if (!existing.includes('audio_icon_x'))
   db.exec("ALTER TABLE avatars ADD COLUMN audio_icon_x INTEGER DEFAULT 0");
 if (!existing.includes('audio_icon_y'))

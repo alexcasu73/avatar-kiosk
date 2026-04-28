@@ -1013,8 +1013,8 @@
             </div>
             <div class="fields" style="gap:10px">
               <div class="field">
-                <label>Dimensione <span id="val-mic-icon-size">99</span>px</label>
-                <input type="range" id="s-mic-icon-size" min="10" max="300" step="2" value="99"
+                <label>Dimensione <span id="val-mic-icon-size">200</span>px</label>
+                <input type="range" id="s-mic-icon-size" min="10" max="300" step="2" value="200"
                   oninput="document.getElementById('val-mic-icon-size').textContent=this.value;
                            sendToPreview({type:'avatarParam',key:'mic_icon_size',value:this.value})"/>
               </div>
@@ -1046,8 +1046,8 @@
             </div>
             <div class="fields" style="gap:10px">
               <div class="field">
-                <label>Dimensione <span id="val-audio-icon-size">99</span>px</label>
-                <input type="range" id="s-audio-icon-size" min="10" max="300" step="2" value="99"
+                <label>Dimensione <span id="val-audio-icon-size">200</span>px</label>
+                <input type="range" id="s-audio-icon-size" min="10" max="300" step="2" value="200"
                   oninput="document.getElementById('val-audio-icon-size').textContent=this.value;
                            sendToPreview({type:'avatarParam',key:'audio_icon_size',value:this.value})"/>
               </div>
@@ -1431,10 +1431,10 @@ function selectAvatar(id) {
   document.getElementById('f-header-font').value    = a.header_font  || '';
   setIconPreview('mic',   a.mic_icon   || '');
   setIconPreview('audio', a.audio_icon || '');
-  const micSize  = a.mic_icon_size   ?? 99;
+  const micSize  = a.mic_icon_size   ?? 200;
   const micX     = a.mic_icon_x      ?? 0;
   const micY     = a.mic_icon_y      ?? 0;
-  const audSize  = a.audio_icon_size ?? 99;
+  const audSize  = a.audio_icon_size ?? 200;
   const audX     = a.audio_icon_x    ?? 0;
   const audY     = a.audio_icon_y    ?? 0;
   document.getElementById('s-mic-icon-size').value         = micSize;

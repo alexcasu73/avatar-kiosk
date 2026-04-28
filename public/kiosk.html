@@ -322,6 +322,7 @@
     .typing-indicator {
       align-self: flex-start;
       display: none;
+      margin-top: 14px;
       gap: calc(var(--chat-font-size) * 0.35);
       padding: calc(var(--chat-font-size) * 0.75) calc(var(--chat-font-size) * 1.4);
       background: rgba(30,30,42,0.6);
@@ -1694,7 +1695,7 @@ function updateMicBtn() {
   const btn = document.getElementById('mic-btn');
   if (!btn) return;
   _applyIconToBtn('mic-icon-img', 'mic-icon-fallback', CONFIG.micIcon);
-  applyIconLayout('mic-btn', 'mic-icon-img', CONFIG.micIconSize, CONFIG.micIconX, CONFIG.micIconY, 68);
+  applyIconLayout('mic-btn', 'mic-icon-img', CONFIG.micIconSize, CONFIG.micIconX, CONFIG.micIconY, 16 + CONFIG.audioIconSize + 8);
   const img = document.getElementById('mic-icon-img');
   if (CONFIG.micEnabled) {
     btn.style.background  = 'rgba(34,211,160,.15)';

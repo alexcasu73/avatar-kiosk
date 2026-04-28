@@ -247,7 +247,7 @@ app.post('/api/admin/avatars', (req, res) => {
           background = '#0a0a0f' } = req.body;
   db.prepare(`INSERT INTO avatars (id, name, voice_id, system_prompt, background,
               chat_font_size, idle_font_size, mic_icon_size, audio_icon_size)
-              VALUES (?, ?, ?, ?, ?, 2.25, 2.25, 99, 99)`).run(id, name, voice_id, system_prompt, background);
+              VALUES (?, ?, ?, ?, ?, 2.25, 2.25, 200, 200)`).run(id, name, voice_id, system_prompt, background);
   res.json(db.prepare('SELECT * FROM avatars WHERE id = ?').get(id));
 });
 
