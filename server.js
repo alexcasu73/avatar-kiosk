@@ -3,6 +3,7 @@
  */
 
 import 'dotenv/config';
+import compression from 'compression';
 import express from 'express';
 import cors from 'cors';
 import multer from 'multer';
@@ -56,6 +57,7 @@ function requireAdmin(req, res, next) {
   res.redirect('/admin/login');
 }
 
+app.use(compression({ level: 6 }));
 app.use(cors());
 app.use(express.json());
 // Cache aggressiva per asset statici immutabili
