@@ -1691,7 +1691,6 @@ function createAvatar() {
   document.getElementById('wiz-voice-id').value = '';
   document.getElementById('wiz-ai-key').value   = '';
   document.getElementById('wiz-ai-model').value = '';
-  document.getElementById('wiz-wh-url').value   = '';
   document.getElementById('wiz-model-label').textContent = '🎭 Trascina un file .fbx o clicca';
   _wizStep = 0; _wizAiMode = 'embedded'; _wizAiProv = 'anthropic'; _wizAvatarId = null;
   wizAiProv('anthropic');
@@ -1813,7 +1812,7 @@ async function wizCreate() {
     voice_id:          document.getElementById('wiz-voice-id').value,
     avatar_mode:       _wizAiMode,
     ai_provider:       _wizAiProv,
-    webhook_url:       document.getElementById('wiz-wh-url').value.trim(),
+    webhook_url:       '',
   };
   if (_wizAiProv === 'anthropic') {
     updates.anthropic_api_key = document.getElementById('wiz-ai-key').value.trim();
