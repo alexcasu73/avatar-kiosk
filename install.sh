@@ -16,14 +16,54 @@ echo "  AVATAR KIOSK — Installazione"
 echo "============================================"
 echo ""
 
+# ── Funzione installazione pacchetti di sistema ───────────────────────────
+install_pkg() {
+  local pkg="$1"
+  info "Installo $pkg automaticamente..."
+  if command -v apt-get &>/dev/null; then
+    sudo apt-get install -y "$pkg"
+  elif command -v dnf &>/dev/null; then
+    sudo dnf install -y "$pkg"
+  elif command -v yum &>/dev/null; then
+    sudo yum install -y "$pkg"
+  elif command -v pacman &>/dev/null; then
+    sudo pacman -S --noconfirm "$pkg"
+  elif command -v brew &>/dev/null; then
+    brew install "$pkg"
+  else
+    err "Impossibile installare $pkg automaticamente. Installalo manualmente e riavvia lo script."
+  fi
+}
+
 # ── Node.js ≥18 ───────────────────────────────────────────────────────────
 if ! command -v node &>/dev/null; then
-  err "Node.js non trovato. Installalo da https://nodejs.org (versione 18 o superiore)"
+  info "Node.js non trovato. Provo a installarlo..."
+  if command -v apt-get &>/dev/null; then
+    # NodeSource per distribuzioni Debian/Ubuntu
+    curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash -
+    sudo apt-get install -y nodejs
+  elif command -v dnf &>/dev/null; then
+    curl -fsSL https://rpm.nodesource.com/setup_20.x | sudo bash -
+    sudo dnf install -y nodejs
+  elif command -v yum &>/dev/null; then
+    curl -fsSL https://rpm.nodesource.com/setup_20.x | sudo bash -
+    sudo yum install -y nodejs
+  elif command -v brew &>/dev/null; then
+    brew install node@20
+  else
+    err "Impossibile installare Node.js automaticamente. Scaricalo da https://nodejs.org (versione 18+)"
+  fi
+  command -v node &>/dev/null || err "Installazione Node.js fallita. Installalo manualmente."
 fi
-NODE_VER=$(node -e "process.exit(parseInt(process.version.slice(1)) < 18 ? 1 : 0)" 2>&1 || true)
 node -e "if(parseInt(process.version.slice(1)) < 18) process.exit(1)" \
   || err "Node.js $(node --version) troppo vecchio. Richiesta versione 18+."
 ok "Node.js $(node --version)"
+
+# ── curl (necessario per NodeSource se usato sopra) ───────────────────────
+if ! command -v curl &>/dev/null; then
+  install_pkg curl
+  ok "curl installato"
+fi
 
 # ── npm install ───────────────────────────────────────────────────────────
 info "Installazione dipendenze npm..."
