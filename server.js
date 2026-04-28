@@ -214,7 +214,7 @@ app.put('/api/admin/avatars/:id', (req, res) => {
                   'overlay_color','overlay_opacity','overlay_height','chat_height','chat_bottom','chat_max_width','chat_align','chat_hide_input','show_logo','header_color','header_font',
                   'stt_api_key','stt_model','stt_language',
                   'tts_api_key','tts_model','tts_stability','tts_similarity',
-                  'ai_api_key','ai_model','ai_max_tokens',
+                  'ai_provider','ai_api_key','ai_model','ai_max_tokens',
                   'avatar_mode','webhook_url','webhook_input_template','webhook_output_field','webhook_headers',
                   'idle_timeout','idle_icon','idle_title','idle_subtitle','idle_hint'];
   const updates = [];
@@ -336,12 +336,27 @@ app.post('/api/admin/fetch-models', async (req, res) => {
       return res.json({ models });
     }
 
+    if (provider === 'openai-gpt') {
+      const r = await fetch('https://api.openai.com/v1/models', {
+        headers: { Authorization: `Bearer ${apiKey}` },
+      });
+      if (!r.ok) throw new Error(`OpenAI: ${await r.text()}`);
+      const data = await r.json();
+      const models = data.data
+        .filter(m => m.id.startsWith('gpt') || m.id.startsWith('o1') || m.id.startsWith('o3'))
+        .map(m => ({ id: m.id, name: m.id }))
+        .sort((a,b) => a.id.localeCompare(b.id));
+      return res.json({ models });
+    }
+
     if (provider === 'elevenlabs-models') {
       const r = await fetch('https://api.elevenlabs.io/v1/models', {
         headers: { 'xi-api-key': apiKey },
       });
-      if (!r.ok) throw new Error(`ElevenLabs: ${await r.text()}`);
-      const data = await r.json();
+      const raw = await r.text();
+      if (!r.ok) throw new Error(`ElevenLabs ${r.status}: ${raw.slice(0,200)}`);
+      let data; try { data = JSON.parse(raw); } catch { throw new Error(`Risposta non JSON: ${raw.slice(0,200)}`); }
+      if (!Array.isArray(data)) throw new Error(`Formato inatteso: ${JSON.stringify(data).slice(0,200)}`);
       const models = data.map(m => ({ id: m.model_id, name: m.name }));
       return res.json({ models });
     }
@@ -350,8 +365,10 @@ app.post('/api/admin/fetch-models', async (req, res) => {
       const r = await fetch('https://api.elevenlabs.io/v1/voices', {
         headers: { 'xi-api-key': apiKey },
       });
-      if (!r.ok) throw new Error(`ElevenLabs: ${await r.text()}`);
-      const data = await r.json();
+      const raw = await r.text();
+      if (!r.ok) throw new Error(`ElevenLabs ${r.status}: ${raw.slice(0,200)}`);
+      let data; try { data = JSON.parse(raw); } catch { throw new Error(`Risposta non JSON: ${raw.slice(0,200)}`); }
+      if (!data.voices) throw new Error(`Campo 'voices' mancante: ${JSON.stringify(data).slice(0,200)}`);
       const models = data.voices.map(v => ({ id: v.voice_id, name: v.name }));
       return res.json({ models });
     }
@@ -360,8 +377,10 @@ app.post('/api/admin/fetch-models', async (req, res) => {
       const r = await fetch('https://api.anthropic.com/v1/models', {
         headers: { 'x-api-key': apiKey, 'anthropic-version': '2023-06-01' },
       });
-      if (!r.ok) throw new Error(`Anthropic: ${await r.text()}`);
-      const data = await r.json();
+      const raw = await r.text();
+      if (!r.ok) throw new Error(`Anthropic ${r.status}: ${raw.slice(0,200)}`);
+      let data; try { data = JSON.parse(raw); } catch { throw new Error(`Risposta non JSON: ${raw.slice(0,200)}`); }
+      if (!data.data) throw new Error(`Formato inatteso: ${JSON.stringify(data).slice(0,200)}`);
       const models = data.data.map(m => ({ id: m.id, name: m.display_name || m.id }));
       return res.json({ models });
     }
@@ -480,16 +499,33 @@ app.post('/api/chat', async (req, res) => {
     history.push({ role: 'user', content: message });
     if (history.length > 10) history.splice(0, history.length - 10);
 
-    const aiKey    = avatar?.ai_api_key   || process.env.ANTHROPIC_API_KEY;
-    const aiModel  = avatar?.ai_model     || CLAUDE_MODEL;
-    const aiTokens = avatar?.ai_max_tokens > 0 ? avatar.ai_max_tokens : DEFAULT_AI_TOKENS;
-    const aiClient = aiKey !== process.env.ANTHROPIC_API_KEY
-      ? new Anthropic({ apiKey: aiKey }) : anthropic;
-    const response = await aiClient.messages.create({
-      model: aiModel, max_tokens: aiTokens,
-      system: systemPrompt, messages: history,
-    });
-    const reply = response.content[0].text;
+    const aiProvider = avatar?.ai_provider || 'anthropic';
+    const aiTokens   = avatar?.ai_max_tokens > 0 ? avatar.ai_max_tokens : DEFAULT_AI_TOKENS;
+    let reply;
+
+    if (aiProvider === 'openai') {
+      const aiKey   = avatar?.ai_api_key || process.env.OPENAI_API_KEY;
+      const aiModel = avatar?.ai_model   || 'gpt-4o';
+      const msgs = [{ role: 'system', content: systemPrompt }, ...history];
+      const r = await fetch('https://api.openai.com/v1/chat/completions', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${aiKey}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ model: aiModel, max_tokens: aiTokens, messages: msgs }),
+      });
+      if (!r.ok) throw new Error(`OpenAI: ${await r.text()}`);
+      const data = await r.json();
+      reply = data.choices[0].message.content;
+    } else {
+      const aiKey   = avatar?.ai_api_key || process.env.ANTHROPIC_API_KEY;
+      const aiModel = avatar?.ai_model   || CLAUDE_MODEL;
+      const aiClient = aiKey !== process.env.ANTHROPIC_API_KEY
+        ? new Anthropic({ apiKey: aiKey }) : anthropic;
+      const response = await aiClient.messages.create({
+        model: aiModel, max_tokens: aiTokens,
+        system: systemPrompt, messages: history,
+      });
+      reply = response.content[0].text;
+    }
     history.push({ role: 'assistant', content: reply });
     res.json({ reply, sessionId: sid });
   } catch (error) {

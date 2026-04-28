@@ -280,15 +280,15 @@
     .mini-btn.active { background:var(--accent); color:#fff; border-color:var(--accent); }
 
     /* ── Model loader ───────────────────────────── */
-    .model-row { display:flex; gap:6px; align-items:center; }
-    .model-row input, .model-row select { flex:1; }
+    .model-row { display:flex; gap:6px; align-items:center; width:100%; }
+    .model-row input, .model-row select { flex:1; min-width:0; }
     .model-row select {
       background:var(--surface2); border:1px solid var(--border);
       border-radius:10px; padding:10px 12px; color:var(--text);
       font-size:.9rem; outline:none; cursor:pointer;
     }
     .model-row select:focus { border-color:var(--accent); }
-    .btn-load { padding:8px 10px; font-size:.75rem; flex-shrink:0; }
+    .btn-load { padding:8px 12px; font-size:.75rem; flex-shrink:0; white-space:nowrap; }
 
     /* ── Webhook blocks ─────────────────────────── */
     .webhook-block {
@@ -513,7 +513,7 @@
         <div class="section">
           <h3>Speech to Text</h3>
           <p style="font-size:.72rem;color:var(--text-dim);margin-bottom:12px">Whisper (OpenAI) — lascia vuoto per usare i default da <code>.env</code></p>
-          <div class="fields" style="gap:12px">
+          <div class="fields" style="gap:12px;margin-bottom:12px">
             <div class="field">
               <label>API Key</label>
               <input type="password" id="f-stt-api-key" placeholder="default da .env"/>
@@ -522,12 +522,12 @@
               <label>Lingua</label>
               <input type="text" id="f-stt-language" placeholder="it"/>
             </div>
-            <div class="field">
-              <label>Modello</label>
-              <div class="model-row">
-                <input type="text" id="f-stt-model" placeholder="whisper-1"/>
-                <button class="btn btn-neutral btn-load" onclick="loadModels('openai','f-stt-api-key','f-stt-model')">⟳ Carica</button>
-              </div>
+          </div>
+          <div class="field">
+            <label>Modello</label>
+            <div class="model-row">
+              <input type="text" id="f-stt-model" placeholder="whisper-1"/>
+              <button class="btn btn-neutral btn-load" onclick="loadModels('openai','f-stt-api-key','f-stt-model')">⟳ Carica</button>
             </div>
           </div>
         </div>
@@ -536,24 +536,26 @@
         <div class="section">
           <h3>Text to Speech</h3>
           <p style="font-size:.72rem;color:var(--text-dim);margin-bottom:12px">ElevenLabs — lascia vuoto per usare i default da <code>.env</code></p>
-          <div class="fields" style="gap:12px">
-            <div class="field">
-              <label>API Key</label>
-              <input type="password" id="f-tts-api-key" placeholder="default da .env"/>
-            </div>
+          <div class="field" style="margin-bottom:12px">
+            <label>API Key</label>
+            <input type="password" id="f-tts-api-key" placeholder="default da .env"/>
+          </div>
+          <div class="fields" style="gap:12px;margin-bottom:12px">
             <div class="field">
               <label>Voice ID</label>
-              <div class="model-row">
-                <input type="text" id="f-voice-id" placeholder="dNeMsqRAC759PyIQ40Vf"/>
-                <button class="btn btn-neutral btn-load" onclick="loadModels('elevenlabs-voices','f-tts-api-key','f-voice-id')">⟳ Carica</button>
-              </div>
+              <input type="text" id="f-voice-id" placeholder="dNeMsqRAC759PyIQ40Vf"/>
             </div>
             <div class="field">
               <label>Modello</label>
-              <div class="model-row">
-                <input type="text" id="f-tts-model" placeholder="eleven_multilingual_v2"/>
-                <button class="btn btn-neutral btn-load" onclick="loadModels('elevenlabs-models','f-tts-api-key','f-tts-model')">⟳ Carica</button>
-              </div>
+              <input type="text" id="f-tts-model" placeholder="eleven_multilingual_v2"/>
+            </div>
+          </div>
+          <div class="fields" style="gap:12px;margin-bottom:12px">
+            <div class="model-row">
+              <button class="btn btn-neutral btn-load" style="width:100%" onclick="loadModels('elevenlabs-voices','f-tts-api-key','f-voice-id')">⟳ Carica voci</button>
+            </div>
+            <div class="model-row">
+              <button class="btn btn-neutral btn-load" style="width:100%" onclick="loadModels('elevenlabs-models','f-tts-api-key','f-tts-model')">⟳ Carica modelli</button>
             </div>
           </div>
           <div class="fields" style="gap:12px;margin-top:12px">
@@ -573,22 +575,30 @@
         <!-- AI Agent -->
         <div class="section" id="ai-agent-section">
           <h3>AI Agent</h3>
-          <p style="font-size:.72rem;color:var(--text-dim);margin-bottom:12px">Claude (Anthropic) — attivo solo in modalità Embedded. Lascia vuoto per i default da <code>.env</code></p>
-          <div class="fields" style="gap:12px">
+          <p style="font-size:.72rem;color:var(--text-dim);margin-bottom:12px">Attivo solo in modalità Embedded. Lascia vuoto per i default da <code>.env</code></p>
+          <div class="field" style="margin-bottom:12px">
+            <label>Provider</label>
+            <div style="display:flex;gap:6px">
+              <button id="ai-provider-anthropic" class="btn btn-neutral active" style="flex:1" onclick="setAiProvider('anthropic')">Anthropic</button>
+              <button id="ai-provider-openai"    class="btn btn-neutral"        style="flex:1" onclick="setAiProvider('openai')">OpenAI</button>
+            </div>
+          </div>
+          <div class="fields" style="gap:12px;margin-bottom:12px">
             <div class="field">
               <label>API Key</label>
               <input type="password" id="f-ai-api-key" placeholder="default da .env"/>
             </div>
             <div class="field">
-              <label>Modello</label>
-              <div class="model-row">
-                <input type="text" id="f-ai-model" placeholder="claude-sonnet-4-6"/>
-                <button class="btn btn-neutral btn-load" onclick="loadModels('anthropic','f-ai-api-key','f-ai-model')">⟳ Carica</button>
-              </div>
-            </div>
-            <div class="field">
               <label>Max tokens <span class="hint" style="margin:0">(0 = default)</span></label>
               <input type="number" id="f-ai-max-tokens" placeholder="512" min="0" max="4096"/>
+            </div>
+          </div>
+          <div class="field">
+            <label>Modello</label>
+            <div class="model-row">
+              <input type="text" id="f-ai-model" placeholder="claude-sonnet-4-6"/>
+              <button class="btn btn-neutral btn-load" id="btn-load-ai-model"
+                onclick="loadModels(setAiProvider._current==='openai'?'openai-gpt':'anthropic','f-ai-api-key','f-ai-model')">⟳ Carica</button>
             </div>
           </div>
         </div>
@@ -917,6 +927,7 @@ function selectAvatar(id) {
   document.getElementById('s-tts-similarity').value = sim;
   document.getElementById('v-tts-similarity').textContent = sim.toFixed(2);
   // AI Agent
+  setAiProvider(a.ai_provider || 'anthropic');
   document.getElementById('f-ai-api-key').value   = a.ai_api_key   || '';
   document.getElementById('f-ai-model').value     = a.ai_model     || '';
   document.getElementById('f-ai-max-tokens').value= a.ai_max_tokens > 0 ? a.ai_max_tokens : '';
@@ -1161,6 +1172,7 @@ async function saveAvatar() {
     tts_model:       document.getElementById('f-tts-model').value.trim(),
     tts_stability:   parseFloat(document.getElementById('s-tts-stability').value),
     tts_similarity:  parseFloat(document.getElementById('s-tts-similarity').value),
+    ai_provider:     setAiProvider._current,
     ai_api_key:      document.getElementById('f-ai-api-key').value.trim(),
     ai_model:        document.getElementById('f-ai-model').value.trim(),
     ai_max_tokens:   parseInt(document.getElementById('f-ai-max-tokens').value) || 0,
@@ -1338,6 +1350,18 @@ function switchTab(name) {
     p.classList.toggle('active', p.id === `tab-${name}`);
   });
 }
+
+function setAiProvider(provider) {
+  setAiProvider._current = provider;
+  ['anthropic','openai'].forEach(p => {
+    document.getElementById(`ai-provider-${p}`)
+      .classList.toggle('active', p === provider);
+  });
+  const placeholders = { anthropic: 'claude-sonnet-4-6', openai: 'gpt-4o' };
+  const modelInput = document.getElementById('f-ai-model');
+  if (modelInput.tagName === 'INPUT') modelInput.placeholder = placeholders[provider];
+}
+setAiProvider._current = 'anthropic';
 
 function setAvatarMode(mode) {
   setAvatarMode._current = mode;

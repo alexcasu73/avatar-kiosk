@@ -1586,7 +1586,8 @@ function initScrubber() {
 
   // Slider range — max = durata clip
   ['speech-start-slider','speech-end-slider','rest-time-slider'].forEach(id => {
-    document.getElementById(id).max = dur.toFixed(2);
+    const el = document.getElementById(id);
+    if (el) el.max = dur.toFixed(2);
   });
 }
 
