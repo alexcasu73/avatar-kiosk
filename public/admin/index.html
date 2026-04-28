@@ -403,66 +403,155 @@
     #toast.ok    { border-color:var(--success); color:var(--success); }
     #toast.error { border-color:var(--error);   color:var(--error); }
     /* ── Wizard ─────────────────────────────────── */
-    #wizard-overlay { display:none; }
-    #wizard-overlay.hidden { display:none; }
-
-    /* Backdrop quando form-panel è in modalità wizard */
-    #wizard-backdrop {
-      display:none;
-      position:fixed; inset:0; z-index:50;
-      background:rgba(5,5,10,.8); backdrop-filter:blur(4px);
+    #wiz-modal {
+      display:none; position:fixed; inset:0; z-index:200;
+      background:rgba(5,5,10,.85); backdrop-filter:blur(5px);
+      align-items:center; justify-content:center;
     }
-    #wizard-backdrop.active { display:block; }
-
-    /* form-panel in modalità wizard */
-    #form-panel.wizard-mode {
-      position:fixed; z-index:51;
-      top:50%; left:50%; transform:translate(-50%,-50%);
-      width:560px; max-width:95vw; max-height:90vh;
-      border-radius:20px; border:1px solid var(--border);
-      box-shadow:0 24px 80px rgba(0,0,0,.6);
+    #wiz-modal.open { display:flex; }
+    #wiz-box {
+      background:var(--surface); border:1px solid var(--border);
+      border-radius:20px; width:480px; max-width:95vw;
+      overflow:hidden; display:flex; flex-direction:column;
+      box-shadow:0 24px 80px rgba(0,0,0,.7);
     }
-
-    #wizard-banner {
-      background:var(--surface); border-bottom:2px solid var(--accent);
-      padding:14px 24px; display:flex; flex-direction:column; gap:10px;
-      position:sticky; top:0; z-index:15; border-radius:20px 20px 0 0;
+    #wiz-head {
+      padding:24px 28px 0;
     }
-    .wizard-top-row {
-      display:flex; align-items:center; gap:10px;
-    }
-    .wizard-step-label {
+    #wiz-head .wiz-step-lbl {
       font-size:.65rem; font-weight:700; text-transform:uppercase;
-      letter-spacing:.1em; color:var(--accent2); white-space:nowrap;
+      letter-spacing:.1em; color:var(--accent2);
     }
-    .wizard-title {
-      font-size:.9rem; font-weight:700; flex:1;
-    }
-    .wizard-progress {
-      display:flex; gap:5px;
-    }
-    .wizard-step-dot {
+    #wiz-head h2 { font-size:1.05rem; font-weight:700; margin:4px 0 18px; }
+    .wiz-dots { display:flex; gap:6px; }
+    .wiz-dot {
       flex:1; height:4px; border-radius:2px;
       background:var(--border); transition:background .3s;
     }
-    .wizard-step-dot.done   { background:var(--success); }
-    .wizard-step-dot.active { background:var(--accent); }
-    .wizard-nav {
-      display:flex; align-items:center; gap:8px;
+    .wiz-dot.done   { background:var(--success); }
+    .wiz-dot.active { background:var(--accent); }
+    #wiz-body { padding:24px 28px; flex:1; display:flex; flex-direction:column; gap:14px; }
+    #wiz-foot {
+      padding:16px 28px 24px; display:flex; align-items:center; gap:10px;
+      border-top:1px solid var(--border);
     }
-    .wizard-skip {
+    #wiz-foot .sp { flex:1; }
+    .wiz-skip {
       font-size:.75rem; color:var(--text-dim); background:none; border:none;
       cursor:pointer; text-decoration:underline; padding:0;
     }
-    .wizard-skip:hover { color:var(--text); }
+    .wiz-skip:hover { color:var(--text); }
   </style>
 </head>
 <body>
 <!-- ── Wizard nuovo avatar ─────────────────────────────────────────────────── -->
-<!-- ── Wizard banner (sovrapposto al form-panel) ──────────────────────────── -->
-<div id="wizard-overlay" class="hidden"></div>
+<div id="wiz-modal">
+  <div id="wiz-box">
+    <div id="wiz-head">
+      <div class="wiz-step-lbl" id="wiz-lbl">Passo 1 di 4</div>
+      <h2 id="wiz-title">Nome</h2>
+      <div class="wiz-dots">
+        <div class="wiz-dot" id="wd0"></div>
+        <div class="wiz-dot" id="wd1"></div>
+        <div class="wiz-dot" id="wd2"></div>
+        <div class="wiz-dot" id="wd3"></div>
+      </div>
+    </div>
+    <div id="wiz-body">
 
-<div id="wizard-backdrop" onclick="wizFinish()"></div>
+      <!-- Step 0: Nome -->
+      <div id="ws0">
+        <div class="field">
+          <label>Nome avatar *</label>
+          <input id="wiz-name" type="text" placeholder="Es. Sofia, Gino…" autofocus/>
+        </div>
+      </div>
+
+      <!-- Step 1: Voce -->
+      <div id="ws1" style="display:none">
+        <div class="field" style="margin-bottom:14px">
+          <label>ElevenLabs API Key <span class="hint" style="margin:0">(lascia vuoto per usare default .env)</span></label>
+          <input id="wiz-tts-key" type="password" placeholder="default da .env"/>
+        </div>
+        <div class="field">
+          <label>Voice ID</label>
+          <div class="model-row">
+            <input id="wiz-voice-id" type="text" placeholder="dNeMsqRAC759PyIQ40Vf"/>
+            <button class="btn btn-neutral btn-load" onclick="wizLoadVoices()">⟳ Carica</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Step 2: AI -->
+      <div id="ws2" style="display:none">
+        <div class="fields" style="gap:8px;margin-bottom:14px">
+          <div id="wiz-emb-card" class="provider-card active" onclick="wizAiMode('embedded')" style="cursor:pointer">
+            <div class="provider-card-header">
+              <span class="provider-name">⚙️ Embedded</span>
+              <span class="provider-badge" id="wiz-emb-badge">● SELEZIONATO</span>
+            </div>
+          </div>
+          <div id="wiz-wbk-card" class="provider-card" onclick="wizAiMode('webhook')" style="cursor:pointer">
+            <div class="provider-card-header">
+              <span class="provider-name">🔗 Webhook</span>
+              <span class="provider-badge hidden" id="wiz-wbk-badge">● SELEZIONATO</span>
+            </div>
+          </div>
+        </div>
+        <div id="wiz-ai-embedded">
+          <div class="fields" style="gap:10px;margin-bottom:10px">
+            <div id="wiz-ai-prov-anth" class="provider-card active" onclick="wizAiProv('anthropic')" style="cursor:pointer;padding:10px 14px">
+              <span class="provider-name" style="font-size:.75rem">Anthropic</span>
+              <span class="provider-badge" id="wiz-anth-badge" style="font-size:.6rem">● IN USO</span>
+            </div>
+            <div id="wiz-ai-prov-oai" class="provider-card" onclick="wizAiProv('openai')" style="cursor:pointer;padding:10px 14px">
+              <span class="provider-name" style="font-size:.75rem">OpenAI</span>
+              <span class="provider-badge hidden" id="wiz-oai-badge" style="font-size:.6rem">● IN USO</span>
+            </div>
+          </div>
+          <div class="field" style="margin-bottom:10px">
+            <label>API Key <span class="hint" style="margin:0">(lascia vuoto per default .env)</span></label>
+            <input id="wiz-ai-key" type="password" placeholder="default da .env"/>
+          </div>
+          <div class="field">
+            <label>Modello</label>
+            <div class="model-row">
+              <input id="wiz-ai-model" type="text" placeholder="claude-sonnet-4-6"/>
+              <button class="btn btn-neutral btn-load" onclick="wizLoadModels()">⟳ Carica</button>
+            </div>
+          </div>
+        </div>
+        <div id="wiz-ai-webhook" style="display:none">
+          <div class="field">
+            <label>Webhook URL</label>
+            <input id="wiz-wh-url" type="text" placeholder="https://n8n.example.com/webhook/..."/>
+          </div>
+        </div>
+      </div>
+
+      <!-- Step 3: Avatar 3D -->
+      <div id="ws3" style="display:none">
+        <p style="font-size:.82rem;color:var(--text-dim);margin-bottom:14px">Carica un modello 3D <code>.fbx</code> — puoi farlo anche dopo dalla sezione Avatar 3D.</p>
+        <div class="upload-zone" id="wiz-model-drop"
+          ondragover="event.preventDefault()"
+          ondrop="wizHandleModelDrop(event)"
+          onclick="document.getElementById('wiz-model-input').click()">
+          <div id="wiz-model-label">🎭 Trascina un file .fbx o clicca</div>
+          <input type="file" id="wiz-model-input" accept=".fbx" style="display:none"
+            onchange="wizUploadModel(this.files[0])"/>
+        </div>
+        <p style="font-size:.75rem;color:var(--text-dim);margin-top:10px;text-align:center">oppure continua senza modello — verrà usato quello di default</p>
+      </div>
+
+    </div>
+    <div id="wiz-foot">
+      <button class="wiz-skip" onclick="wizSkip()">Salta wizard</button>
+      <div class="sp"></div>
+      <button class="btn btn-neutral" id="wiz-back" onclick="wizBack()" style="display:none">← Indietro</button>
+      <button class="btn btn-primary" id="wiz-next" onclick="wizNext()">Avanti →</button>
+    </div>
+  </div>
+</div>
 <div id="app">
 
   <!-- Sidebar -->
@@ -496,25 +585,6 @@
           <button class="btn btn-primary" onclick="saveAvatar()">Salva</button>
           <button class="btn btn-neutral btn-icon" onclick="openKiosk()" title="Apri kiosk">↗</button>
           <button class="btn btn-danger  btn-icon" onclick="deleteAvatar()" title="Elimina">🗑</button>
-        </div>
-      </div>
-
-      <!-- Wizard banner (visibile solo durante wizard) -->
-      <div id="wizard-banner" style="display:none;margin:0 -24px;padding:14px 24px">
-        <div class="wizard-top-row">
-          <span class="wizard-step-label" id="wiz-step-label">Passo 1 di 4</span>
-          <span class="wizard-title" id="wiz-title"></span>
-          <div class="wizard-nav">
-            <button class="wizard-skip" onclick="wizFinish()">Fine guidata</button>
-            <button class="btn btn-neutral" id="wiz-back-btn" onclick="wizBack()" style="display:none;padding:6px 12px;font-size:.78rem">← Indietro</button>
-            <button class="btn btn-primary" id="wiz-next-btn" onclick="wizNext()" style="padding:6px 14px;font-size:.78rem">Avanti →</button>
-          </div>
-        </div>
-        <div class="wizard-progress">
-          <div class="wizard-step-dot" id="wdot-0"></div>
-          <div class="wizard-step-dot" id="wdot-1"></div>
-          <div class="wizard-step-dot" id="wdot-2"></div>
-          <div class="wizard-step-dot" id="wdot-3"></div>
         </div>
       </div>
 
@@ -1315,102 +1385,156 @@ function reloadPreview() {
 
 // ── Wizard ────────────────────────────────────────────────────────────────────
 let _wizStep = 0;
-let _wizActive = false;
-const WIZ_TABS  = ['generale','ai','aspetto','avatar3d'];
-const WIZ_NAMES = ['Generale','AI','Aspetto','Avatar 3D'];
+let _wizAiMode = 'embedded';
+let _wizAiProv = 'anthropic';
+let _wizAvatarId = null;
 
-async function createAvatar_impl() {
-  const a = await api.post('/api/admin/avatars', { name: 'Nuovo Avatar' });
-  await loadAvatars();
-  selectAvatar(a.id);
-  return a;
-}
+const WIZ_TITLES = ['Nome', 'Voce', 'AI', 'Avatar 3D'];
 
 function createAvatar() {
-  // Mostra scelta: wizard o salta
-  const choice = document.createElement('div');
-  choice.id = 'wiz-choice';
-  choice.style.cssText = 'position:fixed;inset:0;z-index:200;background:rgba(5,5,10,.85);backdrop-filter:blur(6px);display:flex;align-items:center;justify-content:center';
-  choice.innerHTML = `
-    <div style="background:var(--surface);border:1px solid var(--border);border-radius:20px;padding:36px;width:420px;text-align:center">
-      <div style="font-size:2.5rem;margin-bottom:12px">🤖</div>
-      <h2 style="font-size:1.1rem;margin-bottom:8px">Nuovo Avatar</h2>
-      <p style="font-size:.85rem;color:var(--text-dim);margin-bottom:28px;line-height:1.6">Vuoi essere guidato nella configurazione passo per passo?</p>
-      <div style="display:flex;flex-direction:column;gap:10px">
-        <button class="btn btn-primary" style="width:100%;padding:12px" onclick="wizStart()">🧙 Avvia wizard guidato</button>
-        <button class="btn btn-neutral" style="width:100%;padding:12px" onclick="wizSkip()">Crea e configura manualmente</button>
-      </div>
-    </div>`;
-  document.body.appendChild(choice);
-}
-
-function _removeChoice() {
-  document.getElementById('wiz-choice')?.remove();
-}
-
-async function wizSkip() {
-  _removeChoice();
-  await createAvatar_impl();
-}
-
-async function wizStart() {
-  _removeChoice();
-  const a = await createAvatar_impl();
-  _wizStep   = 0;
-  _wizActive = true;
-  document.getElementById('wizard-backdrop').classList.add('active');
-  document.getElementById('form-panel').classList.add('wizard-mode');
-  document.getElementById('wizard-banner').style.display = 'block';
-  document.getElementById('editor').classList.add('visible');
+  document.getElementById('wiz-name').value     = '';
+  document.getElementById('wiz-tts-key').value  = '';
+  document.getElementById('wiz-voice-id').value = '';
+  document.getElementById('wiz-ai-key').value   = '';
+  document.getElementById('wiz-ai-model').value = '';
+  document.getElementById('wiz-wh-url').value   = '';
+  document.getElementById('wiz-model-label').textContent = '🎭 Trascina un file .fbx o clicca';
+  _wizStep = 0; _wizAiMode = 'embedded'; _wizAiProv = 'anthropic'; _wizAvatarId = null;
+  wizAiMode('embedded'); wizAiProv('anthropic');
   wizRender();
-  wizExpandCurrentTab();
+  document.getElementById('wiz-modal').classList.add('open');
+  setTimeout(() => document.getElementById('wiz-name').focus(), 100);
 }
 
 function wizRender() {
-  const total = WIZ_TABS.length;
-  document.getElementById('wiz-step-label').textContent = `Passo ${_wizStep+1} di ${total}`;
-  document.getElementById('wiz-title').textContent = WIZ_NAMES[_wizStep];
+  const total = WIZ_TITLES.length;
+  document.getElementById('wiz-lbl').textContent   = `Passo ${_wizStep+1} di ${total}`;
+  document.getElementById('wiz-title').textContent = WIZ_TITLES[_wizStep];
   for (let i=0; i<total; i++) {
-    const dot = document.getElementById(`wdot-${i}`);
-    dot.className = 'wizard-step-dot' + (i < _wizStep ? ' done' : i === _wizStep ? ' active' : '');
+    document.getElementById(`wd${i}`).className =
+      'wiz-dot' + (i < _wizStep ? ' done' : i === _wizStep ? ' active' : '');
   }
-  document.getElementById('wiz-back-btn').style.display = _wizStep > 0 ? '' : 'none';
-  document.getElementById('wiz-next-btn').textContent   = _wizStep === total-1 ? '✓ Fine' : 'Avanti →';
-  // Switcha al tab corrispondente (senza chiudere il wizard)
-  switchTab(WIZ_TABS[_wizStep]);
-  wizExpandCurrentTab();
+  for (let i=0; i<total; i++)
+    document.getElementById(`ws${i}`).style.display = i === _wizStep ? '' : 'none';
+  document.getElementById('wiz-back').style.display = _wizStep > 0 ? '' : 'none';
+  document.getElementById('wiz-next').textContent   = _wizStep === total-1 ? '✓ Crea avatar' : 'Avanti →';
 }
 
-function wizExpandCurrentTab() {
-  // Espande tutte le sezioni del tab attivo
-  document.querySelectorAll(`#tab-${WIZ_TABS[_wizStep]} .section`).forEach(s => {
-    s.classList.remove('collapsed');
+function wizAiMode(mode) {
+  _wizAiMode = mode;
+  ['embedded','webhook'].forEach(m => {
+    const active = m === mode;
+    document.getElementById(`wiz-${m==='embedded'?'emb':'wbk'}-card`).classList.toggle('active', active);
+    document.getElementById(`wiz-${m==='embedded'?'emb':'wbk'}-badge`).classList.toggle('hidden', !active);
   });
-  updateExpandBtn();
+  document.getElementById('wiz-ai-embedded').style.display = mode === 'embedded' ? '' : 'none';
+  document.getElementById('wiz-ai-webhook').style.display  = mode === 'webhook'  ? '' : 'none';
 }
 
-async function wizBack() {
-  await saveAvatar();
-  _wizStep--;
-  wizRender();
+function wizAiProv(prov) {
+  _wizAiProv = prov;
+  const placeholders = { anthropic: 'claude-sonnet-4-6', openai: 'gpt-4o' };
+  document.getElementById('wiz-ai-model').placeholder = placeholders[prov];
+  ['anthropic','openai'].forEach(p => {
+    const active = p === prov;
+    document.getElementById(`wiz-ai-prov-${p==='anthropic'?'anth':'oai'}`).classList.toggle('active', active);
+    document.getElementById(`wiz-${p==='anthropic'?'anth':'oai'}-badge`).classList.toggle('hidden', !active);
+  });
 }
+
+async function wizLoadVoices() {
+  const key = document.getElementById('wiz-tts-key').value.trim();
+  if (!key) { toast('⚠️ Inserisci prima la API Key ElevenLabs', 'error'); return; }
+  try {
+    const res = await api.post('/api/admin/fetch-models', { provider: 'elevenlabs-voices', apiKey: key });
+    const input = document.getElementById('wiz-voice-id');
+    const sel = document.createElement('select');
+    sel.id = 'wiz-voice-id'; sel.className = input.className;
+    const empty = document.createElement('option'); empty.value=''; empty.textContent='— Seleziona voce —'; sel.appendChild(empty);
+    res.models.forEach(m => { const o=document.createElement('option'); o.value=m.id; o.textContent=m.name; sel.appendChild(o); });
+    input.replaceWith(sel);
+    toast(`✅ ${res.models.length} voci caricate`);
+  } catch(e) { toast(`❌ ${e.message}`, 'error'); }
+}
+
+async function wizLoadModels() {
+  const key = document.getElementById('wiz-ai-key').value.trim();
+  const prov = _wizAiProv === 'openai' ? 'openai-gpt' : 'anthropic';
+  if (!key) { toast('⚠️ Inserisci prima la API Key', 'error'); return; }
+  try {
+    const res = await api.post('/api/admin/fetch-models', { provider: prov, apiKey: key });
+    const input = document.getElementById('wiz-ai-model');
+    const sel = document.createElement('select');
+    sel.id = 'wiz-ai-model'; sel.className = input.className;
+    res.models.forEach(m => { const o=document.createElement('option'); o.value=m.id; o.textContent=m.name; sel.appendChild(o); });
+    input.replaceWith(sel);
+    toast(`✅ ${res.models.length} modelli caricati`);
+  } catch(e) { toast(`❌ ${e.message}`, 'error'); }
+}
+
+function wizHandleModelDrop(e) {
+  e.preventDefault();
+  const file = e.dataTransfer.files[0];
+  if (file) wizUploadModel(file);
+}
+
+async function wizUploadModel(file) {
+  if (!_wizAvatarId) { toast('⚠️ Avatar non ancora creato', 'error'); return; }
+  const form = new FormData(); form.append('model', file);
+  const res = await fetch(`/api/admin/avatars/${_wizAvatarId}/upload-model`, { method:'POST', body:form });
+  const data = await res.json();
+  if (!res.ok) { toast('❌ ' + data.error, 'error'); return; }
+  document.getElementById('wiz-model-label').textContent = `✅ ${file.name}`;
+  toast('✅ Modello caricato');
+}
+
+function wizBack() { if (_wizStep > 0) { _wizStep--; wizRender(); } }
 
 async function wizNext() {
-  await saveAvatar();
-  if (_wizStep < WIZ_TABS.length-1) {
-    _wizStep++;
-    wizRender();
-  } else {
-    wizFinish();
+  if (_wizStep === 0) {
+    const name = document.getElementById('wiz-name').value.trim();
+    if (!name) { document.getElementById('wiz-name').style.borderColor='var(--error)'; document.getElementById('wiz-name').focus(); return; }
+    document.getElementById('wiz-name').style.borderColor = '';
+    // Crea l'avatar al primo Avanti
+    if (!_wizAvatarId) {
+      const a = await api.post('/api/admin/avatars', { name });
+      _wizAvatarId = a.id;
+      await loadAvatars();
+    } else {
+      await api.put(`/api/admin/avatars/${_wizAvatarId}`, { name });
+    }
   }
+  if (_wizStep < WIZ_TITLES.length-1) { _wizStep++; wizRender(); return; }
+  await wizCreate();
 }
 
-function wizFinish() {
-  _wizActive = false;
-  document.getElementById('wizard-backdrop').classList.remove('active');
-  document.getElementById('form-panel').classList.remove('wizard-mode');
-  document.getElementById('wizard-banner').style.display = 'none';
-  toast('✅ Configurazione completata');
+async function wizCreate() {
+  const updates = {
+    tts_api_key:       document.getElementById('wiz-tts-key').value.trim(),
+    voice_id:          document.getElementById('wiz-voice-id').value,
+    avatar_mode:       _wizAiMode,
+    ai_provider:       _wizAiProv,
+    webhook_url:       document.getElementById('wiz-wh-url').value.trim(),
+  };
+  if (_wizAiProv === 'anthropic') {
+    updates.anthropic_api_key = document.getElementById('wiz-ai-key').value.trim();
+    updates.anthropic_model   = document.getElementById('wiz-ai-model').value;
+  } else {
+    updates.openai_api_key = document.getElementById('wiz-ai-key').value.trim();
+    updates.openai_model   = document.getElementById('wiz-ai-model').value;
+  }
+  await api.put(`/api/admin/avatars/${_wizAvatarId}`, updates);
+  await loadAvatars();
+  selectAvatar(_wizAvatarId);
+  document.getElementById('wiz-modal').classList.remove('open');
+  toast('✅ Avatar creato');
+}
+
+async function wizSkip() {
+  document.getElementById('wiz-modal').classList.remove('open');
+  const a = await api.post('/api/admin/avatars', { name: 'Nuovo Avatar' });
+  await loadAvatars();
+  selectAvatar(a.id);
 }
 
 // ── Salva avatar ──────────────────────────────────────────────────────────────
