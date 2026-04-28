@@ -217,7 +217,7 @@ app.post('/admin/login', (req, res) => {
     return res.redirect('/admin/login?err=1');
   const token = genToken();
   adminTokens.set(token, Date.now() + 8 * 60 * 60 * 1000); // 8 ore
-  res.setHeader('Set-Cookie', `admin_token=${token}; HttpOnly; Path=/; SameSite=Strict; Max-Age=28800`);
+  res.setHeader('Set-Cookie', `admin_token=${token}; HttpOnly; Path=/; SameSite=Strict; Max-Age=2592000`);
   res.redirect('/admin');
 });
 
