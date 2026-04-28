@@ -411,7 +411,7 @@
     #wiz-modal.open { display:flex; }
     #wiz-box {
       background:var(--surface); border:1px solid var(--border);
-      border-radius:20px; width:480px; max-width:95vw;
+      border-radius:20px; width:480px; max-width:95vw; max-height:92vh;
       overflow:hidden; display:flex; flex-direction:column;
       box-shadow:0 24px 80px rgba(0,0,0,.7);
     }
@@ -430,7 +430,7 @@
     }
     .wiz-dot.done   { background:var(--success); }
     .wiz-dot.active { background:var(--accent); }
-    #wiz-body { padding:24px 28px; flex:1; display:flex; flex-direction:column; gap:14px; }
+    #wiz-body { padding:24px 28px; flex:1; display:flex; flex-direction:column; gap:14px; overflow-y:auto; }
     #wiz-foot {
       padding:16px 28px 24px; display:flex; align-items:center; gap:10px;
       border-top:1px solid var(--border);
@@ -540,7 +540,7 @@
           <input type="file" id="wiz-model-input" accept=".fbx" style="display:none"
             onchange="wizUploadModel(this.files[0])"/>
         </div>
-        <div id="wiz-preview-wrap" style="display:none;margin-top:14px;border-radius:12px;overflow:hidden;border:1px solid var(--border);height:280px;position:relative">
+        <div id="wiz-preview-wrap" style="display:none;margin-top:14px;border-radius:12px;overflow:hidden;border:1px solid var(--border);height:420px;position:relative">
           <iframe id="wiz-preview-iframe" style="width:100%;height:100%;border:none" src="about:blank"></iframe>
           <div id="wiz-preview-loading" style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;background:var(--surface);font-size:.85rem;color:var(--text-dim)">⏳ Caricamento preview…</div>
         </div>
