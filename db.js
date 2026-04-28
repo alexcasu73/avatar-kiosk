@@ -51,7 +51,7 @@ db.exec(`
     idle_subtitle     TEXT DEFAULT 'La tua assistente virtuale',
     idle_hint         TEXT DEFAULT '✨ Tocca per iniziare',
     idle_font         TEXT DEFAULT '',
-    idle_font_size    REAL DEFAULT 1.5,
+    idle_font_size    REAL DEFAULT 2.25,
     overlay_color     TEXT DEFAULT '#0a0a0f',
     overlay_opacity   REAL DEFAULT 0.75,
     overlay_height    REAL DEFAULT 65,
@@ -61,17 +61,17 @@ db.exec(`
     chat_align        TEXT DEFAULT 'center',
     chat_hide_input   INTEGER DEFAULT 0,
     chat_font         TEXT DEFAULT '',
-    chat_font_size    REAL DEFAULT 1.5,
+    chat_font_size    REAL DEFAULT 2.25,
     show_logo         INTEGER DEFAULT 1,
     show_vad          INTEGER DEFAULT 1,
     show_controls     INTEGER DEFAULT 1,
     show_header_left  INTEGER DEFAULT 1,
     mic_icon          TEXT DEFAULT '',
-    mic_icon_size     INTEGER DEFAULT 66,
+    mic_icon_size     INTEGER DEFAULT 99,
     mic_icon_x        INTEGER DEFAULT 0,
     mic_icon_y        INTEGER DEFAULT 0,
     audio_icon        TEXT DEFAULT '',
-    audio_icon_size   INTEGER DEFAULT 66,
+    audio_icon_size   INTEGER DEFAULT 99,
     audio_icon_x      INTEGER DEFAULT 0,
     audio_icon_y      INTEGER DEFAULT 0,
     mic_wave_color    TEXT DEFAULT '#ffffff',
@@ -138,7 +138,7 @@ if (!existing.includes('show_logo'))
 if (!existing.includes('chat_font'))
   db.exec("ALTER TABLE avatars ADD COLUMN chat_font TEXT DEFAULT ''");
 if (!existing.includes('chat_font_size'))
-  db.exec("ALTER TABLE avatars ADD COLUMN chat_font_size REAL DEFAULT 1.5");
+  db.exec("ALTER TABLE avatars ADD COLUMN chat_font_size REAL DEFAULT 2.25");
 if (!existing.includes('show_vad'))
   db.exec("ALTER TABLE avatars ADD COLUMN show_vad INTEGER DEFAULT 1");
 if (!existing.includes('show_controls'))
@@ -148,7 +148,7 @@ if (!existing.includes('show_header_left'))
 if (!existing.includes('mic_icon'))
   db.exec("ALTER TABLE avatars ADD COLUMN mic_icon TEXT DEFAULT ''");
 if (!existing.includes('mic_icon_size'))
-  db.exec("ALTER TABLE avatars ADD COLUMN mic_icon_size INTEGER DEFAULT 66");
+  db.exec("ALTER TABLE avatars ADD COLUMN mic_icon_size INTEGER DEFAULT 99");
 if (!existing.includes('mic_icon_x'))
   db.exec("ALTER TABLE avatars ADD COLUMN mic_icon_x INTEGER DEFAULT 0");
 if (!existing.includes('mic_icon_y'))
@@ -156,7 +156,7 @@ if (!existing.includes('mic_icon_y'))
 if (!existing.includes('audio_icon'))
   db.exec("ALTER TABLE avatars ADD COLUMN audio_icon TEXT DEFAULT ''");
 if (!existing.includes('audio_icon_size'))
-  db.exec("ALTER TABLE avatars ADD COLUMN audio_icon_size INTEGER DEFAULT 66");
+  db.exec("ALTER TABLE avatars ADD COLUMN audio_icon_size INTEGER DEFAULT 99");
 if (!existing.includes('audio_icon_x'))
   db.exec("ALTER TABLE avatars ADD COLUMN audio_icon_x INTEGER DEFAULT 0");
 if (!existing.includes('audio_icon_y'))
@@ -170,7 +170,7 @@ if (!existing.includes('idle_icon_img'))
 if (!existing.includes('idle_font'))
   db.exec("ALTER TABLE avatars ADD COLUMN idle_font TEXT DEFAULT ''");
 if (!existing.includes('idle_font_size'))
-  db.exec("ALTER TABLE avatars ADD COLUMN idle_font_size REAL DEFAULT 1.5");
+  db.exec("ALTER TABLE avatars ADD COLUMN idle_font_size REAL DEFAULT 2.25");
 if (!existing.includes('theme'))
   db.exec("ALTER TABLE avatars ADD COLUMN theme TEXT DEFAULT 'viola'");
 
