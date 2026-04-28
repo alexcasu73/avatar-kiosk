@@ -350,6 +350,15 @@
     .mini-btn.active { background:var(--accent); color:#fff; border-color:var(--accent); }
 
     /* ── Provider cards ─────────────────────────── */
+    .theme-swatch {
+      width:36px; height:36px; border-radius:50%;
+      background:var(--sw); border:3px solid transparent;
+      cursor:pointer; transition:transform .15s, border-color .15s;
+      flex-shrink:0;
+    }
+    .theme-swatch:hover { transform:scale(1.15); }
+    .theme-swatch.active { border-color:#fff; box-shadow:0 0 0 2px var(--sw); }
+
     .provider-card {
       border:2px solid var(--border); border-radius:12px;
       padding:14px 16px; display:flex; flex-direction:column; gap:10px;
@@ -650,6 +659,19 @@
               <input type="text" id="f-name" placeholder="Es. Sofia"/>
             </div>
           </div>
+        </div>
+
+        <div class="section">
+          <h3>Tema colori</h3>
+          <div style="display:flex;gap:10px;flex-wrap:wrap">
+            <button class="theme-swatch active" data-theme="viola"   onclick="selectTheme(this)"  style="--sw:#6c63ff" title="Viola"></button>
+            <button class="theme-swatch"        data-theme="rosso"   onclick="selectTheme(this)"  style="--sw:#e05252" title="Rosso"></button>
+            <button class="theme-swatch"        data-theme="arancio" onclick="selectTheme(this)"  style="--sw:#e07832" title="Arancio"></button>
+            <button class="theme-swatch"        data-theme="verde"   onclick="selectTheme(this)"  style="--sw:#22c55e" title="Verde"></button>
+            <button class="theme-swatch"        data-theme="giallo"  onclick="selectTheme(this)"  style="--sw:#d4a017" title="Giallo"></button>
+            <button class="theme-swatch"        data-theme="blu"     onclick="selectTheme(this)"  style="--sw:#3b82f6" title="Blu tenue"></button>
+          </div>
+          <input type="hidden" id="f-theme" value="viola"/>
         </div>
 
         <div class="section">
@@ -1324,6 +1346,9 @@ function selectAvatar(id) {
   document.getElementById('f-webhook-headers').value          = a.webhook_headers          || '{}';
   document.getElementById('webhook-test-result').textContent = '';
   document.getElementById('f-name').value         = a.name;
+  const currentTheme = a.theme || 'viola';
+  document.getElementById('f-theme').value = currentTheme;
+  document.querySelectorAll('.theme-swatch').forEach(b => b.classList.toggle('active', b.dataset.theme === currentTheme));
   // STT
   document.getElementById('f-stt-api-key').value  = a.stt_api_key  || '';
   document.getElementById('f-stt-model').value    = a.stt_model    || '';
@@ -1834,6 +1859,7 @@ async function saveAvatar() {
     webhook_output_field:    document.getElementById('f-webhook-output-field').value.trim() || 'response',
     webhook_headers:         document.getElementById('f-webhook-headers').value.trim() || '{}',
     name:            document.getElementById('f-name').value,
+    theme:           document.getElementById('f-theme').value,
     voice_id:        document.getElementById('f-voice-id').value,
     system_prompt:   document.getElementById('f-prompt').value,
     background:      currentBg,
@@ -1991,6 +2017,14 @@ function setIconPreview(type, path) {
 }
 
 // ── Helpers URL ───────────────────────────────────────────────────────────────
+function selectTheme(btn) {
+  document.querySelectorAll('.theme-swatch').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  const theme = btn.dataset.theme;
+  document.getElementById('f-theme').value = theme;
+  sendToPreview({ type: 'avatarParam', key: 'theme', value: theme });
+}
+
 function copyUrl() {
   const url = document.getElementById('kiosk-url-text').textContent;
   navigator.clipboard.writeText(url).then(() => toast('📋 URL copiato'));

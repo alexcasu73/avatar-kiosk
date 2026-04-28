@@ -114,7 +114,7 @@ app.get('/api/avatar/:id', (req, res) => {
           show_vad, show_controls, show_header_left,
           mic_icon, mic_icon_size, mic_icon_x, mic_icon_y,
           audio_icon, audio_icon_size, audio_icon_x, audio_icon_y,
-          mic_wave_color, audio_wave_color } = avatar;
+          mic_wave_color, audio_wave_color, theme } = avatar;
   res.json({ id, name, background, model_file, idle_start, idle_end,
              speech_start, speech_end, avatar_scale, avatar_offset_x,
              avatar_offset_y, avatar_rot_y, camera_z, camera_y, camera_look_at_y,
@@ -124,7 +124,7 @@ app.get('/api/avatar/:id', (req, res) => {
              show_vad, show_controls, show_header_left,
              mic_icon, mic_icon_size, mic_icon_x, mic_icon_y,
              audio_icon, audio_icon_size, audio_icon_x, audio_icon_y,
-             mic_wave_color, audio_wave_color });
+             mic_wave_color, audio_wave_color, theme });
 });
 
 // ─── Route: Kiosk page ────────────────────────────────────────────────────────
@@ -153,7 +153,7 @@ app.get('/api/preview/:id', (req, res) => {
           show_vad, show_controls, show_header_left,
           mic_icon, mic_icon_size, mic_icon_x, mic_icon_y,
           audio_icon, audio_icon_size, audio_icon_x, audio_icon_y,
-          mic_wave_color, audio_wave_color } = avatar;
+          mic_wave_color, audio_wave_color, theme } = avatar;
   res.json({ id, name, background, model_file, idle_start, idle_end,
              speech_start, speech_end, avatar_scale, avatar_offset_x,
              avatar_offset_y, avatar_rot_y, camera_z, camera_y, camera_look_at_y,
@@ -163,7 +163,7 @@ app.get('/api/preview/:id', (req, res) => {
              show_vad, show_controls, show_header_left,
              mic_icon, mic_icon_size, mic_icon_x, mic_icon_y,
              audio_icon, audio_icon_size, audio_icon_x, audio_icon_y,
-             mic_wave_color, audio_wave_color });
+             mic_wave_color, audio_wave_color, theme });
 });
 
 // ─── Route: Admin login ───────────────────────────────────────────────────────
@@ -250,7 +250,7 @@ app.put('/api/admin/avatars/:id', (req, res) => {
                   'tts_api_key','tts_model','tts_stability','tts_similarity',
                   'ai_provider','ai_max_tokens','anthropic_api_key','anthropic_model','openai_api_key','openai_model',
                   'avatar_mode','webhook_url','webhook_input_template','webhook_output_field','webhook_headers',
-                  'idle_timeout','idle_icon','idle_title','idle_subtitle','idle_hint','idle_font','idle_font_size',
+                  'idle_timeout','idle_icon','idle_title','idle_subtitle','idle_hint','idle_font','idle_font_size','theme',
                   'chat_font','chat_font_size',
                   'show_vad','show_controls','show_header_left',
                   'mic_icon_size','mic_icon_x','mic_icon_y','mic_wave_color',

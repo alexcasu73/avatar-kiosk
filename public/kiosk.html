@@ -24,6 +24,13 @@
       --border:    rgba(108,99,255,0.25);
     }
 
+    /* ── Temi ─────────────────────────────────────── */
+    :root[data-theme="rosso"]   { --accent:#e05252; --accent2:#f87171; --border:rgba(224,82,82,0.25); }
+    :root[data-theme="arancio"] { --accent:#e07832; --accent2:#fb923c; --border:rgba(224,120,50,0.25); }
+    :root[data-theme="verde"]   { --accent:#22c55e; --accent2:#4ade80; --border:rgba(34,197,94,0.25); }
+    :root[data-theme="giallo"]  { --accent:#d4a017; --accent2:#fbbf24; --border:rgba(212,160,23,0.25); }
+    :root[data-theme="blu"]     { --accent:#3b82f6; --accent2:#93c5fd; --border:rgba(59,130,246,0.25); }
+
     html, body {
       width: 100%; height: 100%;
       background: var(--bg);
@@ -2250,7 +2257,7 @@ window.addEventListener('message', e => {
       document.getElementById('avatar-panel').style.background =
         `radial-gradient(ellipse at 50% 60%, ${color}aa 0%, ${color} 70%)`;
     } else {
-      const stringKeys = ['chat_align', 'header_color', 'header_font', 'model_file', 'mic_icon', 'audio_icon', 'chat_font', 'mic_wave_color', 'audio_wave_color', 'idle_font', 'idle_icon_img'];
+      const stringKeys = ['chat_align', 'header_color', 'header_font', 'model_file', 'mic_icon', 'audio_icon', 'chat_font', 'mic_wave_color', 'audio_wave_color', 'idle_font', 'idle_icon_img', 'theme'];
       const val = stringKeys.includes(msg.key) ? msg.value : parseFloat(msg.value);
       applyParamLive(msg.key, val);
     }
@@ -2303,6 +2310,11 @@ window.addEventListener('message', e => {
     if (state.mainAction) state.mainAction.paused = false;
   }
 });
+
+function applyTheme(theme) {
+  const valid = ['viola','rosso','arancio','verde','giallo','blu'];
+  document.documentElement.setAttribute('data-theme', valid.includes(theme) ? theme : 'viola');
+}
 
 function applyHeaderStyle(key, value) {
   const header = document.getElementById('header');
@@ -2391,6 +2403,7 @@ function applyIdleParam(key, value) {
         if (d.show_header_left !== undefined) applyParamLive('show_header_left', d.show_header_left);
         if (d.header_color    !== undefined) applyHeaderStyle('header_color',  d.header_color);
         if (d.header_font     !== undefined) applyHeaderStyle('header_font',   d.header_font);
+        if (d.theme           !== undefined) applyTheme(d.theme);
         if (d.idle_timeout   !== undefined) applyIdleParam('idle_timeout',  d.idle_timeout);
         if (d.idle_icon      !== undefined) applyIdleParam('idle_icon',     d.idle_icon);
         if (d.idle_title    !== undefined) applyIdleParam('idle_title',    d.idle_title    || `Ciao! Sono ${d.name || ''}`);
@@ -2489,6 +2502,7 @@ function applyParamLive(key, v) {
     audio_icon_y:      () => { CONFIG.audioIconY    = +v; updateAudioBtn(); },
     mic_wave_color:    () => { CONFIG.micWaveColor   = v; applyWaveColors(); },
     audio_wave_color:  () => { CONFIG.audioWaveColor = v; applyWaveColors(); },
+    theme:             () => applyTheme(v),
   };
 
   map[key]?.();
@@ -2561,6 +2575,7 @@ async function initAvatar() {
     applyParamLive('show_vad',        cfg.show_vad        ?? 1);
     applyParamLive('show_controls',   cfg.show_controls   ?? 1);
     applyParamLive('show_header_left', cfg.show_header_left ?? 1);
+    applyTheme(cfg.theme || 'viola');
     applyHeaderStyle('header_color',  cfg.header_color    || '#a0a0b8');
     applyHeaderStyle('header_font',   cfg.header_font     || '');
     updateMicBtn();

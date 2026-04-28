@@ -76,6 +76,7 @@ db.exec(`
     audio_icon_y      INTEGER DEFAULT 0,
     mic_wave_color    TEXT DEFAULT '#ffffff',
     audio_wave_color  TEXT DEFAULT '#ffffff',
+    theme             TEXT DEFAULT 'viola',
     published         INTEGER DEFAULT 0,
     created_at        TEXT DEFAULT (datetime('now')),
     updated_at        TEXT DEFAULT (datetime('now'))
@@ -170,5 +171,7 @@ if (!existing.includes('idle_font'))
   db.exec("ALTER TABLE avatars ADD COLUMN idle_font TEXT DEFAULT ''");
 if (!existing.includes('idle_font_size'))
   db.exec("ALTER TABLE avatars ADD COLUMN idle_font_size REAL DEFAULT 1.0");
+if (!existing.includes('theme'))
+  db.exec("ALTER TABLE avatars ADD COLUMN theme TEXT DEFAULT 'viola'");
 
 export default db;
