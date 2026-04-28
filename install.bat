@@ -52,6 +52,7 @@ if not exist ".env" (
 :: ── Directory dati ────────────────────────────────────────────────────────
 if not exist "public\models"      mkdir "public\models"
 if not exist "public\backgrounds" mkdir "public\backgrounds"
+if not exist "public\icons"       mkdir "public\icons"
 echo [OK]    Directory dati pronte
 
 :: ── Autostart Windows (cartella Startup) ─────────────────────────────────

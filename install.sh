@@ -45,7 +45,7 @@ else
 fi
 
 # ── Directory dati ────────────────────────────────────────────────────────
-mkdir -p public/models public/backgrounds
+mkdir -p public/models public/backgrounds public/icons
 ok "Directory dati pronte"
 
 # ── Permessi script ───────────────────────────────────────────────────────

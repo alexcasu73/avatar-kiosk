@@ -572,16 +572,20 @@
     <div style="display:flex;flex-direction:column;align-items:flex-end;gap:8px">
       <div style="display:flex;align-items:center;gap:8px">
         <button id="mic-btn" onclick="toggleMic()" title="Attiva/disattiva microfono"
-          style="background:rgba(248,113,113,.15);border:1px solid rgba(248,113,113,.4);
-                 border-radius:20px;padding:5px 12px;color:#f87171;font-size:.75rem;
-                 cursor:pointer;transition:all .2s;pointer-events:auto">
-          🎙 Mic spento
+          style="background:rgba(248,113,113,.15);border:2px solid rgba(248,113,113,.4);
+                 border-radius:50%;width:44px;height:44px;padding:0;display:flex;align-items:center;
+                 justify-content:center;cursor:pointer;transition:all .2s;pointer-events:auto;
+                 font-size:1.2rem;overflow:hidden">
+          <img id="mic-icon-img" src="" alt="🎙" style="width:28px;height:28px;object-fit:contain;display:none;filter:grayscale(1) opacity(.5)"/>
+          <span id="mic-icon-fallback">🎙</span>
         </button>
         <button id="audio-btn" onclick="toggleAudio()" title="Attiva/disattiva audio"
-          style="background:rgba(34,211,160,.15);border:1px solid rgba(34,211,160,.5);
-                 border-radius:20px;padding:5px 12px;color:#22d3a0;font-size:.75rem;
-                 cursor:pointer;transition:all .2s;pointer-events:auto">
-          🔊 Audio attivo
+          style="background:rgba(34,211,160,.15);border:2px solid rgba(34,211,160,.5);
+                 border-radius:50%;width:44px;height:44px;padding:0;display:flex;align-items:center;
+                 justify-content:center;cursor:pointer;transition:all .2s;pointer-events:auto;
+                 font-size:1.2rem;overflow:hidden">
+          <img id="audio-icon-img" src="" alt="🔊" style="width:28px;height:28px;object-fit:contain;display:none"/>
+          <span id="audio-icon-fallback">🔊</span>
         </button>
         <div id="status-chip">
           <div class="status-dot" id="status-dot"></div>
@@ -759,6 +763,9 @@ const CONFIG = {
   idleTimeout:  90000,
   micEnabled:   false,
   audioEnabled: true,
+  micIcon:      '',
+  audioIcon:    '',
+  _iconTs:      Date.now(),
   avatarName:   'Sofia',
   avatarModelUrl: '/avatar.glb',
 
@@ -1536,21 +1543,35 @@ async function transcribeAndProcess(blob) {
 // ═══════════════════════════════════════════════════════════════════════════
 //  WAKE UP / IDLE
 // ═══════════════════════════════════════════════════════════════════════════
+function _applyIconToBtn(imgId, fallbackId, path) {
+  const img      = document.getElementById(imgId);
+  const fallback = document.getElementById(fallbackId);
+  if (!img) return;
+  if (path) {
+    img.src = '/' + path + '?t=' + (CONFIG._iconTs || '');
+    img.style.display = 'block';
+    if (fallback) fallback.style.display = 'none';
+  } else {
+    img.style.display = 'none';
+    if (fallback) fallback.style.display = '';
+  }
+}
+
 function updateMicBtn() {
   const btn = document.getElementById('mic-btn');
   if (!btn) return;
+  _applyIconToBtn('mic-icon-img', 'mic-icon-fallback', CONFIG.micIcon);
+  const img = document.getElementById('mic-icon-img');
   if (CONFIG.micEnabled) {
-    btn.style.background    = 'rgba(34,211,160,.15)';
-    btn.style.borderColor   = 'rgba(34,211,160,.5)';
-    btn.style.color         = '#22d3a0';
-    btn.textContent         = '🎙 Mic attivo';
+    btn.style.background  = 'rgba(34,211,160,.15)';
+    btn.style.borderColor = 'rgba(34,211,160,.5)';
+    if (img) img.style.filter = 'none';
     vadBarsEl.classList.remove('mic-off');
     setVadState(MODE_CONFIG[state.mode]?.vad ?? 'idle');
   } else {
-    btn.style.background    = 'rgba(248,113,113,.15)';
-    btn.style.borderColor   = 'rgba(248,113,113,.4)';
-    btn.style.color         = '#f87171';
-    btn.textContent         = '🎙 Mic spento';
+    btn.style.background  = 'rgba(248,113,113,.15)';
+    btn.style.borderColor = 'rgba(248,113,113,.4)';
+    if (img) img.style.filter = 'grayscale(1) opacity(.45)';
     vadBarsEl.classList.remove('active', 'recording');
     vadBarsEl.classList.add('mic-off');
     vadBars.forEach(b => b.style.height = '6px');
@@ -1560,16 +1581,16 @@ function updateMicBtn() {
 function updateAudioBtn() {
   const btn = document.getElementById('audio-btn');
   if (!btn) return;
+  _applyIconToBtn('audio-icon-img', 'audio-icon-fallback', CONFIG.audioIcon);
+  const img = document.getElementById('audio-icon-img');
   if (CONFIG.audioEnabled) {
     btn.style.background  = 'rgba(34,211,160,.15)';
     btn.style.borderColor = 'rgba(34,211,160,.5)';
-    btn.style.color       = '#22d3a0';
-    btn.textContent       = '🔊 Audio attivo';
+    if (img) img.style.filter = 'none';
   } else {
     btn.style.background  = 'rgba(248,113,113,.15)';
     btn.style.borderColor = 'rgba(248,113,113,.4)';
-    btn.style.color       = '#f87171';
-    btn.textContent       = '🔇 Audio spento';
+    if (img) img.style.filter = 'grayscale(1) opacity(.45)';
   }
 }
 
@@ -2099,7 +2120,7 @@ window.addEventListener('message', e => {
       document.getElementById('avatar-panel').style.background =
         `radial-gradient(ellipse at 50% 60%, ${color}aa 0%, ${color} 70%)`;
     } else {
-      const stringKeys = ['chat_align', 'header_color', 'header_font', 'model_file'];
+      const stringKeys = ['chat_align', 'header_color', 'header_font', 'model_file', 'mic_icon', 'audio_icon'];
       const val = stringKeys.includes(msg.key) ? msg.value : parseFloat(msg.value);
       applyParamLive(msg.key, val);
     }
@@ -2271,6 +2292,8 @@ function applyParamLive(key, v) {
       if (state.avatar) { scene.remove(state.avatar); state.avatar = null; state.mixer = null; state.mainAction = null; anim.bones = {}; }
       loadGLBAvatar(url + '?t=' + Date.now());
     },
+    mic_icon:   () => { CONFIG.micIcon   = v; CONFIG._iconTs = Date.now(); updateMicBtn(); },
+    audio_icon: () => { CONFIG.audioIcon = v; CONFIG._iconTs = Date.now(); updateAudioBtn(); },
   };
 
   map[key]?.();
@@ -2287,6 +2310,9 @@ async function initAvatar() {
     CONFIG.avatarId      = AVATAR_ID;
     CONFIG.avatarName    = cfg.name;
     CONFIG.avatarModelUrl = cfg.model_file ? `/${cfg.model_file}` : null;
+    CONFIG.micIcon       = cfg.mic_icon   || '';
+    CONFIG.audioIcon     = cfg.audio_icon || '';
+    CONFIG._iconTs       = Date.now();
 
     // Animazioni
     ANIM_RANGE.idleStart   = cfg.idle_start;

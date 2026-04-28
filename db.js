@@ -58,6 +58,8 @@ db.exec(`
     chat_align        TEXT DEFAULT 'center',
     chat_hide_input   INTEGER DEFAULT 0,
     show_logo         INTEGER DEFAULT 1,
+    mic_icon          TEXT DEFAULT '',
+    audio_icon        TEXT DEFAULT '',
     published         INTEGER DEFAULT 0,
     created_at        TEXT DEFAULT (datetime('now')),
     updated_at        TEXT DEFAULT (datetime('now'))
@@ -116,5 +118,9 @@ if (!existing.includes('chat_hide_input'))
   db.exec("ALTER TABLE avatars ADD COLUMN chat_hide_input INTEGER DEFAULT 0");
 if (!existing.includes('show_logo'))
   db.exec("ALTER TABLE avatars ADD COLUMN show_logo INTEGER DEFAULT 1");
+if (!existing.includes('mic_icon'))
+  db.exec("ALTER TABLE avatars ADD COLUMN mic_icon TEXT DEFAULT ''");
+if (!existing.includes('audio_icon'))
+  db.exec("ALTER TABLE avatars ADD COLUMN audio_icon TEXT DEFAULT ''");
 
 export default db;

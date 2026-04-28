@@ -918,6 +918,34 @@
         </div>
 
         <div class="section">
+          <h3>Icone controlli</h3>
+          <div class="fields" style="gap:16px">
+            <div class="field">
+              <label>Icona Microfono</label>
+              <div style="display:flex;align-items:center;gap:10px">
+                <img id="preview-mic-icon" src="" alt="" style="width:40px;height:40px;object-fit:contain;border-radius:8px;background:#1a1a2e;padding:4px;display:none"/>
+                <label style="cursor:pointer;background:#2a2a4a;border:1px dashed #444;border-radius:8px;padding:8px 14px;font-size:.8rem;color:#aaa">
+                  📁 Carica immagine
+                  <input type="file" accept="image/*" style="display:none" onchange="uploadIcon('mic',this)"/>
+                </label>
+                <span id="mic-icon-label" style="font-size:.75rem;color:#666">Nessuna</span>
+              </div>
+            </div>
+            <div class="field">
+              <label>Icona Audio</label>
+              <div style="display:flex;align-items:center;gap:10px">
+                <img id="preview-audio-icon" src="" alt="" style="width:40px;height:40px;object-fit:contain;border-radius:8px;background:#1a1a2e;padding:4px;display:none"/>
+                <label style="cursor:pointer;background:#2a2a4a;border:1px dashed #444;border-radius:8px;padding:8px 14px;font-size:.8rem;color:#aaa">
+                  📁 Carica immagine
+                  <input type="file" accept="image/*" style="display:none" onchange="uploadIcon('audio',this)"/>
+                </label>
+                <span id="audio-icon-label" style="font-size:.75rem;color:#666">Nessuna</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="section">
           <h3>Schermata Idle</h3>
           <div class="fields" style="gap:12px">
             <div class="field">
@@ -1216,6 +1244,8 @@ function selectAvatar(id) {
   document.getElementById('f-header-color').value   = hColor;
   document.getElementById('f-header-hex').textContent = hColor;
   document.getElementById('f-header-font').value    = a.header_font  || '';
+  setIconPreview('mic',   a.mic_icon   || '');
+  setIconPreview('audio', a.audio_icon || '');
   document.getElementById('f-idle-icon').value     = a.idle_icon     || '🤖';
   document.getElementById('f-idle-title').value    = a.idle_title    || '';
   document.getElementById('f-idle-subtitle').value = a.idle_subtitle || 'La tua assistente virtuale';
@@ -1684,6 +1714,36 @@ async function uploadBackground(file) {
   avatars = avatars.map(a => a.id===currentId ? {...a, background: data.background} : a);
   reloadPreview();
   toast('✅ Sfondo caricato');
+}
+
+// ── Upload icone mic/audio ────────────────────────────────────────────────────
+async function uploadIcon(type, input) {
+  if (!currentId) { toast('Salva prima l\'avatar', 'error'); return; }
+  const file = input.files[0];
+  if (!file) return;
+  const form = new FormData();
+  form.append('icon', file);
+  const res  = await fetch(`/api/admin/avatars/${currentId}/upload-icon/${type}`, { method:'POST', body:form });
+  const data = await res.json();
+  if (!res.ok) { toast('❌ ' + data.error, 'error'); return; }
+  const col = type === 'mic' ? 'mic_icon' : 'audio_icon';
+  setIconPreview(type, data[col]);
+  avatars = avatars.map(a => a.id===currentId ? {...a, [col]: data[col]} : a);
+  sendToPreview({ type: 'avatarParam', key: col, value: data[col] });
+  toast(`✅ Icona ${type} caricata`);
+}
+
+function setIconPreview(type, path) {
+  const img   = document.getElementById(`preview-${type}-icon`);
+  const label = document.getElementById(`${type}-icon-label`);
+  if (path) {
+    img.src = `/${path}?t=${Date.now()}`;
+    img.style.display = 'block';
+    label.textContent = path.split('/').pop();
+  } else {
+    img.style.display = 'none';
+    label.textContent = 'Nessuna';
+  }
 }
 
 // ── Helpers URL ───────────────────────────────────────────────────────────────

@@ -11,6 +11,7 @@ avatars.db-journal
 # Modelli e risorse caricate dall'utente
 public/models/
 public/backgrounds/
+public/icons/
 
 # Profilo Chrome kiosk (dati locali del browser)
 chrome-kiosk-profile/

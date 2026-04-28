@@ -70,6 +70,9 @@ app.use('/models', express.static(join(__dirname, 'public', 'models'), {
 app.use('/backgrounds', express.static(join(__dirname, 'public', 'backgrounds'), {
   maxAge: '7d',
 }));
+app.use('/icons', express.static(join(__dirname, 'public', 'icons'), {
+  maxAge: '7d',
+}));
 app.use(express.static(join(__dirname, 'public')));
 
 // ─── WebSocket ────────────────────────────────────────────────────────────────
@@ -318,6 +321,25 @@ app.post('/api/admin/avatars/:id/upload-background', uploadBg.single('background
   db.prepare("UPDATE avatars SET background = ?, updated_at = datetime('now') WHERE id = ?")
     .run(bgFile, req.params.id);
   res.json({ ok: true, background: bgFile });
+});
+
+// ─── Route: Upload icone mic/audio ───────────────────────────────────────────
+fs.mkdirSync(join(__dirname, 'public', 'icons'), { recursive: true });
+
+const uploadIcon = multer({ storage: multer.diskStorage({
+  destination: (req, file, cb) => cb(null, join(__dirname, 'public', 'icons')),
+  filename:    (req, file, cb) => cb(null, `${req.params.id}-${req.params.type}${extname(file.originalname)}`),
+}) });
+
+app.post('/api/admin/avatars/:id/upload-icon/:type', uploadIcon.single('icon'), (req, res) => {
+  if (!req.file) return res.status(400).json({ error: 'Nessun file ricevuto' });
+  const type = req.params.type; // 'mic' | 'audio'
+  if (!['mic', 'audio'].includes(type)) return res.status(400).json({ error: 'Tipo non valido' });
+  const iconFile = `icons/${req.file.filename}`;
+  const col = type === 'mic' ? 'mic_icon' : 'audio_icon';
+  db.prepare(`UPDATE avatars SET ${col} = ?, updated_at = datetime('now') WHERE id = ?`)
+    .run(iconFile, req.params.id);
+  res.json({ ok: true, [col]: iconFile });
 });
 
 // ─── Route: STT ──────────────────────────────────────────────────────────────

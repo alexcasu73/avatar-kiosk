@@ -22,6 +22,7 @@ EXCLUDES=(
   --exclude="chrome-kiosk-profile"
   --exclude="public/models"
   --exclude="public/backgrounds"
+  --exclude="public/icons"
   --exclude="*.tar.gz"
   --exclude=".DS_Store"
   --exclude="*.log"
