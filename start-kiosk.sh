@@ -2,74 +2,122 @@
 set -euo pipefail
 cd "$(dirname "$0")"
 
+GREEN='\033[0;32m'; YELLOW='\033[1;33m'; RED='\033[0;31m'; NC='\033[0m'
+ok()   { echo -e "${GREEN}[OK]${NC}    $*"; }
+info() { echo -e "${YELLOW}[INFO]${NC}  $*"; }
+err()  { echo -e "${RED}[ERRORE]${NC} $*"; exit 1; }
+
+echo ""
 echo "============================================"
-echo " AVATAR KIOSK - Avvio sistema"
+echo "  AVATAR KIOSK - Avvio sistema"
 echo "============================================"
+echo ""
+
+# ── Modalità ──────────────────────────────────────────────────────────────
+echo "Modalità di avvio:"
+echo "  [1] Server only    (headless / VPS / accesso da browser esterno)"
+echo "  [2] Kiosk          (avvia anche il browser a schermo intero)"
+echo ""
+read -r -p "Scelta [1/2, default 1]: " MODALITA
+MODALITA="${MODALITA:-1}"
 
 # ── Verifica Node.js ──────────────────────────────────────────────────────
 if ! command -v node &>/dev/null; then
-  echo "[ERRORE] Node.js non trovato. Installalo da https://nodejs.org"
-  exit 1
+  err "Node.js non trovato. Esegui prima install.sh"
 fi
+node -e "if(parseInt(process.version.slice(1)) < 18) process.exit(1)" \
+  || err "Node.js $(node --version) troppo vecchio. Richiesta versione 18+."
+ok "Node.js $(node --version)"
 
 # ── Verifica .env ─────────────────────────────────────────────────────────
 if [ ! -f ".env" ]; then
-  echo "[ERRORE] File .env non trovato. Copia .env.example in .env e configura le API key."
-  exit 1
+  err "File .env non trovato. Copia .env.example in .env e configura le API key."
 fi
+ok ".env presente"
 
 # ── Dipendenze ────────────────────────────────────────────────────────────
 if [ ! -d "node_modules" ]; then
-  echo "[INFO] Prima installazione dipendenze..."
-  npm install
+  info "Prima installazione dipendenze..."
+  npm install --omit=dev
+fi
+ok "Dipendenze pronte"
+
+# ── Porta ─────────────────────────────────────────────────────────────────
+PORT=$(grep -E '^PORT=' .env 2>/dev/null | cut -d= -f2 | tr -d '[:space:]') || true
+PORT="${PORT:-3000}"
+
+# ── Avvia server con auto-restart ─────────────────────────────────────────
+info "Avvio server Node.js sulla porta $PORT..."
+(while true; do
+  node server.js
+  echo ""
+  info "Server terminato, riavvio tra 2 secondi..."
+  sleep 2
+done) &
+SERVER_PID=$!
+trap "kill $SERVER_PID 2>/dev/null; echo ''; info 'Server fermato.'" EXIT
+
+# ── Attendi che il server risponda ────────────────────────────────────────
+info "Attendo avvio server..."
+for i in $(seq 1 15); do
+  if curl -sf "http://localhost:${PORT}/api/health" &>/dev/null; then
+    ok "Server attivo su http://localhost:${PORT}"
+    break
+  fi
+  sleep 1
+done
+
+# ── Modalità server only ───────────────────────────────────────────────────
+if [[ "$MODALITA" != "2" ]]; then
+  echo ""
+  echo "  Pannello admin : http://localhost:${PORT}/admin"
+  echo ""
+  info "Server in esecuzione. Premi Ctrl+C per fermare."
+  wait $SERVER_PID
+  exit 0
+fi
+
+# ── Modalità kiosk: cerca avatar pubblicato ───────────────────────────────
+info "Cerco avatar pubblicato..."
+AVATAR_URL=""
+API_RESP=$(curl -sf "http://localhost:${PORT}/api/admin/avatars" 2>/dev/null || echo "[]")
+KIOSK_ID=$(echo "$API_RESP" | node -e "
+  const d = require('fs').readFileSync('/dev/stdin','utf8');
+  try {
+    const list = JSON.parse(d);
+    const pub = list.find(a => a.published);
+    if (pub) process.stdout.write(pub.id);
+  } catch(e) {}
+" 2>/dev/null || true)
+
+if [ -n "$KIOSK_ID" ]; then
+  AVATAR_URL="http://localhost:${PORT}/k/${KIOSK_ID}"
+  ok "Avatar pubblicato trovato: $KIOSK_ID"
+else
+  AVATAR_URL="http://localhost:${PORT}/admin"
+  info "Nessun avatar pubblicato. Apro il pannello admin per configurare."
 fi
 
 # ── Trova browser ─────────────────────────────────────────────────────────
 BROWSER=""
 if [[ "$OSTYPE" == "darwin"* ]]; then
-  # macOS
   for b in \
     "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome" \
     "/Applications/Chromium.app/Contents/MacOS/Chromium" \
     "/Applications/Brave Browser.app/Contents/MacOS/Brave Browser"
   do
-    if [ -f "$b" ]; then BROWSER="$b"; break; fi
+    [ -f "$b" ] && BROWSER="$b" && break
   done
 else
-  # Linux
   for b in google-chrome chromium-browser chromium brave-browser; do
-    if command -v "$b" &>/dev/null; then BROWSER="$b"; break; fi
+    command -v "$b" &>/dev/null && BROWSER="$b" && break
   done
 fi
 
 if [ -z "$BROWSER" ]; then
-  echo "[ERRORE] Chrome/Chromium non trovati. Installali e riprova."
-  exit 1
+  err "Chrome/Chromium non trovati. Installali oppure usa la modalità server only."
 fi
-
-echo "[INFO] Browser: $BROWSER"
-
-# ── Avvia server con auto-restart ─────────────────────────────────────────
-echo "[INFO] Avvio server Node.js..."
-(while true; do
-  node server.js
-  echo "[INFO] Server terminato, riavvio tra 2 secondi..."
-  sleep 2
-done) &
-SERVER_PID=$!
-
-# Ferma il server quando questo script termina
-trap "kill $SERVER_PID 2>/dev/null; echo '[INFO] Server fermato.'" EXIT
-
-# ── Attendi che il server risponda ────────────────────────────────────────
-echo "[INFO] Attendo avvio server..."
-for i in $(seq 1 10); do
-  if curl -sf http://localhost:3000/api/health &>/dev/null; then
-    echo "[OK] Server attivo."
-    break
-  fi
-  sleep 1
-done
+ok "Browser: $BROWSER"
 
 # ── Flags browser ─────────────────────────────────────────────────────────
 PROFILE_DIR="$(pwd)/chrome-kiosk-profile"
@@ -88,14 +136,12 @@ FLAGS=(
   --user-data-dir="$PROFILE_DIR"
 )
 
-# macOS: --kiosk non funziona bene su alcuni setup, usiamo app-mode come alternativa
 if [[ "$OSTYPE" == "darwin"* ]]; then
-  FLAGS+=(--app=http://localhost:3000)
-  # Rimuovi --kiosk su mac (sostituito da --app)
+  FLAGS+=(--app="$AVATAR_URL")
   FLAGS=("${FLAGS[@]/--kiosk/}")
 fi
 
-echo "[INFO] Apertura browser kiosk..."
-"$BROWSER" "${FLAGS[@]}" http://localhost:3000 &>/dev/null
+info "Apertura browser kiosk: $AVATAR_URL"
+"$BROWSER" "${FLAGS[@]}" "$AVATAR_URL" &>/dev/null
 
-echo "[INFO] Browser chiuso. Fermo il server."
+info "Browser chiuso. Fermo il server."
