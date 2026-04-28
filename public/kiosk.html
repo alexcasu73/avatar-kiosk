@@ -2,7 +2,7 @@
 <html lang="it">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
   <title>Avatar Kiosk</title>
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -32,7 +32,7 @@
     }
 
     /* ─── Layout principale ─────────────────────────── */
-    #app { position: relative; width: 100vw; height: 100vh; overflow: hidden; }
+    #app { position: relative; width: 100vw; height: 100vh; height: 100dvh; overflow: hidden; }
 
     /* ─── Header ────────────────────────────────────── */
     #header {
@@ -301,7 +301,7 @@
     .typing-indicator span:nth-child(3) { animation-delay: 0.4s; }
 
     /* ─── VAD Status bar ────────────────────────────── */
-    #vad-section { display: flex; flex-direction: column; align-items: flex-end; gap: 4px; pointer-events: none; }
+    #vad-section { display: flex; flex-direction: column; align-items: flex-end; gap: 4px; pointer-events: none; padding-top: env(safe-area-inset-top, 0); }
 
     #vad-bars {
       display: flex;
@@ -328,7 +328,7 @@
     }
 
     /* ─── Input testuale (fallback) ─────────────────── */
-    #input-area { padding: 10px 20px 24px; display: flex; gap: 10px; position: relative; z-index: 22; }
+    #input-area { padding: 10px 20px 24px; padding-bottom: max(24px, env(safe-area-inset-bottom, 24px)); display: flex; gap: 10px; position: relative; z-index: 22; }
 
     #text-input {
       flex: 1;
