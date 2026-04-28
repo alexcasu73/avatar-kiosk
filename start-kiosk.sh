@@ -14,12 +14,23 @@ echo "============================================"
 echo ""
 
 # ── Modalità ──────────────────────────────────────────────────────────────
-echo "Modalità di avvio:"
-echo "  [1] Server only    (headless / VPS / accesso da browser esterno)"
-echo "  [2] Kiosk          (avvia anche il browser a schermo intero)"
-echo ""
-read -r -p "Scelta [1/2, default 1]: " MODALITA
-MODALITA="${MODALITA:-1}"
+# Supporta flag --server e --kiosk per avvio non interattivo (es. systemd)
+MODALITA=""
+for arg in "$@"; do
+  case "$arg" in
+    --server) MODALITA="1" ;;
+    --kiosk)  MODALITA="2" ;;
+  esac
+done
+
+if [ -z "$MODALITA" ]; then
+  echo "Modalità di avvio:"
+  echo "  [1] Server only    (headless / VPS / accesso da browser esterno)"
+  echo "  [2] Kiosk          (avvia anche il browser a schermo intero)"
+  echo ""
+  read -r -p "Scelta [1/2, default 1]: " MODALITA
+  MODALITA="${MODALITA:-1}"
+fi
 
 # ── Verifica Node.js ──────────────────────────────────────────────────────
 if ! command -v node &>/dev/null; then

@@ -109,7 +109,7 @@ After=network.target
 Type=simple
 User=${USER_NAME}
 WorkingDirectory=${APP_DIR}
-ExecStart=/bin/bash ${APP_DIR}/start-kiosk.sh
+ExecStart=/bin/bash ${APP_DIR}/start-kiosk.sh --server
 Restart=always
 RestartSec=5
 Environment=DISPLAY=:0
