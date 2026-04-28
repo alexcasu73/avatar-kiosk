@@ -1231,6 +1231,8 @@ const MODE_CONFIG = {
   speaking:  { dot: '#fbbf24', label: '🔊 In risposta...',    vad: 'speaking' },
 };
 
+const ACTIVE_MODES = new Set(['listening', 'recording', 'thinking', 'speaking']);
+
 function setMode(mode) {
   state.mode = mode;
   const cfg = MODE_CONFIG[mode] || MODE_CONFIG.idle;
@@ -1244,7 +1246,13 @@ function setMode(mode) {
 
   setVadState(cfg.vad);
 
-  // Il range viene cambiato nel render loop tramite ANIM_RANGE + state.mode
+  if (ACTIVE_MODES.has(mode)) {
+    // Qualsiasi attività: ferma il conto alla rovescia
+    clearTimeout(_idleTimer);
+    _idleTimer = null;
+  } else if (mode === 'idle') {
+    // già in standby, niente da fare
+  }
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -1310,7 +1318,6 @@ function addToHistory(role, text) {
 
 async function processUserInput(text) {
   if (!text?.trim()) return;
-  resetIdleTimer();
   state.vad?.pause();
 
   // Nasconde il bubble di benvenuto al primo messaggio
@@ -1461,12 +1468,14 @@ async function transcribeAndProcess(blob) {
     } else {
       setMode('listening');
       state.vad?.resume();
+      resetIdleTimer();
     }
   } catch (err) {
     document.getElementById('response-text').textContent = `⚠️ Errore trascrizione: ${err.message}`;
     document.getElementById('response-bubble').style.display = 'block';
     setMode('listening');
     state.vad?.resume();
+    resetIdleTimer();
   }
 }
 
