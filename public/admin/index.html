@@ -40,13 +40,7 @@
     #sidebar-header h1 { font-size:1rem; font-weight:700; color:var(--accent2); letter-spacing:.05em; }
     #sidebar-header p  { font-size:.75rem; color:var(--text-dim); margin-top:2px; }
 
-    #new-btn {
-      margin:16px; padding:10px;
-      background:var(--accent); border:none; border-radius:10px;
-      color:#fff; font-size:.88rem; font-weight:600; cursor:pointer;
-      transition:background .2s;
-    }
-    #new-btn:hover { background:var(--accent2); }
+    #new-btn { margin:12px; width:calc(100% - 24px); justify-content:center; }
 
     #avatar-list { flex:1; overflow-y:auto; padding:0 12px 12px; }
     #avatar-list::-webkit-scrollbar { width:3px; }
@@ -136,19 +130,38 @@
     .actions { display:flex; gap:6px; flex-shrink:0; }
 
     .btn {
-      padding:7px 14px; border:none; border-radius:8px;
-      font-size:.82rem; font-weight:600; cursor:pointer;
-      transition:all .15s; white-space:nowrap;
+      display:inline-flex; align-items:center; justify-content:center; gap:6px;
+      padding:8px 16px; border:1px solid transparent; border-radius:8px;
+      font-size:.82rem; font-weight:600; cursor:pointer; letter-spacing:.01em;
+      transition:background .15s, border-color .15s, color .15s, box-shadow .15s;
+      white-space:nowrap; line-height:1;
     }
-    .btn-icon { padding:7px 10px; }
-    .btn-primary   { background:var(--accent); color:#fff; }
-    .btn-primary:hover { background:var(--accent2); }
-    .btn-success   { background:rgba(34,211,160,.15); color:var(--success); border:1px solid var(--success); }
-    .btn-success:hover { background:var(--success); color:#000; }
-    .btn-danger    { background:rgba(248,113,113,.1); color:var(--error); border:1px solid var(--error); }
-    .btn-danger:hover  { background:var(--error); color:#fff; }
-    .btn-neutral   { background:var(--surface2); color:var(--text); border:1px solid var(--border); }
-    .btn-neutral:hover { border-color:var(--accent); color:var(--accent2); }
+    .btn:active { transform:translateY(1px); }
+
+    /* Primary — azione principale */
+    .btn-primary { background:var(--accent); color:#fff; border-color:var(--accent); }
+    .btn-primary:hover { background:#7b72ff; border-color:#7b72ff; box-shadow:0 0 0 3px rgba(108,99,255,.25); }
+
+    /* Success — pubblica / conferma */
+    .btn-success { background:#16a37a; color:#fff; border-color:#16a37a; }
+    .btn-success:hover { background:#1bbf8e; border-color:#1bbf8e; box-shadow:0 0 0 3px rgba(34,211,160,.2); }
+
+    /* Ghost — azioni secondarie */
+    .btn-neutral { background:transparent; color:var(--text-dim); border-color:var(--border); }
+    .btn-neutral:hover { background:var(--surface2); color:var(--text); border-color:rgba(108,99,255,.5); }
+    .btn-neutral.active { background:var(--surface3); color:var(--accent2); border-color:var(--accent); }
+
+    /* Danger — azioni distruttive */
+    .btn-danger { background:transparent; color:var(--error); border-color:rgba(248,113,113,.4); }
+    .btn-danger:hover { background:var(--error); color:#fff; border-color:var(--error); box-shadow:0 0 0 3px rgba(248,113,113,.2); }
+
+    /* Icon — solo icona, formato quadrato */
+    .btn-icon { padding:8px 10px; }
+
+    /* Toggle modalità AI */
+    .btn-mode-applied  { background:var(--accent); color:#fff; border-color:var(--accent); }
+    .btn-mode-applied:hover { background:#7b72ff; }
+    .btn-mode-selected { background:rgba(108,99,255,.08); color:var(--accent2); border-color:var(--accent2); border-style:dashed; }
 
     /* ── Card sezione ───────────────────────────── */
     .section {
@@ -305,14 +318,11 @@
       <h1>AVATAR KIOSK</h1>
       <p>Backoffice</p>
     </div>
-    <button id="new-btn" onclick="createAvatar()">+ Nuovo Avatar</button>
-    <form method="POST" action="/admin/logout" style="margin-top:auto;padding:16px 12px 0">
-      <button type="submit" style="width:100%;padding:8px;background:rgba(248,113,113,.1);
-        color:#f87171;border:1px solid #f87171;border-radius:8px;cursor:pointer;font-size:.8rem">
-        🚪 Logout
-      </button>
-    </form>
+    <button id="new-btn" class="btn btn-primary" onclick="createAvatar()">+ Nuovo Avatar</button>
     <div id="avatar-list"></div>
+    <form method="POST" action="/admin/logout" style="padding:12px">
+      <button type="submit" class="btn btn-danger" style="width:100%">Logout</button>
+    </form>
   </div>
 
   <!-- Main -->
@@ -330,7 +340,7 @@
         <h2 id="editor-title">Avatar</h2>
         <div class="actions">
           <button class="btn btn-success" id="publish-btn" onclick="togglePublish()">Pubblica</button>
-          <button class="btn btn-primary" onclick="saveAvatar()">💾 Salva</button>
+          <button class="btn btn-primary" onclick="saveAvatar()">Salva</button>
           <button class="btn btn-neutral btn-icon" onclick="openKiosk()" title="Apri kiosk">↗</button>
           <button class="btn btn-danger  btn-icon" onclick="deleteAvatar()" title="Elimina">🗑</button>
         </div>
@@ -404,10 +414,11 @@
 
         <div class="section">
           <h3>Modalità AI</h3>
-        <div class="field" style="margin-bottom:16px">
-          <div class="btn-row" style="gap:6px">
-            <button id="mode-embedded-btn" class="btn btn-neutral active" onclick="setAvatarMode('embedded')">⚙️ Embedded</button>
-            <button id="mode-webhook-btn"  class="btn btn-neutral"        onclick="setAvatarMode('webhook')">🔗 Webhook</button>
+        <div class="field" style="margin-bottom:12px">
+          <div style="display:flex;gap:6px;align-items:center">
+            <button id="mode-embedded-btn" class="btn btn-neutral" onclick="setAvatarMode('embedded')" style="flex:1">⚙️ Embedded</button>
+            <button id="mode-webhook-btn"  class="btn btn-neutral" onclick="setAvatarMode('webhook')"  style="flex:1">🔗 Webhook</button>
+            <button id="mode-apply-btn" class="btn btn-primary" onclick="applyAvatarMode()" style="display:none">✓ Applica</button>
           </div>
         </div>
         <div id="webhook-fields" style="display:none">
@@ -747,6 +758,7 @@ function selectAvatar(id) {
   document.getElementById('editor-title').textContent = a.name;
 
   // Campi testo
+  setAvatarMode._applied = a.avatar_mode || 'embedded';
   setAvatarMode(a.avatar_mode || 'embedded');
   document.getElementById('f-webhook-url').value              = a.webhook_url              || '';
   document.getElementById('f-webhook-input-template').value   = a.webhook_input_template   || '{"query":"{{query}}"}';
@@ -816,7 +828,9 @@ function selectAvatar(id) {
   document.getElementById('val-idle-timeout').textContent = idleTimeout;
 
   // Publish btn
-  document.getElementById('publish-btn').textContent = a.published ? '🔴 Rimuovi' : '🟢 Pubblica';
+  const pb = document.getElementById('publish-btn');
+  pb.textContent = a.published ? 'Rimuovi' : 'Pubblica';
+  pb.className   = a.published ? 'btn btn-danger' : 'btn btn-success';
 
   // URL kiosk
   const url = `${location.origin}/k/${a.id}`;
@@ -1025,6 +1039,8 @@ async function saveAvatar() {
   avatars = avatars.map(a => a.id===currentId ? updated : a);
   document.getElementById('editor-title').textContent = updated.name;
   renderList();
+  setAvatarMode._applied = setAvatarMode._current;
+  _refreshModeBtns();
   toast('✅ Salvato');
 }
 
@@ -1120,13 +1136,31 @@ function switchTab(name) {
 }
 
 function setAvatarMode(mode) {
-  ['embedded','webhook'].forEach(m => {
-    document.getElementById(`mode-${m}-btn`).classList.toggle('active', m === mode);
-  });
-  document.getElementById('webhook-fields').style.display = mode === 'webhook' ? 'block' : 'none';
   setAvatarMode._current = mode;
+  document.getElementById('webhook-fields').style.display = mode === 'webhook' ? 'block' : 'none';
+  _refreshModeBtns();
 }
-setAvatarMode._current = 'embedded';
+setAvatarMode._current  = 'embedded';
+setAvatarMode._applied  = 'embedded';
+
+function _refreshModeBtns() {
+  const sel = setAvatarMode._current;
+  const app = setAvatarMode._applied;
+  ['embedded','webhook'].forEach(m => {
+    const btn = document.getElementById(`mode-${m}-btn`);
+    btn.className = 'btn btn-neutral';
+    if (m === app) btn.classList.add('btn-mode-applied');
+    else if (m === sel) btn.classList.add('btn-mode-selected');
+  });
+  const applyBtn = document.getElementById('mode-apply-btn');
+  applyBtn.style.display = sel !== app ? 'block' : 'none';
+}
+
+async function applyAvatarMode() {
+  await saveAvatar();
+  setAvatarMode._applied = setAvatarMode._current;
+  _refreshModeBtns();
+}
 
 async function testWebhook() {
   const url           = document.getElementById('f-webhook-url').value.trim();
