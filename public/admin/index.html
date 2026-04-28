@@ -159,9 +159,11 @@
     .btn-icon { padding:8px 10px; }
 
     /* Toggle modalità AI */
+    /* applicato = viola solido con check */
     .btn-mode-applied  { background:var(--accent); color:#fff; border-color:var(--accent); }
     .btn-mode-applied:hover { background:#7b72ff; }
-    .btn-mode-selected { background:rgba(108,99,255,.08); color:var(--accent2); border-color:var(--accent2); border-style:dashed; }
+    /* selezionato non ancora applicato = giallo/warn, bordo solid */
+    .btn-mode-selected { background:rgba(251,191,36,.1); color:#fbbf24; border-color:#fbbf24; border-style:solid; }
 
     /* ── Card sezione ───────────────────────────── */
     .section {
@@ -511,6 +513,9 @@
             <button id="mode-embedded-btn" class="btn btn-neutral" onclick="setAvatarMode('embedded')" style="flex:1">⚙️ Embedded</button>
             <button id="mode-webhook-btn"  class="btn btn-neutral" onclick="setAvatarMode('webhook')"  style="flex:1">🔗 Webhook</button>
             <button id="mode-apply-btn" class="btn btn-primary" onclick="applyAvatarMode()" style="display:none">✓ Applica</button>
+          </div>
+          <div id="mode-status-line" style="font-size:.72rem;margin-top:6px;color:var(--text-dim)"></div>
+          <div style="display:none">
           </div>
         </div>
         <div id="webhook-fields" style="display:none;flex-direction:column;gap:12px;margin-top:4px">
@@ -1497,6 +1502,7 @@ setAvatarMode._applied  = 'embedded';
 function _refreshModeBtns() {
   const sel = setAvatarMode._current;
   const app = setAvatarMode._applied;
+  const labels = { embedded: 'Embedded', webhook: 'Webhook' };
   ['embedded','webhook'].forEach(m => {
     const btn = document.getElementById(`mode-${m}-btn`);
     btn.className = 'btn btn-neutral';
@@ -1505,6 +1511,15 @@ function _refreshModeBtns() {
   });
   const applyBtn = document.getElementById('mode-apply-btn');
   applyBtn.style.display = sel !== app ? 'block' : 'none';
+  const statusLine = document.getElementById('mode-status-line');
+  if (statusLine) {
+    if (sel === app) {
+      statusLine.innerHTML = `<span style="color:var(--success)">✓ Attivo: <strong>${labels[app]}</strong></span>`;
+    } else {
+      statusLine.innerHTML = `<span style="color:var(--success)">✓ Attivo: <strong>${labels[app]}</strong></span>`
+        + `&nbsp;&nbsp;<span style="color:#fbbf24">● Selezionato: <strong>${labels[sel]}</strong> — clicca Applica per salvare</span>`;
+    }
+  }
 }
 
 async function applyAvatarMode() {
