@@ -99,7 +99,9 @@ if [[ "$OSTYPE" == "linux-gnu"* ]] && command -v systemctl &>/dev/null; then
   if [[ "$AUTOSTART" =~ ^[Ss]$ ]]; then
     APP_DIR="$(pwd)"
     USER_NAME="$(whoami)"
+    NODE_BIN="$(command -v node)"
     SERVICE_FILE="/etc/systemd/system/avatar-kiosk.service"
+
     sudo tee "$SERVICE_FILE" > /dev/null <<EOF
 [Unit]
 Description=Avatar Kiosk
@@ -112,15 +114,31 @@ WorkingDirectory=${APP_DIR}
 ExecStart=/bin/bash ${APP_DIR}/start-kiosk.sh --server
 Restart=always
 RestartSec=5
-Environment=DISPLAY=:0
+StandardOutput=journal
+StandardError=journal
 
 [Install]
 WantedBy=multi-user.target
 EOF
+
     sudo systemctl daemon-reload
     sudo systemctl enable avatar-kiosk.service
-    ok "Servizio systemd configurato: avatar-kiosk.service"
-    info "Avvia manualmente con: sudo systemctl start avatar-kiosk"
+    sudo systemctl start  avatar-kiosk.service
+    sleep 2
+
+    if systemctl is-active --quiet avatar-kiosk.service; then
+      ok "Servizio avviato e abilitato al boot"
+    else
+      echo -e "${RED}[WARN]${NC}  Servizio abilitato ma non ancora attivo. Controlla con:"
+      echo "         sudo systemctl status avatar-kiosk"
+    fi
+
+    echo ""
+    echo "  Comandi utili:"
+    echo "    sudo systemctl status  avatar-kiosk   # stato"
+    echo "    sudo systemctl stop    avatar-kiosk   # ferma"
+    echo "    sudo systemctl restart avatar-kiosk   # riavvia"
+    echo "    sudo journalctl -u avatar-kiosk -f    # log in tempo reale"
   fi
 fi
 
