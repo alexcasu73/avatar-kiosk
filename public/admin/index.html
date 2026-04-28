@@ -179,6 +179,9 @@
     .fields { display:grid; grid-template-columns:1fr 1fr; gap:14px; }
     .fields.single { grid-template-columns:1fr; }
     .fields.triple { grid-template-columns:1fr 1fr 1fr; }
+    .fields > .field { min-width:0; }
+    .field select { width:100%; min-width:0; max-width:100%;
+      overflow:hidden; text-overflow:ellipsis; }
 
     .field { display:flex; flex-direction:column; gap:6px; }
     .field label { font-size:.78rem; color:var(--text-dim); font-weight:500; }

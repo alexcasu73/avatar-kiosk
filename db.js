@@ -86,8 +86,11 @@ if (!existing.includes('openai_model'))      db.exec("ALTER TABLE avatars ADD CO
 // Migra vecchi campi ai_api_key/ai_model se presenti
 if (existing.includes('ai_api_key')) {
   db.exec("UPDATE avatars SET anthropic_api_key = ai_api_key WHERE anthropic_api_key = '' AND ai_api_key != ''");
+  db.exec("UPDATE avatars SET anthropic_api_key = ai_api_key WHERE anthropic_api_key = '' AND ai_api_key != '' AND ai_provider = 'anthropic'");
   db.exec("UPDATE avatars SET anthropic_model = ai_model WHERE anthropic_model = '' AND ai_model != '' AND ai_provider = 'anthropic'");
-  db.exec("UPDATE avatars SET openai_model = ai_model WHERE openai_model = '' AND ai_model != '' AND ai_provider = 'openai'");
+  // Non migrare il modello OpenAI se contiene un nome Anthropic
+  db.exec("UPDATE avatars SET openai_api_key = ai_api_key WHERE openai_api_key = '' AND ai_api_key != '' AND ai_provider = 'openai' AND ai_api_key NOT LIKE 'sk-ant-%'");
+  db.exec("UPDATE avatars SET openai_model = ai_model WHERE openai_model = '' AND ai_model != '' AND ai_provider = 'openai' AND ai_model NOT LIKE 'claude-%'");
 }
 if (!existing.includes('avatar_mode'))
   db.exec("ALTER TABLE avatars ADD COLUMN avatar_mode TEXT DEFAULT 'embedded'");
