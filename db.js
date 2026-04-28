@@ -56,7 +56,7 @@ db.exec(`
     overlay_opacity   REAL DEFAULT 0.75,
     overlay_height    REAL DEFAULT 65,
     chat_height       INTEGER DEFAULT 65,
-    chat_bottom       INTEGER DEFAULT 0,
+    chat_bottom       INTEGER DEFAULT 200,
     chat_max_width    INTEGER DEFAULT 100,
     chat_align        TEXT DEFAULT 'center',
     chat_hide_input   INTEGER DEFAULT 0,
@@ -126,7 +126,7 @@ if (!existing.includes('idle_timeout'))
 if (!existing.includes('chat_height'))
   db.exec("ALTER TABLE avatars ADD COLUMN chat_height INTEGER DEFAULT 65");
 if (!existing.includes('chat_bottom'))
-  db.exec("ALTER TABLE avatars ADD COLUMN chat_bottom INTEGER DEFAULT 0");
+  db.exec("ALTER TABLE avatars ADD COLUMN chat_bottom INTEGER DEFAULT 200");
 if (!existing.includes('chat_max_width'))
   db.exec("ALTER TABLE avatars ADD COLUMN chat_max_width INTEGER DEFAULT 100");
 if (!existing.includes('chat_align'))
