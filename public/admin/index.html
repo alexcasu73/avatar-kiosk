@@ -402,9 +402,148 @@
     #toast.show { opacity:1; }
     #toast.ok    { border-color:var(--success); color:var(--success); }
     #toast.error { border-color:var(--error);   color:var(--error); }
+    /* ── Wizard ─────────────────────────────────── */
+    #wizard-overlay {
+      position:fixed; inset:0; z-index:200;
+      background:rgba(5,5,10,.85); backdrop-filter:blur(6px);
+      display:flex; align-items:center; justify-content:center;
+    }
+    #wizard-overlay.hidden { display:none; }
+    #wizard-box {
+      background:var(--surface); border:1px solid var(--border);
+      border-radius:20px; width:520px; max-width:95vw;
+      max-height:90vh; overflow-y:auto; display:flex; flex-direction:column;
+    }
+    #wizard-header {
+      padding:24px 28px 0;
+    }
+    #wizard-header h2 { font-size:1.1rem; font-weight:700; margin-bottom:4px; }
+    #wizard-header p  { font-size:.8rem; color:var(--text-dim); }
+    .wizard-progress {
+      display:flex; gap:6px; margin-top:20px;
+    }
+    .wizard-step-dot {
+      flex:1; height:4px; border-radius:2px;
+      background:var(--border); transition:background .3s;
+    }
+    .wizard-step-dot.done    { background:var(--success); }
+    .wizard-step-dot.active  { background:var(--accent); }
+    #wizard-body { padding:24px 28px; flex:1; display:flex; flex-direction:column; gap:14px; }
+    #wizard-footer {
+      padding:16px 28px 24px;
+      display:flex; align-items:center; gap:10px;
+      border-top:1px solid var(--border);
+    }
+    #wizard-footer .spacer { flex:1; }
+    .wizard-skip {
+      font-size:.78rem; color:var(--text-dim); background:none; border:none;
+      cursor:pointer; text-decoration:underline; padding:0;
+    }
+    .wizard-skip:hover { color:var(--text); }
+    .wizard-step-label {
+      font-size:.65rem; font-weight:700; text-transform:uppercase;
+      letter-spacing:.1em; color:var(--text-dim); margin-bottom:2px;
+    }
   </style>
 </head>
 <body>
+<!-- ── Wizard nuovo avatar ─────────────────────────────────────────────────── -->
+<div id="wizard-overlay" class="hidden">
+  <div id="wizard-box">
+    <div id="wizard-header">
+      <div class="wizard-step-label" id="wiz-step-label">Passo 1 di 4</div>
+      <h2 id="wiz-title">Nome e voce</h2>
+      <p id="wiz-subtitle">Dai un nome al tuo avatar e configura la voce</p>
+      <div class="wizard-progress">
+        <div class="wizard-step-dot active" id="wdot-0"></div>
+        <div class="wizard-step-dot" id="wdot-1"></div>
+        <div class="wizard-step-dot" id="wdot-2"></div>
+        <div class="wizard-step-dot" id="wdot-3"></div>
+      </div>
+    </div>
+
+    <div id="wizard-body">
+
+      <!-- Step 0: Nome e voce -->
+      <div class="wiz-step" id="wstep-0">
+        <div class="fields single" style="gap:12px">
+          <div class="field">
+            <label>Nome avatar *</label>
+            <input type="text" id="wiz-name" placeholder="Es. Sofia, Gino, Maria..." autofocus/>
+          </div>
+          <div class="field">
+            <label>ElevenLabs Voice ID <span class="hint" style="margin:0">(puoi configurarlo dopo)</span></label>
+            <input type="text" id="wiz-voice-id" placeholder="dNeMsqRAC759PyIQ40Vf"/>
+          </div>
+        </div>
+      </div>
+
+      <!-- Step 1: Modalità AI -->
+      <div class="wiz-step hidden" id="wstep-1">
+        <div class="fields" style="gap:10px">
+          <div id="wiz-card-embedded" class="provider-card active" onclick="wizSetMode('embedded')" style="cursor:pointer">
+            <div class="provider-card-header">
+              <span class="provider-name">⚙️ Embedded</span>
+              <span class="provider-badge" id="wiz-badge-embedded">● SELEZIONATO</span>
+            </div>
+            <p style="font-size:.75rem;color:var(--text-dim);margin-top:4px">Claude, OpenAI GPT o altro provider configurato direttamente</p>
+          </div>
+          <div id="wiz-card-webhook" class="provider-card" onclick="wizSetMode('webhook')" style="cursor:pointer">
+            <div class="provider-card-header">
+              <span class="provider-name">🔗 Webhook</span>
+              <span class="provider-badge hidden" id="wiz-badge-webhook">● SELEZIONATO</span>
+            </div>
+            <p style="font-size:.75rem;color:var(--text-dim);margin-top:4px">Integra un workflow n8n o qualsiasi endpoint esterno</p>
+          </div>
+        </div>
+        <div class="field" style="margin-top:4px">
+          <label style="font-size:.75rem;color:var(--text-dim)">Puoi configurare tutti i dettagli nell'editor dopo la creazione.</label>
+        </div>
+      </div>
+
+      <!-- Step 2: Sfondo -->
+      <div class="wiz-step hidden" id="wstep-2">
+        <div class="field" style="margin-bottom:12px">
+          <label>Colore sfondo</label>
+          <div class="color-row">
+            <input type="color" id="wiz-bg-color" value="#0a0a0f" class="color-input"
+              oninput="document.getElementById('wiz-bg-hex').textContent=this.value"/>
+            <span id="wiz-bg-hex" class="color-hex">#0a0a0f</span>
+          </div>
+        </div>
+        <div class="field">
+          <label>System Prompt <span class="hint" style="margin:0">(opzionale)</span></label>
+          <textarea id="wiz-prompt" placeholder="Sei Sofia, un'assistente virtuale..." style="min-height:90px"></textarea>
+        </div>
+      </div>
+
+      <!-- Step 3: Fine -->
+      <div class="wiz-step hidden" id="wstep-3">
+        <div style="text-align:center;padding:10px 0 20px">
+          <div style="font-size:3rem;margin-bottom:16px">🎉</div>
+          <h3 style="font-size:1rem;margin-bottom:8px">Tutto pronto!</h3>
+          <p style="font-size:.85rem;color:var(--text-dim);line-height:1.6">L'avatar verrà creato con le impostazioni scelte.<br>Potrai modificare ogni dettaglio nell'editor.</p>
+        </div>
+        <div id="wiz-summary" style="background:var(--surface2);border-radius:10px;padding:14px;font-size:.82rem;display:flex;flex-direction:column;gap:6px"></div>
+        <div class="field" style="margin-top:14px">
+          <label style="display:flex;align-items:center;gap:10px;cursor:pointer">
+            <input type="checkbox" id="wiz-publish"/>
+            Pubblica subito dopo la creazione
+          </label>
+        </div>
+      </div>
+
+    </div>
+
+    <div id="wizard-footer">
+      <button class="wizard-skip" onclick="wizSkip()">Salta wizard</button>
+      <div class="spacer"></div>
+      <button class="btn btn-neutral" id="wiz-back-btn" onclick="wizBack()" style="display:none">← Indietro</button>
+      <button class="btn btn-primary" id="wiz-next-btn" onclick="wizNext()">Avanti →</button>
+    </div>
+  </div>
+</div>
+
 <div id="app">
 
   <!-- Sidebar -->
@@ -1237,7 +1376,112 @@ function reloadPreview() {
 }
 
 // ── Crea avatar ───────────────────────────────────────────────────────────────
-async function createAvatar() {
+function createAvatar() {
+  wizOpen();
+}
+
+// ── Wizard ────────────────────────────────────────────────────────────────────
+let _wizStep = 0;
+let _wizMode = 'embedded';
+const WIZ_STEPS = [
+  { label:'Nome e voce',   subtitle:'Dai un nome al tuo avatar e configura la voce' },
+  { label:'Modalità AI',   subtitle:'Come risponderà il tuo avatar?' },
+  { label:'Impostazioni',  subtitle:'Sfondo e system prompt di base' },
+  { label:'Riepilogo',     subtitle:'Controlla e crea il tuo avatar' },
+];
+
+function wizOpen() {
+  _wizStep = 0; _wizMode = 'embedded';
+  document.getElementById('wiz-name').value     = '';
+  document.getElementById('wiz-voice-id').value = '';
+  document.getElementById('wiz-prompt').value   = '';
+  document.getElementById('wiz-bg-color').value = '#0a0a0f';
+  document.getElementById('wiz-bg-hex').textContent = '#0a0a0f';
+  document.getElementById('wiz-publish').checked = false;
+  wizSetMode('embedded');
+  wizRender();
+  document.getElementById('wizard-overlay').classList.remove('hidden');
+  setTimeout(() => document.getElementById('wiz-name').focus(), 100);
+}
+
+function wizClose() {
+  document.getElementById('wizard-overlay').classList.add('hidden');
+}
+
+function wizSetMode(mode) {
+  _wizMode = mode;
+  ['embedded','webhook'].forEach(m => {
+    const active = m === mode;
+    document.getElementById(`wiz-card-${m}`).classList.toggle('active', active);
+    document.getElementById(`wiz-badge-${m}`).classList.toggle('hidden', !active);
+  });
+}
+
+function wizRender() {
+  const total = WIZ_STEPS.length;
+  document.getElementById('wiz-step-label').textContent = `Passo ${_wizStep+1} di ${total}`;
+  document.getElementById('wiz-title').textContent    = WIZ_STEPS[_wizStep].label;
+  document.getElementById('wiz-subtitle').textContent = WIZ_STEPS[_wizStep].subtitle;
+  for (let i=0; i<total; i++) {
+    const dot = document.getElementById(`wdot-${i}`);
+    dot.className = 'wizard-step-dot' + (i < _wizStep ? ' done' : i === _wizStep ? ' active' : '');
+  }
+  document.querySelectorAll('.wiz-step').forEach((el,i) => {
+    el.classList.toggle('hidden', i !== _wizStep);
+  });
+  document.getElementById('wiz-back-btn').style.display = _wizStep > 0 ? '' : 'none';
+  document.getElementById('wiz-next-btn').textContent   = _wizStep === total-1 ? '✓ Crea avatar' : 'Avanti →';
+  if (_wizStep === total-1) wizBuildSummary();
+}
+
+function wizBuildSummary() {
+  const name    = document.getElementById('wiz-name').value.trim() || 'Senza nome';
+  const voiceId = document.getElementById('wiz-voice-id').value.trim();
+  const bg      = document.getElementById('wiz-bg-color').value;
+  const rows = [
+    ['Nome',      name],
+    ['Modalità',  _wizMode === 'embedded' ? '⚙️ Embedded' : '🔗 Webhook'],
+    ['Sfondo',    `<span style="display:inline-block;width:12px;height:12px;border-radius:3px;background:${bg};vertical-align:middle;margin-right:6px"></span>${bg}`],
+    voiceId ? ['Voice ID', voiceId] : null,
+  ].filter(Boolean);
+  document.getElementById('wiz-summary').innerHTML = rows.map(([k,v]) =>
+    `<div style="display:flex;gap:8px"><span style="color:var(--text-dim);min-width:80px">${k}</span><strong>${v}</strong></div>`
+  ).join('');
+}
+
+function wizBack() { if (_wizStep > 0) { _wizStep--; wizRender(); } }
+
+function wizNext() {
+  if (_wizStep === 0 && !document.getElementById('wiz-name').value.trim()) {
+    document.getElementById('wiz-name').focus();
+    document.getElementById('wiz-name').style.borderColor = 'var(--error)';
+    return;
+  }
+  document.getElementById('wiz-name').style.borderColor = '';
+  if (_wizStep < WIZ_STEPS.length-1) { _wizStep++; wizRender(); return; }
+  wizCreate();
+}
+
+async function wizCreate() {
+  const name    = document.getElementById('wiz-name').value.trim();
+  const voiceId = document.getElementById('wiz-voice-id').value.trim();
+  const bg      = document.getElementById('wiz-bg-color').value;
+  const prompt  = document.getElementById('wiz-prompt').value.trim();
+  const publish = document.getElementById('wiz-publish').checked;
+  wizClose();
+  const a = await api.post('/api/admin/avatars', { name });
+  const updates = { background: bg, avatar_mode: _wizMode };
+  if (voiceId) updates.voice_id = voiceId;
+  if (prompt)  updates.system_prompt = prompt;
+  await api.put(`/api/admin/avatars/${a.id}`, updates);
+  if (publish) await api.post(`/api/admin/avatars/${a.id}/publish`, {});
+  await loadAvatars();
+  selectAvatar(a.id);
+  toast(`✅ Avatar "${name}" creato`);
+}
+
+async function wizSkip() {
+  wizClose();
   const a = await api.post('/api/admin/avatars', { name: 'Nuovo Avatar' });
   await loadAvatars();
   selectAvatar(a.id);
