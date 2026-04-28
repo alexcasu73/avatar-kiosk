@@ -1,0 +1,9 @@
+node_modules
+.env
+avatars.db
+public/models
+public/backgrounds
+public/icons
+chrome-kiosk-profile
+*.log
+.git

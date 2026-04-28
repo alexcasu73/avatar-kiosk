@@ -1,0 +1,15 @@
+services:
+  avatar-kiosk:
+    build: .
+    container_name: avatar-kiosk
+    restart: unless-stopped
+    ports:
+      - "${PORT:-3000}:3000"
+    volumes:
+      - ./public/models:/app/public/models
+      - ./public/backgrounds:/app/public/backgrounds
+      - ./public/icons:/app/public/icons
+      - ./avatars.db:/app/avatars.db
+      - ./.env:/app/.env
+    env_file:
+      - .env

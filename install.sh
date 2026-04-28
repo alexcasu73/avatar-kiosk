@@ -16,6 +16,91 @@ echo "  AVATAR KIOSK — Installazione"
 echo "============================================"
 echo ""
 
+# ── Modalità installazione ────────────────────────────────────────────────
+echo "Modalità di installazione:"
+echo "  [1] Node.js diretto  (classica)"
+echo "  [2] Docker           (consigliata per server)"
+echo ""
+read -r -p "Scelta [1/2, default 1]: " INSTALL_MODE
+INSTALL_MODE="${INSTALL_MODE:-1}"
+
+if [[ "$INSTALL_MODE" == "2" ]]; then
+  # ── Installazione Docker ─────────────────────────────────────────────────
+  if ! command -v docker &>/dev/null; then
+    info "Docker non trovato. Installo..."
+    curl -fsSL https://get.docker.com | sh
+    sudo usermod -aG docker "$(whoami)"
+    ok "Docker installato"
+  else
+    ok "Docker $(docker --version | cut -d' ' -f3 | tr -d ',')"
+  fi
+
+  if ! command -v docker &>/dev/null || ! docker compose version &>/dev/null 2>&1; then
+    info "Installo Docker Compose plugin..."
+    sudo apt-get install -y docker-compose-plugin 2>/dev/null || true
+  fi
+
+  # .env
+  if [ ! -f ".env" ]; then
+    cp .env.example .env
+    info "File .env creato da .env.example"
+  else
+    ok ".env già presente"
+  fi
+
+  # Credenziali admin
+  echo ""
+  echo "── Credenziali pannello Admin ──────────────────────────────"
+  CURRENT_USER=$(grep -E '^ADMIN_USER=' .env | cut -d= -f2 || echo "admin")
+  CURRENT_PASS=$(grep -E '^ADMIN_PASSWORD=' .env | cut -d= -f2 || echo "changeme")
+  read -r -p "  Username admin [attuale: ${CURRENT_USER}]: " INPUT_USER
+  INPUT_USER="${INPUT_USER:-$CURRENT_USER}"
+  read -r -s -p "  Password admin (lascia vuoto per mantenere): " INPUT_PASS
+  echo ""
+  INPUT_PASS="${INPUT_PASS:-$CURRENT_PASS}"
+  if grep -q '^ADMIN_USER=' .env; then
+    sed -i "s|^ADMIN_USER=.*|ADMIN_USER=${INPUT_USER}|" .env
+  else
+    echo "ADMIN_USER=${INPUT_USER}" >> .env
+  fi
+  if grep -q '^ADMIN_PASSWORD=' .env; then
+    sed -i "s|^ADMIN_PASSWORD=.*|ADMIN_PASSWORD=${INPUT_PASS}|" .env
+  else
+    echo "ADMIN_PASSWORD=${INPUT_PASS}" >> .env
+  fi
+  ok "Credenziali admin: utente=${INPUT_USER}"
+
+  mkdir -p public/models public/backgrounds public/icons
+  touch avatars.db
+
+  info "Build e avvio container..."
+  docker compose up -d --build
+  ok "Container avviato"
+
+  echo ""
+  read -r -p "Vuoi avviare automaticamente il container al boot? [s/N] " AUTOSTART
+  if [[ "$AUTOSTART" =~ ^[Ss]$ ]]; then
+    docker compose up -d --build
+    ok "Il container si riavvia automaticamente (restart: unless-stopped)"
+    info "Per fermarlo definitivamente: docker compose down"
+  fi
+
+  echo ""
+  echo "============================================"
+  echo -e "${GREEN}  Installazione Docker completata!${NC}"
+  echo "============================================"
+  echo ""
+  PORT_VAL=$(grep -E '^PORT=' .env | cut -d= -f2 || echo "3000")
+  echo "  Pannello admin: http://$(hostname -I | awk '{print $1}'):${PORT_VAL:-3000}/admin"
+  echo ""
+  echo "  Comandi utili:"
+  echo "    docker compose logs -f        # log in tempo reale"
+  echo "    docker compose restart        # riavvia"
+  echo "    docker compose down           # ferma"
+  echo ""
+  exit 0
+fi
+
 # ── Funzione installazione pacchetti di sistema ───────────────────────────
 install_pkg() {
   local pkg="$1"
