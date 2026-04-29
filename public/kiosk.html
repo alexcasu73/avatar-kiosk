@@ -2603,10 +2603,10 @@ function applyParamLive(key, v) {
     camera_z:        () => { if (!state.avatar) return; camera.position.z = v; camera.lookAt(0, CONFIG.cameraLookAtY, 0); },
     camera_y:        () => { if (!state.avatar) return; camera.position.y = v; camera.lookAt(0, CONFIG.cameraLookAtY, 0); },
     camera_look_at_y:() => { if (!state.avatar) return; CONFIG.cameraLookAtY = v; camera.lookAt(0, v, 0); },
-    idle_start:      () => { ANIM_RANGE.idleStart   = v; },
-    idle_end:        () => { ANIM_RANGE.idleEnd     = v; },
-    speech_start:    () => { ANIM_RANGE.speechStart = v; },
-    speech_end:      () => { ANIM_RANGE.speechEnd   = v; },
+    idle_start:   () => { ANIM_RANGE.idleStart   = v; if (state._isPreviewLooping && state._previewRange?.start !== undefined && ANIM_RANGE.idleStart <= ANIM_RANGE.idleEnd) state._previewRange = { start: ANIM_RANGE.idleStart, end: ANIM_RANGE.idleEnd }; },
+    idle_end:     () => { ANIM_RANGE.idleEnd     = v; if (state._isPreviewLooping && state._previewRange?.end   !== undefined && ANIM_RANGE.idleStart <= ANIM_RANGE.idleEnd) state._previewRange = { start: ANIM_RANGE.idleStart, end: ANIM_RANGE.idleEnd }; },
+    speech_start: () => { ANIM_RANGE.speechStart = v; if (state._isPreviewLooping && state._previewRange?.start !== undefined && ANIM_RANGE.speechStart <= ANIM_RANGE.speechEnd) state._previewRange = { start: ANIM_RANGE.speechStart, end: ANIM_RANGE.speechEnd }; },
+    speech_end:   () => { ANIM_RANGE.speechEnd   = v; if (state._isPreviewLooping && state._previewRange?.end   !== undefined && ANIM_RANGE.speechStart <= ANIM_RANGE.speechEnd) state._previewRange = { start: ANIM_RANGE.speechStart, end: ANIM_RANGE.speechEnd }; },
     chat_bottom:     () => {
       CONFIG._chatBottom = parseFloat(v);
       if (window.innerWidth > 600)
