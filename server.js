@@ -369,8 +369,14 @@ app.post('/api/admin/avatars/:id/upload-model', uploadFbx.single('model'), async
       const imgBuf = origBin.slice(bv.byteOffset, bv.byteOffset + bv.byteLength);
       if (img.mimeType === 'image/png' || img.mimeType === 'image/jpeg') {
         try {
-          const compressed = await sharp(imgBuf).jpeg({ quality: 75, mozjpeg: true }).toBuffer();
-          if (compressed.length < imgBuf.length) {
+          const meta = await sharp(imgBuf).metadata();
+          const MAX_TEX = 4096;
+          const needsResize = (meta.width > MAX_TEX || meta.height > MAX_TEX);
+          const pipeline = needsResize
+            ? sharp(imgBuf).resize(MAX_TEX, MAX_TEX, { fit: 'inside', withoutEnlargement: true })
+            : sharp(imgBuf);
+          const compressed = await pipeline.jpeg({ quality: 75, mozjpeg: true }).toBuffer();
+          if (needsResize || compressed.length < imgBuf.length) {
             const aligned = Buffer.alloc(Math.ceil(compressed.length / 4) * 4, 0x00);
             compressed.copy(aligned);
             bv.byteOffset = extraOffset;
