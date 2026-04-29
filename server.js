@@ -121,8 +121,8 @@ app.get('/api/avatar/:id', (req, res) => {
           idle_timeout, idle_icon, idle_icon_img, idle_title, idle_subtitle, idle_hint, idle_font, idle_font_size,
           chat_font, chat_font_size,
           show_controls,
-          mic_icon, mic_icon_size, mic_icon_x, mic_icon_y,
-          audio_icon, audio_icon_size, audio_icon_x, audio_icon_y,
+          mic_icon, mic_icon_disabled, mic_icon_size, mic_icon_x, mic_icon_y, mic_visible, mic_bg_color, mic_disabled_color, mic_border_color, mic_border_disabled_color,
+          audio_icon, audio_icon_disabled, audio_icon_size, audio_icon_x, audio_icon_y, audio_visible, audio_bg_color, audio_disabled_color, audio_border_color, audio_border_disabled_color,
           mic_wave_color, audio_wave_color, theme } = avatar;
   res.json({ id, name, background, model_file, idle_start, idle_end,
              speech_start, speech_end, avatar_scale, avatar_offset_x,
@@ -131,8 +131,8 @@ app.get('/api/avatar/:id', (req, res) => {
              idle_timeout, idle_icon, idle_icon_img, idle_title, idle_subtitle, idle_hint, idle_font, idle_font_size,
              chat_font, chat_font_size,
              show_controls,
-             mic_icon, mic_icon_size, mic_icon_x, mic_icon_y,
-             audio_icon, audio_icon_size, audio_icon_x, audio_icon_y,
+             mic_icon, mic_icon_disabled, mic_icon_size, mic_icon_x, mic_icon_y, mic_visible, mic_bg_color, mic_disabled_color, mic_border_color, mic_border_disabled_color,
+             audio_icon, audio_icon_disabled, audio_icon_size, audio_icon_x, audio_icon_y, audio_visible, audio_bg_color, audio_disabled_color, audio_border_color, audio_border_disabled_color,
              mic_wave_color, audio_wave_color, theme });
 });
 
@@ -160,8 +160,8 @@ app.get('/api/preview/:id', (req, res) => {
           idle_timeout, idle_icon, idle_icon_img, idle_title, idle_subtitle, idle_hint, idle_font, idle_font_size,
           chat_font, chat_font_size,
           show_controls,
-          mic_icon, mic_icon_size, mic_icon_x, mic_icon_y,
-          audio_icon, audio_icon_size, audio_icon_x, audio_icon_y,
+          mic_icon, mic_icon_disabled, mic_icon_size, mic_icon_x, mic_icon_y, mic_visible, mic_bg_color, mic_disabled_color, mic_border_color, mic_border_disabled_color,
+          audio_icon, audio_icon_disabled, audio_icon_size, audio_icon_x, audio_icon_y, audio_visible, audio_bg_color, audio_disabled_color, audio_border_color, audio_border_disabled_color,
           mic_wave_color, audio_wave_color, theme } = avatar;
   res.json({ id, name, background, model_file, idle_start, idle_end,
              speech_start, speech_end, avatar_scale, avatar_offset_x,
@@ -170,8 +170,8 @@ app.get('/api/preview/:id', (req, res) => {
              idle_timeout, idle_icon, idle_icon_img, idle_title, idle_subtitle, idle_hint, idle_font, idle_font_size,
              chat_font, chat_font_size,
              show_controls,
-             mic_icon, mic_icon_size, mic_icon_x, mic_icon_y,
-             audio_icon, audio_icon_size, audio_icon_x, audio_icon_y,
+             mic_icon, mic_icon_disabled, mic_icon_size, mic_icon_x, mic_icon_y, mic_visible, mic_bg_color, mic_disabled_color, mic_border_color, mic_border_disabled_color,
+             audio_icon, audio_icon_disabled, audio_icon_size, audio_icon_x, audio_icon_y, audio_visible, audio_bg_color, audio_disabled_color, audio_border_color, audio_border_disabled_color,
              mic_wave_color, audio_wave_color, theme });
 });
 
@@ -264,7 +264,10 @@ app.put('/api/admin/avatars/:id', (req, res) => {
                   'chat_font','chat_font_size',
                   'show_controls',
                   'mic_icon_size','mic_icon_x','mic_icon_y','mic_wave_color',
-                  'audio_icon_size','audio_icon_x','audio_icon_y','audio_wave_color'];
+                  'mic_visible','mic_bg_color','mic_disabled_color','mic_border_color','mic_border_disabled_color',
+                  'audio_icon_size','audio_icon_x','audio_icon_y','audio_wave_color',
+                  'audio_visible','audio_bg_color','audio_disabled_color','audio_border_color','audio_border_disabled_color',
+                  'mic_icon_disabled','audio_icon_disabled'];
   const updates = [];
   const values  = [];
   for (const f of fields) {
@@ -379,9 +382,10 @@ const uploadIcon = multer({ storage: multer.diskStorage({
 app.post('/api/admin/avatars/:id/upload-icon/:type', uploadIcon.single('icon'), (req, res) => {
   if (!req.file) return res.status(400).json({ error: 'Nessun file ricevuto' });
   const type = req.params.type; // 'mic' | 'audio' | 'idle'
-  if (!['mic', 'audio', 'idle'].includes(type)) return res.status(400).json({ error: 'Tipo non valido' });
+  if (!['mic', 'mic-disabled', 'audio', 'audio-disabled', 'idle'].includes(type)) return res.status(400).json({ error: 'Tipo non valido' });
   const iconFile = `icons/${req.file.filename}`;
-  const col = type === 'mic' ? 'mic_icon' : type === 'audio' ? 'audio_icon' : 'idle_icon_img';
+  const col = type === 'mic' ? 'mic_icon' : type === 'mic-disabled' ? 'mic_icon_disabled'
+            : type === 'audio' ? 'audio_icon' : type === 'audio-disabled' ? 'audio_icon_disabled' : 'idle_icon_img';
   db.prepare(`UPDATE avatars SET ${col} = ?, updated_at = datetime('now') WHERE id = ?`)
     .run(iconFile, req.params.id);
   res.json({ ok: true, [col]: iconFile });

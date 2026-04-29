@@ -580,7 +580,8 @@
              border-radius:50%;width:44px;height:44px;padding:0;display:flex;align-items:center;
              justify-content:center;cursor:pointer;transition:background .2s,border-color .2s;
              font-size:1.2rem;overflow:hidden;z-index:100">
-      <img id="mic-icon-img" src="" alt="🎙" style="width:28px;height:28px;object-fit:contain;display:none;filter:grayscale(1) opacity(.5)"/>
+      <img id="mic-icon-img" src="" alt="🎙" style="width:28px;height:28px;object-fit:contain;display:none"/>
+      <img id="mic-icon-disabled-img" src="" alt="🎙" style="width:28px;height:28px;object-fit:contain;display:none"/>
       <span id="mic-icon-fallback">🎙</span>
       <div id="mic-wave" class="btn-wave" style="display:none"></div>
     </button>
@@ -590,6 +591,7 @@
              justify-content:center;cursor:pointer;transition:background .2s,border-color .2s;
              font-size:1.2rem;overflow:hidden;z-index:100">
       <img id="audio-icon-img" src="" alt="🔊" style="width:28px;height:28px;object-fit:contain;display:none"/>
+      <img id="audio-icon-disabled-img" src="" alt="🔊" style="width:28px;height:28px;object-fit:contain;display:none"/>
       <span id="audio-icon-fallback">🔊</span>
       <div id="audio-wave" class="btn-wave audio-wave" style="display:none"></div>
     </button>
@@ -1565,6 +1567,19 @@ function applyIconLayout(btnId, imgId, size, x, y, defaultRight, defaultTop=16) 
   }
 }
 
+function _applyDisabledIcon(imgId, path, fallbackId) {
+  const img = document.getElementById(imgId);
+  if (!img) return;
+  if (path) {
+    img.src = '/' + path + '?t=' + (CONFIG._iconTs || '');
+    img.style.display = 'block';
+    const fb = document.getElementById(fallbackId);
+    if (fb) fb.style.display = 'none';
+  } else {
+    img.style.display = 'none';
+  }
+}
+
 function _applyIconToBtn(imgId, fallbackId, path) {
   const img      = document.getElementById(imgId);
   const fallback = document.getElementById(fallbackId);
@@ -1582,7 +1597,9 @@ function _applyIconToBtn(imgId, fallbackId, path) {
 function updateMicBtn() {
   const btn = document.getElementById('mic-btn');
   if (!btn) return;
-  _applyIconToBtn('mic-icon-img', 'mic-icon-fallback', CONFIG.micIcon);
+  const useDisabledIcon = !CONFIG.micEnabled && CONFIG.micIconDisabled;
+  _applyIconToBtn('mic-icon-img', 'mic-icon-fallback', useDisabledIcon ? '' : CONFIG.micIcon);
+  _applyDisabledIcon('mic-icon-disabled-img', useDisabledIcon ? CONFIG.micIconDisabled : '', 'mic-icon-fallback');
   // mic in alto a 32px dal top
   const micTopVh  = (32 / 1920 * 100).toFixed(4);
   const micRightVw = ((32 - CONFIG.micIconX) / 1080 * 100).toFixed(4);
@@ -1593,18 +1610,22 @@ function updateMicBtn() {
     mic.style.top    = `calc(${micTopVh}vh + ${CONFIG.micIconY}px)`;
     mic.style.right  = micRightVw + 'vw';
     mic.style.left   = '';
+    const s = Math.round(CONFIG.micIconSize * 0.64);
     const img = document.getElementById('mic-icon-img');
-    if (img) { const s = Math.round(CONFIG.micIconSize * 0.64); img.style.width = s+'px'; img.style.height = s+'px'; }
+    if (img) { img.style.width = s+'px'; img.style.height = s+'px'; }
+    const imgDis = document.getElementById('mic-icon-disabled-img');
+    if (imgDis) { imgDis.style.width = s+'px'; imgDis.style.height = s+'px'; }
   }
   const img = document.getElementById('mic-icon-img');
+  btn.style.display = (CONFIG.micVisible === false) ? 'none' : 'flex';
   if (CONFIG.micEnabled) {
-    btn.style.background  = 'rgba(34,211,160,.15)';
-    btn.style.borderColor = 'rgba(34,211,160,.5)';
+    btn.style.background  = CONFIG.micBgColor     || 'rgba(34,211,160,.15)';
+    btn.style.borderColor = CONFIG.micBorderColor || 'rgba(34,211,160,.5)';
     if (img) img.style.filter = 'none';
   } else {
-    btn.style.background  = 'rgba(248,113,113,.15)';
-    btn.style.borderColor = 'rgba(248,113,113,.4)';
-    if (img) img.style.filter = 'grayscale(1) opacity(.45)';
+    btn.style.background  = CONFIG.micDisabledColor       || 'rgba(248,113,113,.15)';
+    btn.style.borderColor = CONFIG.micBorderDisabledColor || 'rgba(248,113,113,.4)';
+    if (img && !CONFIG.micIconDisabled) img.style.filter = 'grayscale(1)';
     setMicWaveVisible(false);
   }
 }
@@ -1612,7 +1633,9 @@ function updateMicBtn() {
 function updateAudioBtn() {
   const btn = document.getElementById('audio-btn');
   if (!btn) return;
-  _applyIconToBtn('audio-icon-img', 'audio-icon-fallback', CONFIG.audioIcon);
+  const useDisabledIcon = !CONFIG.audioEnabled && CONFIG.audioIconDisabled;
+  _applyIconToBtn('audio-icon-img', 'audio-icon-fallback', useDisabledIcon ? '' : CONFIG.audioIcon);
+  _applyDisabledIcon('audio-icon-disabled-img', useDisabledIcon ? CONFIG.audioIconDisabled : '', 'audio-icon-fallback');
   // audio sotto mic: top = mic_top(vh) + micSize(px) + gap(px)
   const micTopVhAudio = (32 / 1920 * 100).toFixed(4);
   const audioTopOffset = CONFIG.micIconSize + 24 + CONFIG.audioIconY;
@@ -1624,18 +1647,22 @@ function updateAudioBtn() {
     audio.style.top    = `calc(${micTopVhAudio}vh + ${audioTopOffset}px)`;
     audio.style.right  = audioRightVw + 'vw';
     audio.style.left   = '';
+    const s = Math.round(CONFIG.audioIconSize * 0.64);
     const img = document.getElementById('audio-icon-img');
-    if (img) { const s = Math.round(CONFIG.audioIconSize * 0.64); img.style.width = s+'px'; img.style.height = s+'px'; }
+    if (img) { img.style.width = s+'px'; img.style.height = s+'px'; }
+    const imgDis = document.getElementById('audio-icon-disabled-img');
+    if (imgDis) { imgDis.style.width = s+'px'; imgDis.style.height = s+'px'; }
   }
   const img = document.getElementById('audio-icon-img');
+  btn.style.display = (CONFIG.audioVisible === false) ? 'none' : 'flex';
   if (CONFIG.audioEnabled) {
-    btn.style.background  = 'rgba(34,211,160,.15)';
-    btn.style.borderColor = 'rgba(34,211,160,.5)';
+    btn.style.background  = CONFIG.audioBgColor     || 'rgba(34,211,160,.15)';
+    btn.style.borderColor = CONFIG.audioBorderColor || 'rgba(34,211,160,.5)';
     if (img) img.style.filter = 'none';
   } else {
-    btn.style.background  = 'rgba(248,113,113,.15)';
-    btn.style.borderColor = 'rgba(248,113,113,.4)';
-    if (img) img.style.filter = 'grayscale(1) opacity(.45)';
+    btn.style.background  = CONFIG.audioDisabledColor       || 'rgba(34,211,160,.15)';
+    btn.style.borderColor = CONFIG.audioBorderDisabledColor || 'rgba(248,113,113,.4)';
+    if (img && !CONFIG.audioIconDisabled) img.style.filter = 'grayscale(1)';
     setAudioWaveVisible(false);
   }
 }
@@ -2164,7 +2191,7 @@ window.addEventListener('message', e => {
       document.getElementById('avatar-panel').style.background =
         `radial-gradient(ellipse at 50% 60%, ${color}aa 0%, ${color} 70%)`;
     } else {
-      const stringKeys = ['chat_align', 'model_file', 'mic_icon', 'audio_icon', 'chat_font', 'mic_wave_color', 'audio_wave_color', 'idle_font', 'idle_icon_img', 'theme'];
+      const stringKeys = ['chat_align', 'model_file', 'mic_icon', 'mic_icon_disabled', 'audio_icon', 'audio_icon_disabled', 'chat_font', 'mic_wave_color', 'audio_wave_color', 'idle_font', 'idle_icon_img', 'theme', 'mic_bg_color', 'mic_disabled_color', 'mic_border_color', 'mic_border_disabled_color', 'audio_bg_color', 'audio_disabled_color', 'audio_border_color', 'audio_border_disabled_color'];
       const val = stringKeys.includes(msg.key) ? msg.value : parseFloat(msg.value);
       applyParamLive(msg.key, val);
     }
@@ -2368,16 +2395,28 @@ function applyParamLive(key, v) {
       loadGLBAvatar(url + '?t=' + Date.now());
     },
     show_controls:     () => { document.getElementById('controls-section').style.display = parseInt(v) !== 0 ? 'flex' : 'none'; },
-    mic_icon:        () => { CONFIG.micIcon       = v;  CONFIG._iconTs = Date.now(); updateMicBtn(); },
+    mic_icon:          () => { CONFIG.micIcon         = v; CONFIG._iconTs = Date.now(); updateMicBtn(); },
+    mic_icon_disabled: () => { CONFIG.micIconDisabled = v; CONFIG._iconTs = Date.now(); updateMicBtn(); },
     mic_icon_size:   () => { CONFIG.micIconSize   = +v; updateMicBtn(); },
     mic_icon_x:      () => { CONFIG.micIconX      = +v; updateMicBtn(); },
     mic_icon_y:      () => { CONFIG.micIconY      = +v; updateMicBtn(); },
-    audio_icon:      () => { CONFIG.audioIcon     = v;  CONFIG._iconTs = Date.now(); updateAudioBtn(); },
+    audio_icon:          () => { CONFIG.audioIcon         = v; CONFIG._iconTs = Date.now(); updateAudioBtn(); },
+    audio_icon_disabled: () => { CONFIG.audioIconDisabled = v; CONFIG._iconTs = Date.now(); updateAudioBtn(); },
     audio_icon_size: () => { CONFIG.audioIconSize = +v; updateAudioBtn(); },
     audio_icon_x:      () => { CONFIG.audioIconX    = +v; updateAudioBtn(); },
     audio_icon_y:      () => { CONFIG.audioIconY    = +v; updateAudioBtn(); },
-    mic_wave_color:    () => { CONFIG.micWaveColor   = v; applyWaveColors(); },
-    audio_wave_color:  () => { CONFIG.audioWaveColor = v; applyWaveColors(); },
+    mic_wave_color:       () => { CONFIG.micWaveColor       = v; applyWaveColors(); },
+    audio_wave_color:     () => { CONFIG.audioWaveColor     = v; applyWaveColors(); },
+    mic_visible:                 () => { CONFIG.micVisible              = v !== 0 && v !== false; updateMicBtn(); },
+    mic_bg_color:                () => { CONFIG.micBgColor              = v; updateMicBtn(); },
+    mic_disabled_color:          () => { CONFIG.micDisabledColor        = v; updateMicBtn(); },
+    mic_border_color:            () => { CONFIG.micBorderColor          = v; updateMicBtn(); },
+    mic_border_disabled_color:   () => { CONFIG.micBorderDisabledColor  = v; updateMicBtn(); },
+    audio_visible:               () => { CONFIG.audioVisible            = v !== 0 && v !== false; updateAudioBtn(); },
+    audio_bg_color:              () => { CONFIG.audioBgColor            = v; updateAudioBtn(); },
+    audio_disabled_color:        () => { CONFIG.audioDisabledColor      = v; updateAudioBtn(); },
+    audio_border_color:          () => { CONFIG.audioBorderColor        = v; updateAudioBtn(); },
+    audio_border_disabled_color: () => { CONFIG.audioBorderDisabledColor= v; updateAudioBtn(); },
     theme:             () => applyTheme(v),
   };
 
@@ -2395,17 +2434,29 @@ async function initAvatar() {
     CONFIG.avatarId      = AVATAR_ID;
     CONFIG.avatarName    = cfg.name;
     CONFIG.avatarModelUrl = cfg.model_file ? `/${cfg.model_file}` : null;
-    CONFIG.micIcon       = cfg.mic_icon        || '';
+    CONFIG.micIcon         = cfg.mic_icon          || '';
+    CONFIG.micIconDisabled = cfg.mic_icon_disabled || '';
     CONFIG.micIconSize   = cfg.mic_icon_size   ?? 44;
     CONFIG.micIconX      = cfg.mic_icon_x      ?? 0;
     CONFIG.micIconY      = cfg.mic_icon_y      ?? 0;
-    CONFIG.audioIcon     = cfg.audio_icon      || '';
+    CONFIG.audioIcon         = cfg.audio_icon          || '';
+    CONFIG.audioIconDisabled = cfg.audio_icon_disabled || '';
     CONFIG.audioIconSize = cfg.audio_icon_size ?? 44;
     CONFIG.audioIconX      = cfg.audio_icon_x      ?? 0;
     CONFIG.audioIconY      = cfg.audio_icon_y      ?? 0;
-    CONFIG.micWaveColor    = cfg.mic_wave_color    || '#ffffff';
-    CONFIG.audioWaveColor  = cfg.audio_wave_color  || '#ffffff';
-    CONFIG._iconTs         = Date.now();
+    CONFIG.micWaveColor      = cfg.mic_wave_color      || '#ffffff';
+    CONFIG.audioWaveColor    = cfg.audio_wave_color    || '#ffffff';
+    CONFIG.micVisible              = (cfg.mic_visible   ?? 1) !== 0;
+    CONFIG.micBgColor              = cfg.mic_bg_color              || 'rgba(248,113,113,0.15)';
+    CONFIG.micDisabledColor        = cfg.mic_disabled_color        || 'rgba(248,113,113,0.15)';
+    CONFIG.micBorderColor          = cfg.mic_border_color          || 'rgba(34,211,160,0.5)';
+    CONFIG.micBorderDisabledColor  = cfg.mic_border_disabled_color || 'rgba(248,113,113,0.4)';
+    CONFIG.audioVisible            = (cfg.audio_visible ?? 1) !== 0;
+    CONFIG.audioBgColor            = cfg.audio_bg_color            || 'rgba(34,211,160,0.15)';
+    CONFIG.audioDisabledColor      = cfg.audio_disabled_color      || 'rgba(34,211,160,0.15)';
+    CONFIG.audioBorderColor        = cfg.audio_border_color        || 'rgba(34,211,160,0.5)';
+    CONFIG.audioBorderDisabledColor= cfg.audio_border_disabled_color|| 'rgba(248,113,113,0.4)';
+    CONFIG._iconTs           = Date.now();
     applyWaveColors();
 
     // Animazioni

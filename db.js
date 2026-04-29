@@ -65,10 +65,22 @@ db.exec(`
     mic_icon_size     INTEGER DEFAULT 100,
     mic_icon_x        INTEGER DEFAULT 0,
     mic_icon_y        INTEGER DEFAULT 0,
+    mic_icon_disabled TEXT DEFAULT '',
+    mic_visible       INTEGER DEFAULT 1,
+    mic_bg_color      TEXT DEFAULT 'rgba(248,113,113,0.15)',
+    mic_disabled_color TEXT DEFAULT 'rgba(248,113,113,0.15)',
+    mic_border_color  TEXT DEFAULT 'rgba(34,211,160,0.5)',
+    mic_border_disabled_color TEXT DEFAULT 'rgba(248,113,113,0.4)',
     audio_icon        TEXT DEFAULT '',
     audio_icon_size   INTEGER DEFAULT 100,
     audio_icon_x      INTEGER DEFAULT 0,
     audio_icon_y      INTEGER DEFAULT 0,
+    audio_icon_disabled TEXT DEFAULT '',
+    audio_visible     INTEGER DEFAULT 1,
+    audio_bg_color    TEXT DEFAULT 'rgba(34,211,160,0.15)',
+    audio_disabled_color TEXT DEFAULT 'rgba(34,211,160,0.15)',
+    audio_border_color TEXT DEFAULT 'rgba(34,211,160,0.5)',
+    audio_border_disabled_color TEXT DEFAULT 'rgba(248,113,113,0.4)',
     mic_wave_color    TEXT DEFAULT '#ffffff',
     audio_wave_color  TEXT DEFAULT '#ffffff',
     theme             TEXT DEFAULT 'viola',
@@ -138,6 +150,12 @@ if (!existing.includes('mic_icon_x'))
   db.exec("ALTER TABLE avatars ADD COLUMN mic_icon_x INTEGER DEFAULT 0");
 if (!existing.includes('mic_icon_y'))
   db.exec("ALTER TABLE avatars ADD COLUMN mic_icon_y INTEGER DEFAULT 0");
+if (!existing.includes('mic_visible'))
+  db.exec("ALTER TABLE avatars ADD COLUMN mic_visible INTEGER DEFAULT 1");
+if (!existing.includes('mic_bg_color'))
+  db.exec("ALTER TABLE avatars ADD COLUMN mic_bg_color TEXT DEFAULT 'rgba(248,113,113,0.15)'");
+if (!existing.includes('mic_disabled_color'))
+  db.exec("ALTER TABLE avatars ADD COLUMN mic_disabled_color TEXT DEFAULT 'rgba(248,113,113,0.15)'");
 if (!existing.includes('audio_icon'))
   db.exec("ALTER TABLE avatars ADD COLUMN audio_icon TEXT DEFAULT ''");
 if (!existing.includes('audio_icon_size'))
@@ -146,6 +164,24 @@ if (!existing.includes('audio_icon_x'))
   db.exec("ALTER TABLE avatars ADD COLUMN audio_icon_x INTEGER DEFAULT 0");
 if (!existing.includes('audio_icon_y'))
   db.exec("ALTER TABLE avatars ADD COLUMN audio_icon_y INTEGER DEFAULT 0");
+if (!existing.includes('audio_visible'))
+  db.exec("ALTER TABLE avatars ADD COLUMN audio_visible INTEGER DEFAULT 1");
+if (!existing.includes('audio_bg_color'))
+  db.exec("ALTER TABLE avatars ADD COLUMN audio_bg_color TEXT DEFAULT 'rgba(34,211,160,0.15)'");
+if (!existing.includes('audio_disabled_color'))
+  db.exec("ALTER TABLE avatars ADD COLUMN audio_disabled_color TEXT DEFAULT 'rgba(34,211,160,0.15)'");
+if (!existing.includes('mic_icon_disabled'))
+  db.exec("ALTER TABLE avatars ADD COLUMN mic_icon_disabled TEXT DEFAULT ''");
+if (!existing.includes('audio_icon_disabled'))
+  db.exec("ALTER TABLE avatars ADD COLUMN audio_icon_disabled TEXT DEFAULT ''");
+if (!existing.includes('mic_border_color'))
+  db.exec("ALTER TABLE avatars ADD COLUMN mic_border_color TEXT DEFAULT 'rgba(34,211,160,0.5)'");
+if (!existing.includes('mic_border_disabled_color'))
+  db.exec("ALTER TABLE avatars ADD COLUMN mic_border_disabled_color TEXT DEFAULT 'rgba(248,113,113,0.4)'");
+if (!existing.includes('audio_border_color'))
+  db.exec("ALTER TABLE avatars ADD COLUMN audio_border_color TEXT DEFAULT 'rgba(34,211,160,0.5)'");
+if (!existing.includes('audio_border_disabled_color'))
+  db.exec("ALTER TABLE avatars ADD COLUMN audio_border_disabled_color TEXT DEFAULT 'rgba(248,113,113,0.4)'");
 if (!existing.includes('mic_wave_color'))
   db.exec("ALTER TABLE avatars ADD COLUMN mic_wave_color TEXT DEFAULT '#ffffff'");
 if (!existing.includes('audio_wave_color'))
