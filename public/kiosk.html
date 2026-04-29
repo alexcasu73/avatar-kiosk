@@ -2359,6 +2359,18 @@ window.addEventListener('message', e => {
       applyOverlay(CONFIG._overlayColor || '#0a0a0f', CONFIG._overlayOpacity ?? 0.75);
       return;
     }
+    if (msg.key === 'idle_disabled') {
+      CONFIG.idleDisabled = !!parseInt(msg.value);
+      if (CONFIG.idleDisabled) {
+        clearTimeout(_idleTimer);
+        document.getElementById('idle-overlay').classList.add('hidden');
+        setControlsVisible(true);
+      } else {
+        document.getElementById('idle-overlay').classList.remove('hidden');
+        setControlsVisible(false);
+      }
+      return;
+    }
     if (msg.key === 'bg_video') {
       const bgVid = document.getElementById('avatar-bg-video');
       if (msg.value) {
