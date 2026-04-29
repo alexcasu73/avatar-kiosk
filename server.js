@@ -119,7 +119,7 @@ app.get('/api/avatar/:id', (req, res) => {
           speech_start, speech_end, avatar_scale, avatar_offset_x,
           avatar_offset_y, avatar_rot_y, camera_z, camera_y, camera_look_at_y,
           overlay_color, overlay_opacity, overlay_height, chat_height, chat_bottom, chat_max_width, chat_align, chat_hide_input,
-          idle_timeout, idle_icon, idle_icon_img, idle_video, idle_title, idle_subtitle, idle_hint, idle_font, idle_font_size,
+          idle_timeout, idle_icon, idle_icon_img, idle_video, idle_bg_image, idle_bg_color, idle_title, idle_subtitle, idle_hint, idle_font, idle_font_size,
           chat_font, chat_font_size,
           show_controls,
           mic_icon, mic_icon_disabled, mic_icon_size, mic_icon_x, mic_icon_y, mic_visible, mic_bg_color, mic_disabled_color, mic_border_color, mic_border_disabled_color,
@@ -129,7 +129,7 @@ app.get('/api/avatar/:id', (req, res) => {
              speech_start, speech_end, avatar_scale, avatar_offset_x,
              avatar_offset_y, avatar_rot_y, camera_z, camera_y, camera_look_at_y,
              overlay_color, overlay_opacity, overlay_height, chat_height, chat_bottom, chat_max_width, chat_align, chat_hide_input,
-             idle_timeout, idle_icon, idle_icon_img, idle_video, idle_title, idle_subtitle, idle_hint, idle_font, idle_font_size,
+             idle_timeout, idle_icon, idle_icon_img, idle_video, idle_bg_image, idle_bg_color, idle_title, idle_subtitle, idle_hint, idle_font, idle_font_size,
              chat_font, chat_font_size,
              show_controls,
              mic_icon, mic_icon_disabled, mic_icon_size, mic_icon_x, mic_icon_y, mic_visible, mic_bg_color, mic_disabled_color, mic_border_color, mic_border_disabled_color,
@@ -158,7 +158,7 @@ app.get('/api/preview/:id', (req, res) => {
           speech_start, speech_end, avatar_scale, avatar_offset_x,
           avatar_offset_y, avatar_rot_y, camera_z, camera_y, camera_look_at_y,
           overlay_color, overlay_opacity, overlay_height, chat_height, chat_bottom, chat_max_width, chat_align, chat_hide_input,
-          idle_timeout, idle_icon, idle_icon_img, idle_video, idle_title, idle_subtitle, idle_hint, idle_font, idle_font_size,
+          idle_timeout, idle_icon, idle_icon_img, idle_video, idle_bg_image, idle_bg_color, idle_title, idle_subtitle, idle_hint, idle_font, idle_font_size,
           chat_font, chat_font_size,
           show_controls,
           mic_icon, mic_icon_disabled, mic_icon_size, mic_icon_x, mic_icon_y, mic_visible, mic_bg_color, mic_disabled_color, mic_border_color, mic_border_disabled_color,
@@ -168,7 +168,7 @@ app.get('/api/preview/:id', (req, res) => {
              speech_start, speech_end, avatar_scale, avatar_offset_x,
              avatar_offset_y, avatar_rot_y, camera_z, camera_y, camera_look_at_y,
              overlay_color, overlay_opacity, overlay_height, chat_height, chat_bottom, chat_max_width, chat_align, chat_hide_input,
-             idle_timeout, idle_icon, idle_icon_img, idle_video, idle_title, idle_subtitle, idle_hint, idle_font, idle_font_size,
+             idle_timeout, idle_icon, idle_icon_img, idle_video, idle_bg_image, idle_bg_color, idle_title, idle_subtitle, idle_hint, idle_font, idle_font_size,
              chat_font, chat_font_size,
              show_controls,
              mic_icon, mic_icon_disabled, mic_icon_size, mic_icon_x, mic_icon_y, mic_visible, mic_bg_color, mic_disabled_color, mic_border_color, mic_border_disabled_color,
@@ -262,7 +262,7 @@ app.put('/api/admin/avatars/:id', (req, res) => {
                   'tts_api_key','tts_model','tts_stability','tts_similarity',
                   'ai_provider','ai_max_tokens','anthropic_api_key','anthropic_model','openai_api_key','openai_model',
                   'avatar_mode','webhook_url','webhook_input_template','webhook_output_field','webhook_headers',
-                  'idle_timeout','idle_icon','idle_title','idle_subtitle','idle_hint','idle_font','idle_font_size','theme',
+                  'idle_timeout','idle_icon','idle_title','idle_subtitle','idle_hint','idle_font','idle_font_size','idle_bg_image','idle_bg_color','theme',
                   'chat_font','chat_font_size',
                   'show_controls',
                   'mic_icon_size','mic_icon_x','mic_icon_y','mic_wave_color',
@@ -450,6 +450,30 @@ app.delete('/api/admin/avatars/:id/idle-video', (req, res) => {
   const avatar = db.prepare('SELECT idle_video FROM avatars WHERE id = ?').get(req.params.id);
   if (avatar?.idle_video) { try { fs.unlinkSync(join(__dirname, 'public', avatar.idle_video)); } catch {} }
   db.prepare("UPDATE avatars SET idle_video = '', updated_at = datetime('now') WHERE id = ?").run(req.params.id);
+  res.json({ ok: true });
+});
+
+// ─── Route: Upload immagine sfondo idle ──────────────────────────────────────
+fs.mkdirSync(join(__dirname, 'public', 'idle-bg'), { recursive: true });
+app.use('/idle-bg', express.static(join(__dirname, 'public', 'idle-bg')));
+
+const uploadIdleBg = multer({ storage: multer.diskStorage({
+  destination: (req, file, cb) => cb(null, join(__dirname, 'public', 'idle-bg')),
+  filename:    (req, file, cb) => cb(null, `${req.params.id}${extname(file.originalname)}`),
+}) });
+
+app.post('/api/admin/avatars/:id/upload-idle-bg', uploadIdleBg.single('image'), (req, res) => {
+  if (!req.file) return res.status(400).json({ error: 'Nessun file ricevuto' });
+  const bgFile = `idle-bg/${req.file.filename}`;
+  db.prepare("UPDATE avatars SET idle_bg_image = ?, updated_at = datetime('now') WHERE id = ?")
+    .run(bgFile, req.params.id);
+  res.json({ ok: true, idle_bg_image: bgFile });
+});
+
+app.delete('/api/admin/avatars/:id/idle-bg', (req, res) => {
+  const avatar = db.prepare('SELECT idle_bg_image FROM avatars WHERE id = ?').get(req.params.id);
+  if (avatar?.idle_bg_image) { try { fs.unlinkSync(join(__dirname, 'public', avatar.idle_bg_image)); } catch {} }
+  db.prepare("UPDATE avatars SET idle_bg_image = '', updated_at = datetime('now') WHERE id = ?").run(req.params.id);
   res.json({ ok: true });
 });
 

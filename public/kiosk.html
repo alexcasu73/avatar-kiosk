@@ -2446,6 +2446,26 @@ function applyIdleParam(key, value) {
     }
     return;
   }
+  if (key === 'idle_bg_image') {
+    const overlay = document.getElementById('idle-overlay');
+    if (!overlay) return;
+    if (value) {
+      overlay.style.backgroundImage = `url(/${value})`;
+      overlay.style.backgroundSize = 'cover';
+      overlay.style.backgroundPosition = 'center';
+    } else {
+      overlay.style.backgroundImage = '';
+      overlay.style.backgroundSize = '';
+      overlay.style.backgroundPosition = '';
+    }
+    return;
+  }
+  if (key === 'idle_bg_color') {
+    const overlay = document.getElementById('idle-overlay');
+    if (!overlay) return;
+    overlay.style.backgroundColor = value || '';
+    return;
+  }
   if (key === 'idle_font') {
     const overlay = document.getElementById('idle-overlay');
     if (!overlay) return;
@@ -2493,6 +2513,8 @@ function applyIdleParam(key, value) {
         if (d.idle_hint       !== undefined) applyIdleParam('idle_hint',       d.idle_hint);
         if (d.idle_icon_img   !== undefined) applyIdleParam('idle_icon_img',   d.idle_icon_img);
         if (d.idle_video      !== undefined) applyIdleParam('idle_video',      d.idle_video);
+        if (d.idle_bg_image   !== undefined) applyIdleParam('idle_bg_image',   d.idle_bg_image);
+        if (d.idle_bg_color   !== undefined) applyIdleParam('idle_bg_color',   d.idle_bg_color);
         if (d.idle_font       !== undefined) applyIdleParam('idle_font',       d.idle_font);
         if (d.idle_font_size  !== undefined) applyIdleParam('idle_font_size',  d.idle_font_size);
       }
@@ -2698,6 +2720,8 @@ async function initAvatar() {
     document.getElementById('idle-hint').textContent = cfg.idle_hint ?? '';
     applyIdleParam('idle_icon_img',  cfg.idle_icon_img  || '');
     applyIdleParam('idle_video',     cfg.idle_video     || '');
+    applyIdleParam('idle_bg_image',  cfg.idle_bg_image  || '');
+    applyIdleParam('idle_bg_color',  cfg.idle_bg_color  || '');
     applyIdleParam('idle_font',      cfg.idle_font      || '');
     applyIdleParam('idle_font_size', cfg.idle_font_size ?? 1.0);
     CONFIG.idleTimeout = (cfg.idle_timeout ?? 90) * 1000;

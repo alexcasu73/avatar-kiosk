@@ -951,6 +951,30 @@
             </div>
           </div>
 
+          <!-- Sfondo idle -->
+          <div class="subsection">
+            <div class="subsection-title">Sfondo standby</div>
+            <div class="field">
+              <label>Colore di sfondo</label>
+              <div class="color-row">
+                <input type="color" id="f-idle-bg-color" value="#000000"
+                  class="color-input" oninput="applyIdleBgLive()"/>
+                <span id="f-idle-bg-hex" class="color-hex">#000000</span>
+                <button class="btn btn-sm" style="margin-left:6px;font-size:.75rem" onclick="clearIdleBgColor()">Nessuno</button>
+              </div>
+            </div>
+            <div class="field">
+              <label>Immagine di sfondo</label>
+              <div id="idle-bg-drop" class="upload-zone" style="min-height:48px;display:flex;align-items:center;gap:10px;padding:10px 14px"
+                ondragover="event.preventDefault()" ondrop="event.preventDefault();uploadIdleBg(event.dataTransfer.files[0])">
+                <svg viewBox="0 0 24 24" style="width:18px;height:18px;flex-shrink:0;stroke:var(--text-dim);fill:none;stroke-width:1.5"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+                <span id="idle-bg-label" style="font-size:.8rem;color:var(--text-dim)">Trascina un'immagine o clicca</span>
+                <input type="file" accept="image/*" style="display:none" id="idle-bg-input" onchange="uploadIdleBg(this.files[0])"/>
+              </div>
+              <button class="btn btn-danger btn-sm" id="idle-bg-remove-btn" style="display:none;margin-top:6px" onclick="removeIdleBg()">Rimuovi immagine</button>
+            </div>
+          </div>
+
           <!-- Sfondo overlay -->
           <div class="subsection">
             <div class="subsection-title">Overlay</div>
@@ -1627,6 +1651,12 @@ function selectAvatar(id) {
   document.getElementById('f-idle-icon').value     = a.idle_icon     || '🤖';
   setIdleVideoUI(a.idle_video || '');
   document.getElementById('idle-video-drop').onclick = (a.idle_video) ? null : () => document.getElementById('idle-video-input').click();
+  setIdleBgUI(a.idle_bg_image || '');
+  const idleBgColor = a.idle_bg_color || '';
+  const idleBgColorInput = document.getElementById('f-idle-bg-color');
+  idleBgColorInput.value = idleBgColor || '#000000';
+  document.getElementById('f-idle-bg-hex').textContent = idleBgColor || '#000000';
+  idleBgColorInput.dataset.active = idleBgColor ? '1' : '0';
   setIconPreview('idle', a.idle_icon_img || '');
   document.getElementById('f-idle-title').value    = a.idle_title    || '';
   document.getElementById('f-idle-subtitle').value = a.idle_subtitle ?? '';
@@ -2093,6 +2123,8 @@ async function saveAvatar() {
     idle_hint:       document.getElementById('f-idle-hint').value,
     idle_font:       document.getElementById('f-idle-font').value,
     idle_font_size:  parseFloat(document.getElementById('s-idle-font-size').value),
+    idle_bg_color:   document.getElementById('f-idle-bg-color').dataset.active === '1'
+                       ? document.getElementById('f-idle-bg-color').value : '',
     mic_icon_size:   parseInt(document.getElementById('s-mic-icon-size').value),
     mic_icon_x:      parseInt(document.getElementById('s-mic-icon-x').value),
     mic_icon_y:      parseInt(document.getElementById('s-mic-icon-y').value),
@@ -2230,6 +2262,56 @@ function setIdleVideoUI(path) {
     removeBtn.style.display = 'none';
     dropZone.onclick = () => document.getElementById('idle-video-input').click();
   }
+}
+
+// ── Sfondo idle (colore + immagine) ──────────────────────────────────────────
+async function uploadIdleBg(file) {
+  if (!currentId) return toast('Salva prima l\'avatar', 'error');
+  if (!file) return;
+  document.getElementById('idle-bg-label').textContent = 'Caricamento...';
+  const form = new FormData(); form.append('image', file);
+  const res = await fetch(`/api/admin/avatars/${currentId}/upload-idle-bg`, { method:'POST', body:form });
+  const data = await res.json();
+  if (!res.ok) { toast('Errore: ' + data.error, 'error'); return; }
+  avatars = avatars.map(a => a.id===currentId ? {...a, idle_bg_image: data.idle_bg_image} : a);
+  setIdleBgUI(data.idle_bg_image);
+  sendToPreview({ type:'idleParam', key:'idle_bg_image', value: data.idle_bg_image });
+  toast('Immagine caricata');
+}
+
+async function removeIdleBg() {
+  if (!currentId) return;
+  await api.delete(`/api/admin/avatars/${currentId}/idle-bg`);
+  avatars = avatars.map(a => a.id===currentId ? {...a, idle_bg_image: ''} : a);
+  setIdleBgUI('');
+  sendToPreview({ type:'idleParam', key:'idle_bg_image', value: '' });
+}
+
+function setIdleBgUI(path) {
+  const label = document.getElementById('idle-bg-label');
+  const removeBtn = document.getElementById('idle-bg-remove-btn');
+  const dropZone = document.getElementById('idle-bg-drop');
+  if (path) {
+    label.textContent = path.split('/').pop();
+    removeBtn.style.display = '';
+    dropZone.onclick = null;
+  } else {
+    label.textContent = 'Trascina un\'immagine o clicca';
+    removeBtn.style.display = 'none';
+    dropZone.onclick = () => document.getElementById('idle-bg-input').click();
+  }
+}
+
+function applyIdleBgLive() {
+  const val = document.getElementById('f-idle-bg-color').value;
+  document.getElementById('f-idle-bg-hex').textContent = val;
+  document.getElementById('f-idle-bg-color').dataset.active = '1';
+  sendToPreview({ type:'idleParam', key:'idle_bg_color', value: val });
+}
+
+function clearIdleBgColor() {
+  document.getElementById('f-idle-bg-color').dataset.active = '0';
+  sendToPreview({ type:'idleParam', key:'idle_bg_color', value: '' });
 }
 
 // ── Upload sfondo ─────────────────────────────────────────────────────────────
