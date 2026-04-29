@@ -7,18 +7,18 @@
   <style>
     * { margin:0; padding:0; box-sizing:border-box; }
     :root {
-      --bg:       #0d0d14;
-      --surface:  #13131f;
-      --surface2: #1a1a2a;
-      --surface3: #22223a;
-      --accent:   #6c63ff;
-      --accent2:  #a78bfa;
-      --success:  #22d3a0;
-      --error:    #f87171;
-      --warn:     #fbbf24;
-      --text:     #f0f0f5;
-      --text-dim: #8888aa;
-      --border:   rgba(108,99,255,0.2);
+      --bg:       #111318;
+      --surface:  #181b21;
+      --surface2: #1e2129;
+      --surface3: #252a34;
+      --accent:   #4f87c5;
+      --accent2:  #7baee0;
+      --success:  #4f87c5;
+      --error:    #8892a4;
+      --warn:     #8892a4;
+      --text:     #dde2ea;
+      --text-dim: #6b7280;
+      --border:   rgba(255,255,255,0.07);
     }
     html,body { height:100%; background:var(--bg); color:var(--text);
       font-family:'Segoe UI',system-ui,sans-serif; overflow:hidden; }
@@ -63,8 +63,8 @@
       font-size:.65rem; padding:2px 8px; border-radius:10px; font-weight:700;
       letter-spacing:.04em;
     }
-    .badge.published   { background:rgba(34,211,160,.15); color:var(--success); border:1px solid var(--success); }
-    .badge.unpublished { background:rgba(248,113,113,.1);  color:var(--error);   border:1px solid var(--error); }
+    .badge.published   { background:rgba(79,135,197,.15); color:var(--accent2); border:1px solid rgba(79,135,197,.4); }
+    .badge.unpublished { background:rgba(136,146,164,.08); color:var(--text-dim); border:1px solid rgba(136,146,164,.25); }
     .card-id { font-size:.68rem; color:var(--text-dim); font-family:monospace; }
 
     /* ── Main panel ─────────────────────────────── */
@@ -97,7 +97,7 @@
     /* ── Preview panel ──────────────────────────── */
     #preview-panel {
       flex:1; position:relative;
-      background:#0a0a0f;
+      background:#0d1017;
       display:flex; flex-direction:column; align-items:center; justify-content:flex-start;
       overflow:hidden;
     }
@@ -108,14 +108,24 @@
       flex-shrink:0; z-index:2;
     }
     #preview-mode-bar button {
+      display:inline-flex; align-items:center; gap:6px;
       background:transparent; border:1px solid var(--border);
-      color:var(--text-dim); border-radius:8px;
-      padding:5px 16px; font-size:.78rem; cursor:pointer;
+      color:var(--text-dim); border-radius:7px;
+      padding:7px 14px; font-size:.8rem; font-weight:500; cursor:pointer;
       transition:background .15s, color .15s, border-color .15s;
+      white-space:nowrap; line-height:1;
+    }
+    #preview-mode-bar button svg {
+      width:14px; height:14px; stroke:currentColor; fill:none;
+      stroke-width:2; stroke-linecap:round; stroke-linejoin:round; flex-shrink:0;
+    }
+    #preview-mode-bar button:hover {
+      background:var(--surface2); color:var(--text); border-color:rgba(255,255,255,.15);
     }
     #preview-mode-bar button.active {
       background:var(--accent); border-color:var(--accent); color:#fff;
     }
+    #preview-mode-bar button.active svg { stroke:#fff; }
     #preview-viewport {
       flex:1; display:flex; align-items:center; justify-content:center;
       width:100%; overflow:hidden; position:relative;
@@ -179,40 +189,40 @@
 
     .btn {
       display:inline-flex; align-items:center; justify-content:center; gap:6px;
-      padding:8px 16px; border:1px solid transparent; border-radius:8px;
-      font-size:.82rem; font-weight:600; cursor:pointer; letter-spacing:.01em;
-      transition:background .15s, border-color .15s, color .15s, box-shadow .15s;
-      white-space:nowrap; line-height:1;
+      padding:7px 14px; border:1px solid var(--border); border-radius:7px;
+      font-size:.8rem; font-weight:500; cursor:pointer; letter-spacing:.01em;
+      transition:background .15s, border-color .15s, color .15s;
+      white-space:nowrap; line-height:1; color:var(--text-dim);
+      background:transparent;
     }
     .btn:active { transform:translateY(1px); }
+    .btn svg { width:14px; height:14px; stroke:currentColor; fill:none;
+               stroke-width:2; stroke-linecap:round; stroke-linejoin:round; flex-shrink:0; }
+    .btn:hover { background:var(--surface2); color:var(--text); border-color:rgba(255,255,255,.15); }
 
-    /* Primary — azione principale */
-    .btn-primary { background:var(--accent); color:#fff; border-color:var(--accent); }
-    .btn-primary:hover { background:#7b72ff; border-color:#7b72ff; box-shadow:0 0 0 3px rgba(108,99,255,.25); }
+    /* CTA principale — unico bottone con fill */
+    .btn-primary { background:var(--accent); color:#fff; border-color:var(--accent); font-weight:600; }
+    .btn-primary:hover { background:#3a72b0; border-color:#3a72b0; color:#fff; }
+    .btn-primary svg { stroke:#fff; }
 
-    /* Success — pubblica / conferma */
-    .btn-success { background:#16a37a; color:#fff; border-color:#16a37a; }
-    .btn-success:hover { background:#1bbf8e; border-color:#1bbf8e; box-shadow:0 0 0 3px rgba(34,211,160,.2); }
+    /* Pubblica — outline accent */
+    .btn-success { color:var(--accent2); border-color:rgba(79,135,197,.35); }
+    .btn-success:hover { background:rgba(79,135,197,.08); color:var(--accent2); border-color:var(--accent); }
+    .btn-success svg { stroke:var(--accent2); }
 
-    /* Ghost — azioni secondarie */
-    .btn-neutral { background:transparent; color:var(--text-dim); border-color:var(--border); }
-    .btn-neutral:hover { background:var(--surface2); color:var(--text); border-color:rgba(108,99,255,.5); }
-    .btn-neutral.active { background:var(--surface3); color:var(--accent2); border-color:var(--accent); }
+    /* Danger — outline muted, non allarmante */
+    .btn-danger { color:var(--text-dim); border-color:rgba(136,146,164,.25); }
+    .btn-danger:hover { background:rgba(136,146,164,.08); color:var(--text); border-color:rgba(136,146,164,.5); }
+    .btn-danger svg { stroke:currentColor; }
 
-    /* Danger — azioni distruttive */
-    .btn-danger { background:transparent; color:var(--error); border-color:rgba(248,113,113,.4); }
-    .btn-danger:hover { background:var(--error); color:#fff; border-color:var(--error); box-shadow:0 0 0 3px rgba(248,113,113,.2); }
-
-    /* Icon — solo icona, formato quadrato */
-    .btn-icon { padding:8px 10px; }
+    /* Icon — solo icona quadrato */
+    .btn-icon { padding:7px 8px; }
 
     /* Toggle modalità AI */
-    /* applicato = viola solido */
-    .btn-mode-applied        { background:var(--accent); color:#fff; border-color:var(--accent); }
-    .btn-mode-applied:hover  { background:#857af7; border-color:#857af7; box-shadow:0 0 0 3px rgba(108,99,255,.35); }
-    /* selezionato non ancora applicato = giallo */
-    .btn-mode-selected       { background:rgba(251,191,36,.1); color:#fbbf24; border-color:#fbbf24; }
-    .btn-mode-selected:hover { background:rgba(251,191,36,.25); color:#fde68a; border-color:#fde68a; box-shadow:0 0 0 3px rgba(251,191,36,.25); }
+    .btn-mode-applied       { background:var(--surface3); color:var(--accent2); border-color:var(--accent); }
+    .btn-mode-applied:hover { background:var(--surface3); border-color:var(--accent2); }
+    .btn-mode-selected      { color:var(--warn); border-color:rgba(212,166,64,.4); }
+    .btn-mode-selected:hover{ background:rgba(212,166,64,.07); border-color:var(--warn); }
 
     /* ── Card sezione ───────────────────────────── */
     .section {
@@ -262,11 +272,11 @@
     }
     .icon-slot { display:flex; flex-direction:column; align-items:center; gap:4px; cursor:pointer; }
     .icon-slot-thumb {
-      width:52px; height:52px; border-radius:10px; background:#1a1a2e;
+      width:52px; height:52px; border-radius:10px; background:var(--surface3);
       border:2px dashed #333; display:flex; align-items:center; justify-content:center;
       overflow:hidden; transition:border-color .2s; position:relative;
     }
-    .icon-slot-thumb:hover { border-color:#6c63ff; }
+    .icon-slot-thumb:hover { border-color:var(--accent); }
     .icon-slot-thumb img { width:100%; height:100%; object-fit:contain; display:none; }
     .icon-slot-thumb .slot-placeholder { color:#555; font-size:1.2rem; }
     .icon-slot-label { font-size:.68rem; color:#666; text-align:center; }
@@ -397,7 +407,7 @@
     }
     .provider-card.active {
       border-color:var(--accent);
-      background:rgba(108,99,255,.06);
+      background:rgba(79,135,197,.06);
     }
     .provider-card-header {
       display:flex; align-items:center; justify-content:space-between;
@@ -560,7 +570,7 @@
           <label>Voice ID</label>
           <div class="model-row">
             <input id="wiz-voice-id" type="text" placeholder="dNeMsqRAC759PyIQ40Vf"/>
-            <button class="btn btn-neutral btn-load" onclick="wizLoadVoices()">⟳ Carica</button>
+            <button class="btn btn-neutral btn-load" onclick="wizLoadVoices()"><svg viewBox="0 0 24 24"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg> Carica</button>
           </div>
         </div>
       </div>
@@ -585,7 +595,7 @@
           <label>Modello</label>
           <div class="model-row">
             <input id="wiz-ai-model" type="text" placeholder="claude-sonnet-4-6"/>
-            <button class="btn btn-neutral btn-load" onclick="wizLoadModels()">⟳ Carica</button>
+            <button class="btn btn-neutral btn-load" onclick="wizLoadModels()"><svg viewBox="0 0 24 24"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg> Carica</button>
           </div>
         </div>
       </div>
@@ -597,13 +607,13 @@
           ondragover="event.preventDefault()"
           ondrop="wizHandleModelDrop(event)"
           onclick="document.getElementById('wiz-model-input').click()">
-          <div id="wiz-model-label">🎭 Trascina un file .fbx o clicca</div>
+          <div id="wiz-model-label"><svg viewBox="0 0 24 24" style="width:16px;height:16px;stroke:currentColor;fill:none;stroke-width:1.5;stroke-linecap:round;stroke-linejoin:round;display:inline-block;vertical-align:middle;margin-right:6px"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg>Trascina un file .fbx o clicca</div>
           <input type="file" id="wiz-model-input" accept=".fbx" style="display:none"
             onchange="wizUploadModel(this.files[0])"/>
         </div>
         <div id="wiz-preview-wrap" style="display:none;margin-top:14px;border-radius:12px;overflow:hidden;border:1px solid var(--border);aspect-ratio:9/16;width:min(100%,280px);margin-left:auto;margin-right:auto;position:relative">
           <iframe id="wiz-preview-iframe" style="position:absolute;inset:0;width:1080px;height:1920px;border:none;transform-origin:top left" src="about:blank"></iframe>
-          <div id="wiz-preview-loading" style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;background:var(--surface);font-size:.85rem;color:var(--text-dim)">⏳ Caricamento preview…</div>
+          <div id="wiz-preview-loading" style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;background:var(--surface);font-size:.85rem;color:var(--text-dim)">Caricamento preview…</div>
         </div>
         <p style="font-size:.75rem;color:var(--text-dim);margin-top:10px;text-align:center">oppure continua senza modello — verrà usato quello di default</p>
       </div>
@@ -625,7 +635,7 @@
       <h1>AVATAR KIOSK</h1>
       <p>Backoffice</p>
     </div>
-    <button id="new-btn" class="btn btn-primary" onclick="createAvatar()">+ Nuovo Avatar</button>
+    <button id="new-btn" class="btn btn-primary" onclick="createAvatar()"><svg viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg> Nuovo Avatar</button>
     <div id="avatar-list"></div>
     <form method="POST" action="/admin/logout" style="padding:12px">
       <button type="submit" class="btn btn-danger" style="width:100%">Logout</button>
@@ -638,7 +648,7 @@
     <!-- Form -->
     <div id="form-panel">
     <div id="empty-state">
-      <div class="icon">🤖</div>
+      <div class="icon"><svg viewBox="0 0 24 24" style="width:40px;height:40px;stroke:var(--text-dim);fill:none;stroke-width:1.5;stroke-linecap:round;stroke-linejoin:round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/><circle cx="12" cy="5" r="1" fill="var(--text-dim)"/></svg></div>
       <p>Seleziona un avatar o creane uno nuovo</p>
     </div>
 
@@ -648,10 +658,10 @@
         <div class="editor-header">
           <h2 id="editor-title">Avatar</h2>
           <div class="actions">
-            <button class="btn btn-success" id="publish-btn" onclick="togglePublish()">Pubblica</button>
-            <button class="btn btn-primary" onclick="saveAvatar()">Salva</button>
-            <button class="btn btn-neutral btn-icon" onclick="openKiosk()" title="Apri kiosk">↗</button>
-            <button class="btn btn-danger  btn-icon" onclick="deleteAvatar()" title="Elimina">🗑</button>
+            <button class="btn btn-success" id="publish-btn" onclick="togglePublish()"><svg viewBox="0 0 24 24"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg> Pubblica</button>
+            <button class="btn btn-primary" onclick="saveAvatar()"><svg viewBox="0 0 24 24"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg> Salva</button>
+            <button class="btn btn-neutral btn-icon" onclick="openKiosk()" title="Apri kiosk"><svg viewBox="0 0 24 24"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg></button>
+            <button class="btn btn-danger  btn-icon" onclick="deleteAvatar()" title="Elimina"><svg viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg></button>
           </div>
         </div>
         <div style="display:flex;gap:8px;align-items:center;padding:12px 0">
@@ -676,8 +686,8 @@
           <h3>URL Kiosk</h3>
           <div class="kiosk-url">
             <code id="kiosk-url-text">—</code>
-            <button onclick="copyUrl()">📋</button>
-            <button onclick="openKiosk()">↗</button>
+            <button class="btn btn-neutral btn-icon" onclick="copyUrl()" title="Copia URL"><svg viewBox="0 0 24 24"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg></button>
+            <button class="btn btn-neutral btn-icon" onclick="openKiosk()" title="Apri"><svg viewBox="0 0 24 24"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg></button>
           </div>
         </div>
 
@@ -721,13 +731,13 @@
               ondragover="event.preventDefault()"
               ondrop="handleBgDrop(event)"
               onclick="document.getElementById('bg-input').click()">
-              <div id="bg-label">🖼 Trascina o clicca</div>
+              <div id="bg-label">Trascina o clicca</div>
               <input type="file" id="bg-input" accept="image/*" style="display:none"
                 onchange="uploadBackground(this.files[0])"/>
             </div>
             <button id="remove-bg-btn" class="btn btn-danger"
               style="margin-top:8px;display:none"
-              onclick="removeBackground()">🗑 Rimuovi immagine</button>
+              onclick="removeBackground()"><svg viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg> Rimuovi</button>
           </div>
         </div>
 
@@ -740,12 +750,9 @@
           <h3>Modalità AI</h3>
         <div class="field" style="margin-bottom:12px">
           <div style="display:flex;gap:6px;align-items:center">
-            <button id="mode-embedded-btn" class="btn btn-neutral" onclick="setAvatarMode('embedded')" style="flex:1">⚙️ Embedded</button>
-            <button id="mode-webhook-btn"  class="btn btn-neutral" onclick="setAvatarMode('webhook')"  style="flex:1">🔗 Webhook</button>
-            <button id="mode-apply-btn" class="btn btn-primary" onclick="applyAvatarMode()" style="display:none">✓ Applica</button>
-          </div>
-          <div id="mode-status-line" style="font-size:.72rem;margin-top:6px;color:var(--text-dim)"></div>
-          <div style="display:none">
+            <button id="mode-embedded-btn" class="btn btn-neutral" onclick="setAvatarMode('embedded')" style="flex:1"><svg viewBox="0 0 24 24"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg> Embedded</button>
+            <button id="mode-webhook-btn"  class="btn btn-neutral" onclick="setAvatarMode('webhook')"  style="flex:1"><svg viewBox="0 0 24 24"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg> Webhook</button>
+            <button id="mode-apply-btn" class="btn btn-primary" onclick="applyAvatarMode()" style="display:none"><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg> Applica</button>
           </div>
         </div>
         <div id="webhook-fields" style="display:none;flex-direction:column;gap:12px;margin-top:4px">
@@ -759,7 +766,6 @@
           <!-- HEADERS -->
           <div class="webhook-block">
             <div class="webhook-block-title">Headers</div>
-            <div class="webhook-block-hint">Autenticazione e metadata — JSON chiave/valore</div>
             <textarea id="f-webhook-headers" rows="3" class="mono-area"
               placeholder='{"Authorization":"Bearer xxx"}'
             >{}</textarea>
@@ -768,7 +774,6 @@
           <!-- BODY -->
           <div class="webhook-block">
             <div class="webhook-block-title">Body</div>
-            <div class="webhook-block-hint">Payload POST — usa <code>{{query}}</code> per la domanda, <code>{{session_id}}</code> <code>{{user_id}}</code> <code>{{timestamp}}</code> per i metadati</div>
             <textarea id="f-webhook-input-template" rows="6" class="mono-area"
               placeholder='{"query":"{{query}}"}'
             >{"query":"{{query}}"}</textarea>
@@ -777,11 +782,10 @@
           <!-- RESPONSE -->
           <div class="webhook-block">
             <div class="webhook-block-title">Response</div>
-            <div class="webhook-block-hint">Percorso nel JSON di risposta del webhook — es. se ricevi <code>{"output":"testo"}</code> scrivi <code>output</code>. Per array: <code>0.output</code>. Per annidato: <code>data.result.text</code></div>
             <input type="text" id="f-webhook-output-field" class="mono-input" placeholder="response" value="response"/>
           </div>
 
-          <button class="btn btn-neutral" onclick="testWebhook()">🧪 Testa webhook</button>
+          <button class="btn btn-neutral" onclick="testWebhook()"><svg viewBox="0 0 24 24"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg> Testa webhook</button>
           <div id="webhook-test-result" style="font-size:.78rem;color:var(--text-dim)"></div>
         </div>
 
@@ -797,7 +801,6 @@
         <!-- STT -->
         <div class="section">
           <h3>Speech to Text</h3>
-          <p style="font-size:.72rem;color:var(--text-dim);margin-bottom:12px">Whisper (OpenAI) — lascia vuoto per usare i default da <code>.env</code></p>
           <div class="fields" style="gap:12px;margin-bottom:12px">
             <div class="field">
               <label>API Key</label>
@@ -812,7 +815,7 @@
             <label>Modello</label>
             <div class="model-row">
               <input type="text" id="f-stt-model" placeholder="whisper-1"/>
-              <button class="btn btn-neutral btn-load" onclick="loadModels('openai','f-stt-api-key','f-stt-model')">⟳ Carica</button>
+              <button class="btn btn-neutral btn-load" onclick="loadModels('openai','f-stt-api-key','f-stt-model')"><svg viewBox="0 0 24 24"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg> Carica</button>
             </div>
           </div>
         </div>
@@ -820,7 +823,6 @@
         <!-- TTS -->
         <div class="section">
           <h3>Text to Speech</h3>
-          <p style="font-size:.72rem;color:var(--text-dim);margin-bottom:12px">ElevenLabs — lascia vuoto per usare i default da <code>.env</code></p>
           <div class="field" style="margin-bottom:12px">
             <label>API Key</label>
             <input type="password" id="f-tts-api-key" placeholder="default da .env"/>
@@ -837,10 +839,10 @@
           </div>
           <div class="fields" style="gap:12px;margin-bottom:12px">
             <div class="model-row">
-              <button class="btn btn-neutral btn-load" style="width:100%" onclick="loadModels('elevenlabs-voices','f-tts-api-key','f-voice-id')">⟳ Carica voci</button>
+              <button class="btn btn-neutral btn-load" style="width:100%" onclick="loadModels('elevenlabs-voices','f-tts-api-key','f-voice-id')"><svg viewBox="0 0 24 24"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg> Carica voci</button>
             </div>
             <div class="model-row">
-              <button class="btn btn-neutral btn-load" style="width:100%" onclick="loadModels('elevenlabs-models','f-tts-api-key','f-tts-model')">⟳ Carica modelli</button>
+              <button class="btn btn-neutral btn-load" style="width:100%" onclick="loadModels('elevenlabs-models','f-tts-api-key','f-tts-model')"><svg viewBox="0 0 24 24"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg> Carica modelli</button>
             </div>
           </div>
           <div class="fields" style="gap:12px;margin-top:12px">
@@ -860,7 +862,6 @@
         <!-- AI Agent -->
         <div class="section" id="ai-agent-section">
           <h3>AI Agent</h3>
-          <p style="font-size:.72rem;color:var(--text-dim);margin-bottom:14px">Attivo in modalità Embedded. Lascia vuoto per i default da <code>.env</code></p>
 
           <div style="display:flex;flex-direction:column;gap:10px">
 
@@ -878,7 +879,7 @@
                 <label>Modello</label>
                 <div class="model-row">
                   <input type="text" id="f-anthropic-model" placeholder="claude-sonnet-4-6"/>
-                  <button class="btn btn-neutral btn-load" onclick="loadModels('anthropic','f-anthropic-api-key','f-anthropic-model')">⟳ Carica</button>
+                  <button class="btn btn-neutral btn-load" onclick="loadModels('anthropic','f-anthropic-api-key','f-anthropic-model')"><svg viewBox="0 0 24 24"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg> Carica</button>
                 </div>
               </div>
               <button class="btn btn-neutral" onclick="setAiProvider('anthropic')" id="use-anthropic-btn" style="display:none">Usa Anthropic</button>
@@ -898,7 +899,7 @@
                 <label>Modello</label>
                 <div class="model-row">
                   <input type="text" id="f-openai-model" placeholder="gpt-4o"/>
-                  <button class="btn btn-neutral btn-load" onclick="loadModels('openai-gpt','f-openai-api-key','f-openai-model')">⟳ Carica</button>
+                  <button class="btn btn-neutral btn-load" onclick="loadModels('openai-gpt','f-openai-api-key','f-openai-model')"><svg viewBox="0 0 24 24"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg> Carica</button>
                 </div>
               </div>
               <button class="btn btn-neutral" onclick="setAiProvider('openai')" id="use-openai-btn">Usa OpenAI</button>
@@ -957,9 +958,9 @@
             <div class="field" style="margin-top:12px">
               <label>Posizione orizzontale</label>
               <div class="btn-row" style="gap:6px">
-                <button id="align-left-btn"   class="btn btn-neutral" onclick="setChatAlign('left')">◀ Sinistra</button>
-                <button id="align-center-btn" class="btn btn-neutral active" onclick="setChatAlign('center')">● Centro</button>
-                <button id="align-right-btn"  class="btn btn-neutral" onclick="setChatAlign('right')">▶ Destra</button>
+                <button id="align-left-btn"   class="btn btn-neutral" onclick="setChatAlign('left')"><svg viewBox="0 0 24 24"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="15" y2="12"/><line x1="3" y1="18" x2="18" y2="18"/></svg> Sinistra</button>
+                <button id="align-center-btn" class="btn btn-neutral active" onclick="setChatAlign('center')"><svg viewBox="0 0 24 24"><line x1="3" y1="6" x2="21" y2="6"/><line x1="6" y1="12" x2="18" y2="12"/><line x1="4" y1="18" x2="20" y2="18"/></svg> Centro</button>
+                <button id="align-right-btn"  class="btn btn-neutral" onclick="setChatAlign('right')"><svg viewBox="0 0 24 24"><line x1="3" y1="6" x2="21" y2="6"/><line x1="9" y1="12" x2="21" y2="12"/><line x1="6" y1="18" x2="21" y2="18"/></svg> Destra</button>
               </div>
             </div>
           </div>
@@ -1276,7 +1277,7 @@
             ondragleave="this.classList.remove('drag')"
             ondrop="handleModelDrop(event)"
             onclick="document.getElementById('model-input').click()">
-            <div id="model-label">🎭 Trascina un file .fbx o clicca</div>
+            <div id="model-label"><svg viewBox="0 0 24 24" style="width:18px;height:18px;stroke:currentColor;fill:none;stroke-width:1.5;stroke-linecap:round;stroke-linejoin:round;display:inline-block;vertical-align:middle;margin-right:6px"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg>Trascina un file .fbx o clicca</div>
             <input type="file" id="model-input" accept=".fbx" style="display:none"
               onchange="uploadModel(this.files[0])"/>
           </div>
@@ -1289,8 +1290,8 @@
             <label>
               <span>Posizione <span id="v-scrub">0.00</span>s / <span id="v-dur">—</span>s</span>
               <span class="mini-actions">
-                <button class="mini-btn accent" onclick="playMarkedRange()">▶ Play</button>
-                <button class="mini-btn"        onclick="resetAnimPreview()">↺ Reset</button>
+                <button class="mini-btn accent" onclick="playMarkedRange()"><svg viewBox="0 0 24 24" style="width:11px;height:11px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round"><polygon points="5 3 19 12 5 21 5 3"/></svg> Play</button>
+                <button class="mini-btn"        onclick="resetAnimPreview()"><svg viewBox="0 0 24 24" style="width:11px;height:11px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 .49-4.88"/></svg> Reset</button>
               </span>
             </label>
             <input type="range" min="0" max="20" step="0.01" id="s-scrub" value="0"
@@ -1301,20 +1302,20 @@
           </div>
           <p class="step-label">2 — Marca il range</p>
           <div class="btn-row">
-            <button class="btn btn-neutral" onclick="markAnim('start')">[ Start</button>
-            <button class="btn btn-neutral" onclick="markAnim('end')">End ]</button>
+            <button class="btn btn-neutral" onclick="markAnim('start')"><svg viewBox="0 0 24 24"><line x1="5" y1="3" x2="5" y2="21"/><line x1="5" y1="12" x2="19" y2="12"/></svg> Start</button>
+            <button class="btn btn-neutral" onclick="markAnim('end')"><svg viewBox="0 0 24 24"><line x1="19" y1="3" x2="19" y2="21"/><line x1="5" y1="12" x2="19" y2="12"/></svg> End</button>
           </div>
           <p class="step-label">3 — Assegna e verifica</p>
           <div class="btn-row">
-            <button class="btn btn-neutral" onclick="assignRange('idle')">→ 💤 Idle</button>
-            <button class="btn btn-neutral" onclick="assignRange('speech')">→ 🗣 Speech</button>
+            <button class="btn btn-neutral" onclick="assignRange('idle')"><svg viewBox="0 0 24 24"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg> Idle</button>
+            <button class="btn btn-neutral" onclick="assignRange('speech')"><svg viewBox="0 0 24 24"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg> Speech</button>
           </div>
           <p class="step-label">4 — Range attivi</p>
           <div class="range-cards">
             <div class="range-card">
               <div class="range-card-header">
-                <span class="range-label">💤 IDLE</span>
-                <button id="play-idle-btn" class="mini-btn" onclick="togglePlayRange('idle')">▶</button>
+                <span class="range-label">IDLE</span>
+                <button id="play-idle-btn" class="mini-btn" onclick="togglePlayRange('idle')"><svg viewBox="0 0 24 24" style="width:11px;height:11px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round"><polygon points="5 3 19 12 5 21 5 3"/></svg></button>
               </div>
               <div class="range-value"><span id="v-idle-start">0.00</span>s → <span id="v-idle-end">2.00</span>s</div>
               <input type="hidden" id="s-idle-start" value="0"/>
@@ -1322,8 +1323,8 @@
             </div>
             <div class="range-card">
               <div class="range-card-header">
-                <span class="range-label">🗣 SPEECH</span>
-                <button id="play-speech-btn" class="mini-btn" onclick="togglePlayRange('speech')">▶</button>
+                <span class="range-label">SPEECH</span>
+                <button id="play-speech-btn" class="mini-btn" onclick="togglePlayRange('speech')"><svg viewBox="0 0 24 24" style="width:11px;height:11px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round"><polygon points="5 3 19 12 5 21 5 3"/></svg></button>
               </div>
               <div class="range-value"><span id="v-speech-start">2.00</span>s → <span id="v-speech-end">9.00</span>s</div>
               <input type="hidden" id="s-speech-start" value="2"/>
@@ -1377,12 +1378,12 @@
     <!-- Preview 3D -->
     <div id="preview-panel">
       <div id="preview-mode-bar" style="display:none">
-        <button id="btn-mode-web"    class="active" onclick="setPreviewMode('web')">🖥 Web</button>
-        <button id="btn-mode-mobile" onclick="setPreviewMode('mobile')">📱 Smartphone</button>
+        <button id="btn-mode-web"    class="active" onclick="setPreviewMode('web')"><svg viewBox="0 0 24 24"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg> Web</button>
+        <button id="btn-mode-mobile" onclick="setPreviewMode('mobile')"><svg viewBox="0 0 24 24"><rect x="5" y="2" width="14" height="20" rx="2"/><line x1="12" y1="18" x2="12.01" y2="18"/></svg> Smartphone</button>
       </div>
       <div id="preview-viewport">
         <div id="preview-placeholder">
-          <div class="icon">🎭</div>
+          <div class="icon"><svg viewBox="0 0 24 24" style="width:40px;height:40px;stroke:var(--text-dim);fill:none;stroke-width:1.2;stroke-linecap:round;stroke-linejoin:round"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg></div>
           <p>Seleziona un avatar per la preview</p>
         </div>
         <div id="preview-frame-wrap" class="mode-mobile" style="display:none">
@@ -1390,7 +1391,7 @@
         </div>
       </div>
       <div id="preview-bar" style="display:none">
-        🔴 Preview live — le modifiche agli slider si applicano in tempo reale
+        <svg viewBox="0 0 24 24" style="width:8px;height:8px;flex-shrink:0"><circle cx="12" cy="12" r="10" fill="var(--accent)" stroke="none"/></svg> Preview live — modifiche in tempo reale
       </div>
     </div>
 
@@ -1495,18 +1496,20 @@ function selectAvatar(id) {
   const isColor = !a.background || a.background.startsWith('#') || a.background.startsWith('rgb');
   if (isColor) {
     document.getElementById('f-bg-color').value = a.background || '#0a0a0f';
-    document.getElementById('bg-label').textContent = '🖼 Immagine sfondo (opzionale)';
+    document.getElementById('bg-label').textContent = 'Trascina o clicca';
     document.getElementById('bg-drop').classList.remove('has-file');
     document.getElementById('remove-bg-btn').style.display = 'none';
   } else {
-    document.getElementById('bg-label').textContent = `✅ ${a.background}`;
+    document.getElementById('bg-label').innerHTML = `<svg viewBox="0 0 24 24" style="width:14px;height:14px;stroke:var(--success);fill:none;stroke-width:2.5;stroke-linecap:round;stroke-linejoin:round;display:inline-block;vertical-align:middle;margin-right:4px"><polyline points="20 6 9 17 4 12"/></svg>${a.background}`;
     document.getElementById('bg-drop').classList.add('has-file');
     document.getElementById('remove-bg-btn').style.display = 'block';
   }
 
   // Modello
-  document.getElementById('model-label').textContent =
-    a.model_file ? `✅ ${a.model_file}` : '🎭 Trascina un file .fbx o clicca per selezionare';
+  const _boxSvg = '<svg viewBox="0 0 24 24" style="width:14px;height:14px;stroke:currentColor;fill:none;stroke-width:1.5;stroke-linecap:round;stroke-linejoin:round;display:inline-block;vertical-align:middle;margin-right:6px"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg>';
+  const _chkSvg = '<svg viewBox="0 0 24 24" style="width:14px;height:14px;stroke:var(--success);fill:none;stroke-width:2.5;stroke-linecap:round;stroke-linejoin:round;display:inline-block;vertical-align:middle;margin-right:4px"><polyline points="20 6 9 17 4 12"/></svg>';
+  document.getElementById('model-label').innerHTML =
+    a.model_file ? `${_chkSvg}${a.model_file}` : `${_boxSvg}Trascina un file .fbx o clicca`;
   document.getElementById('model-drop').className =
     `upload-zone${a.model_file?' has-file':''}`;
 
@@ -1601,7 +1604,9 @@ function selectAvatar(id) {
 
   // Publish btn
   const pb = document.getElementById('publish-btn');
-  pb.textContent = a.published ? 'Rimuovi' : 'Pubblica';
+  pb.innerHTML = a.published
+    ? '<svg viewBox="0 0 24 24"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg> Bozza'
+    : '<svg viewBox="0 0 24 24"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg> Pubblica';
   pb.className   = a.published ? 'btn btn-danger' : 'btn btn-success';
 
   // URL kiosk
@@ -1732,7 +1737,7 @@ function assignRange(target) {
   // Invia alla preview
   sendToPreview({ type: 'avatarParam', key: `${target}_start`, value: s });
   sendToPreview({ type: 'avatarParam', key: `${target}_end`,   value: e });
-  toast(`✅ Range assegnato a ${target === 'idle' ? '💤 Idle' : '🗣 Speech'}`);
+  toast(`Range assegnato a ${target === 'idle' ? 'Idle' : 'Speech'}`);
 }
 
 // ── Play/Stop loop range ──────────────────────────────────────────────────────
@@ -1845,7 +1850,7 @@ function createAvatar() {
   document.getElementById('wiz-voice-id').value = '';
   document.getElementById('wiz-ai-key').value   = '';
   document.getElementById('wiz-ai-model').value = '';
-  document.getElementById('wiz-model-label').textContent = '🎭 Trascina un file .fbx o clicca';
+  document.getElementById('wiz-model-label').innerHTML = '<svg viewBox="0 0 24 24" style="width:16px;height:16px;stroke:currentColor;fill:none;stroke-width:1.5;stroke-linecap:round;stroke-linejoin:round;display:inline-block;vertical-align:middle;margin-right:6px"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg>Trascina un file .fbx o clicca';
   _wizStep = 0; _wizAiMode = 'embedded'; _wizAiProv = 'anthropic'; _wizAvatarId = null;
   wizAiProv('anthropic');
   wizRender();
@@ -1864,7 +1869,12 @@ function wizRender() {
   for (let i=0; i<total; i++)
     document.getElementById(`ws${i}`).style.display = i === _wizStep ? '' : 'none';
   document.getElementById('wiz-back').style.display = _wizStep > 0 ? '' : 'none';
-  document.getElementById('wiz-next').textContent   = _wizStep === total-1 ? '✓ Crea avatar' : 'Avanti →';
+  const wizNext = document.getElementById('wiz-next');
+  if (_wizStep === total-1) {
+    wizNext.innerHTML = '<svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg> Crea avatar';
+  } else {
+    wizNext.textContent = 'Avanti →';
+  }
   document.getElementById('wiz-box').style.width    = _wizStep === 3 ? '560px' : '480px';
 }
 
@@ -1885,7 +1895,7 @@ function wizAiProv(prov) {
 
 async function wizLoadVoices() {
   const key = document.getElementById('wiz-tts-key').value.trim();
-  if (!key) { toast('⚠️ Inserisci prima la API Key ElevenLabs', 'error'); return; }
+  if (!key) { toast('Inserisci prima la API Key ElevenLabs', 'error'); return; }
   try {
     const res = await api.post('/api/admin/fetch-models', { provider: 'elevenlabs-voices', apiKey: key });
     const input = document.getElementById('wiz-voice-id');
@@ -1894,14 +1904,14 @@ async function wizLoadVoices() {
     const empty = document.createElement('option'); empty.value=''; empty.textContent='— Seleziona voce —'; sel.appendChild(empty);
     res.models.forEach(m => { const o=document.createElement('option'); o.value=m.id; o.textContent=m.name; sel.appendChild(o); });
     input.replaceWith(sel);
-    toast(`✅ ${res.models.length} voci caricate`);
-  } catch(e) { toast(`❌ ${e.message}`, 'error'); }
+    toast(`${res.models.length} voci caricate`);
+  } catch(e) { toast(e.message, 'error'); }
 }
 
 async function wizLoadModels() {
   const key = document.getElementById('wiz-ai-key').value.trim();
   const prov = _wizAiProv === 'openai' ? 'openai-gpt' : 'anthropic';
-  if (!key) { toast('⚠️ Inserisci prima la API Key', 'error'); return; }
+  if (!key) { toast('Inserisci prima la API Key', 'error'); return; }
   try {
     const res = await api.post('/api/admin/fetch-models', { provider: prov, apiKey: key });
     const input = document.getElementById('wiz-ai-model');
@@ -1909,8 +1919,8 @@ async function wizLoadModels() {
     sel.id = 'wiz-ai-model'; sel.className = input.className;
     res.models.forEach(m => { const o=document.createElement('option'); o.value=m.id; o.textContent=m.name; sel.appendChild(o); });
     input.replaceWith(sel);
-    toast(`✅ ${res.models.length} modelli caricati`);
-  } catch(e) { toast(`❌ ${e.message}`, 'error'); }
+    toast(`${res.models.length} modelli caricati`);
+  } catch(e) { toast(e.message, 'error'); }
 }
 
 function wizHandleModelDrop(e) {
@@ -1920,15 +1930,15 @@ function wizHandleModelDrop(e) {
 }
 
 async function wizUploadModel(file) {
-  if (!_wizAvatarId) { toast('⚠️ Completa prima i passi precedenti', 'error'); return; }
-  document.getElementById('wiz-model-label').textContent = `⏳ Conversione in corso…`;
+  if (!_wizAvatarId) { toast('Completa prima i passi precedenti', 'error'); return; }
+  document.getElementById('wiz-model-label').textContent = 'Conversione in corso…';
   document.getElementById('wiz-model-drop').style.opacity = '0.5';
   const form = new FormData(); form.append('model', file);
   const res  = await fetch(`/api/admin/avatars/${_wizAvatarId}/upload-model`, { method:'POST', body:form });
   const data = await res.json();
   document.getElementById('wiz-model-drop').style.opacity = '';
-  if (!res.ok) { document.getElementById('wiz-model-label').textContent='🎭 Trascina un file .fbx o clicca'; toast('❌ ' + data.error, 'error'); return; }
-  document.getElementById('wiz-model-label').textContent = `✅ ${file.name}`;
+  if (!res.ok) { document.getElementById('wiz-model-label').innerHTML='<svg viewBox="0 0 24 24" style="width:16px;height:16px;stroke:currentColor;fill:none;stroke-width:1.5;stroke-linecap:round;stroke-linejoin:round;display:inline-block;vertical-align:middle;margin-right:6px"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg>Trascina un file .fbx o clicca'; toast('Errore: ' + data.error, 'error'); return; }
+  document.getElementById('wiz-model-label').innerHTML = `<svg viewBox="0 0 24 24" style="width:14px;height:14px;stroke:var(--success);fill:none;stroke-width:2.5;stroke-linecap:round;stroke-linejoin:round;display:inline-block;vertical-align:middle;margin-right:4px"><polyline points="20 6 9 17 4 12"/></svg>${file.name}`;
   // Mostra preview
   const wrap    = document.getElementById('wiz-preview-wrap');
   const iframe  = document.getElementById('wiz-preview-iframe');
@@ -1940,7 +1950,7 @@ async function wizUploadModel(file) {
   iframe.style.transform = `scale(${scale})`;
   iframe.src = `/preview/${_wizAvatarId}?t=${Date.now()}`;
   iframe.onload = () => { loading.style.display = 'none'; };
-  toast('✅ Modello caricato');
+  toast('Modello caricato');
 }
 
 function wizBack() { if (_wizStep > 0) { _wizStep--; wizRender(); } }
@@ -1982,7 +1992,7 @@ async function wizCreate() {
   await loadAvatars();
   selectAvatar(_wizAvatarId);
   document.getElementById('wiz-modal').classList.remove('open');
-  toast('✅ Avatar creato');
+  toast('Avatar creato');
 }
 
 async function wizSkip() {
@@ -2071,7 +2081,7 @@ async function saveAvatar() {
   renderList();
   setAvatarMode._applied = setAvatarMode._current;
   _refreshModeBtns();
-  toast('✅ Salvato');
+  toast('Salvato');
 }
 
 // ── Pubblica / rimuovi ────────────────────────────────────────────────────────
@@ -2080,9 +2090,13 @@ async function togglePublish() {
   await saveAvatar();  // salva sempre prima di pubblicare
   const res = await api.post(`/api/admin/avatars/${currentId}/publish`, {});
   avatars = avatars.map(a => a.id===currentId ? {...a, published: res.published} : a);
-  document.getElementById('publish-btn').textContent = res.published ? '🔴 Rimuovi' : '🟢 Pubblica';
+  const _pb = document.getElementById('publish-btn');
+  _pb.innerHTML = res.published
+    ? '<svg viewBox="0 0 24 24"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg> Bozza'
+    : '<svg viewBox="0 0 24 24"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg> Pubblica';
+  _pb.className = res.published ? 'btn btn-danger' : 'btn btn-success';
   renderList();
-  toast(res.published ? '🟢 Avatar pubblicato' : '🔴 Avatar rimosso');
+  toast(res.published ? 'Avatar pubblicato' : 'Avatar rimosso dalla pubblicazione');
 }
 
 // ── Elimina ───────────────────────────────────────────────────────────────────
@@ -2103,7 +2117,7 @@ async function deleteAvatar() {
   if (modeBar) modeBar.style.display = 'none';
   document.getElementById('preview-placeholder').style.display = '';
   renderList();
-  toast('🗑 Avatar eliminato');
+  toast('Avatar eliminato');
 }
 
 // ── Upload modello ────────────────────────────────────────────────────────────
@@ -2118,17 +2132,17 @@ async function uploadModel(file) {
   if (!currentId) return toast('Salva prima l\'avatar', 'error');
   if (!file?.name.toLowerCase().endsWith('.fbx'))
     return toast('Seleziona un file .fbx', 'error');
-  document.getElementById('model-label').textContent = '⏳ Conversione in corso...';
+  document.getElementById('model-label').textContent = 'Conversione in corso...';
   const form = new FormData();
   form.append('model', file);
   const res = await fetch(`/api/admin/avatars/${currentId}/upload-model`, { method:'POST', body:form });
   const data = await res.json();
-  if (!res.ok) { toast('❌ ' + data.error, 'error'); return; }
-  document.getElementById('model-label').textContent = `✅ ${data.model_file}`;
+  if (!res.ok) { toast('Errore: ' + data.error, 'error'); return; }
+  document.getElementById('model-label').innerHTML = `<svg viewBox="0 0 24 24" style="width:14px;height:14px;stroke:var(--success);fill:none;stroke-width:2.5;stroke-linecap:round;stroke-linejoin:round;display:inline-block;vertical-align:middle;margin-right:4px"><polyline points="20 6 9 17 4 12"/></svg>${data.model_file}`;
   document.getElementById('model-drop').classList.add('has-file');
   avatars = avatars.map(a => a.id===currentId ? {...a, model_file: data.model_file} : a);
   reloadPreview();
-  toast('✅ Modello caricato');
+  toast('Modello caricato');
 }
 
 // ── Upload sfondo ─────────────────────────────────────────────────────────────
@@ -2144,14 +2158,14 @@ async function uploadBackground(file) {
   form.append('background', file);
   const res  = await fetch(`/api/admin/avatars/${currentId}/upload-background`, { method:'POST', body:form });
   const data = await res.json();
-  if (!res.ok) { toast('❌ ' + data.error, 'error'); return; }
+  if (!res.ok) { toast('Errore: ' + data.error, 'error'); return; }
   currentBg = data.background;
-  document.getElementById('bg-label').textContent = `✅ ${data.background}`;
+  document.getElementById('bg-label').innerHTML = `<svg viewBox="0 0 24 24" style="width:14px;height:14px;stroke:var(--success);fill:none;stroke-width:2.5;stroke-linecap:round;stroke-linejoin:round;display:inline-block;vertical-align:middle;margin-right:4px"><polyline points="20 6 9 17 4 12"/></svg>${data.background}`;
   document.getElementById('bg-drop').classList.add('has-file');
   document.getElementById('remove-bg-btn').style.display = 'block';
   avatars = avatars.map(a => a.id===currentId ? {...a, background: data.background} : a);
   reloadPreview();
-  toast('✅ Sfondo caricato');
+  toast('Sfondo caricato');
 }
 
 // ── Upload icone mic/audio ────────────────────────────────────────────────────
@@ -2163,14 +2177,14 @@ async function uploadIcon(type, input) {
   form.append('icon', file);
   const res  = await fetch(`/api/admin/avatars/${currentId}/upload-icon/${type}`, { method:'POST', body:form });
   const data = await res.json();
-  if (!res.ok) { toast('❌ ' + data.error, 'error'); return; }
+  if (!res.ok) { toast('Errore: ' + data.error, 'error'); return; }
   const col = type === 'mic' ? 'mic_icon' : type === 'mic-disabled' ? 'mic_icon_disabled'
             : type === 'audio' ? 'audio_icon' : type === 'audio-disabled' ? 'audio_icon_disabled' : 'idle_icon_img';
   setIconPreview(type, data[col]);
   avatars = avatars.map(a => a.id===currentId ? {...a, [col]: data[col]} : a);
   const msgType = type === 'idle' ? 'idleParam' : 'avatarParam';
   sendToPreview({ type: msgType, key: col, value: data[col] });
-  toast(`✅ Icona ${type} caricata`);
+  toast(`Icona ${type} caricata`);
 }
 
 function setIconPreview(type, path) {
@@ -2200,7 +2214,7 @@ function selectTheme(btn) {
 
 function copyUrl() {
   const url = document.getElementById('kiosk-url-text').textContent;
-  navigator.clipboard.writeText(url).then(() => toast('📋 URL copiato'));
+  navigator.clipboard.writeText(url).then(() => toast('URL copiato'));
 }
 function openKiosk() {
   if (!currentId) return;
@@ -2209,7 +2223,7 @@ function openKiosk() {
 async function loadModels(provider, apiKeyFieldId, targetFieldId) {
   const keyField = document.getElementById(apiKeyFieldId);
   const apiKey   = keyField.value.trim();
-  if (!apiKey) { toast('⚠️ Inserisci prima l\'API Key', 'error'); return; }
+  if (!apiKey) { toast('Inserisci prima l\'API Key', 'error'); return; }
 
   const targetInput = document.getElementById(targetFieldId);
   const currentVal  = targetInput.value;
@@ -2238,11 +2252,11 @@ async function loadModels(provider, apiKeyFieldId, targetFieldId) {
       select.insertBefore(empty, select.firstChild);
     }
     targetInput.replaceWith(select);
-    toast(`✅ ${res.models.length} opzioni caricate`);
+    toast(`${res.models.length} opzioni caricate`);
   } catch (e) {
     targetInput.disabled = false;
     targetInput.placeholder = provider.includes('whisper') || provider === 'openai' ? 'whisper-1' : '';
-    toast(`❌ ${e.message}`, 'error');
+    toast(e.message, 'error');
   }
 }
 
@@ -2333,15 +2347,6 @@ function _refreshModeBtns() {
   });
   const applyBtn = document.getElementById('mode-apply-btn');
   applyBtn.style.display = sel !== app ? 'block' : 'none';
-  const statusLine = document.getElementById('mode-status-line');
-  if (statusLine) {
-    if (sel === app) {
-      statusLine.innerHTML = `<span style="color:var(--success)">✓ Attivo: <strong>${labels[app]}</strong></span>`;
-    } else {
-      statusLine.innerHTML = `<span style="color:var(--success)">✓ Attivo: <strong>${labels[app]}</strong></span>`
-        + `&nbsp;&nbsp;<span style="color:#fbbf24">● Selezionato: <strong>${labels[sel]}</strong> — clicca Applica per salvare</span>`;
-    }
-  }
 }
 
 async function applyAvatarMode() {
@@ -2356,17 +2361,17 @@ async function testWebhook() {
   const outputField   = document.getElementById('f-webhook-output-field').value.trim() || 'response';
   const headers       = document.getElementById('f-webhook-headers').value.trim();
   const result        = document.getElementById('webhook-test-result');
-  if (!url) { result.textContent = '⚠️ Inserisci un URL'; return; }
-  result.textContent = '⏳ Test in corso...';
+  if (!url) { result.textContent = 'Inserisci un URL'; return; }
+  result.textContent = 'Test in corso...';
   try {
     const res  = await api.post('/api/admin/webhook-test', { url, inputTemplate, outputField, headers, message: 'test' });
     result.style.color = res.reply !== 'undefined' ? 'var(--success)' : 'var(--error)';
     result.textContent = res.reply !== 'undefined'
-      ? `✅ Risposta: "${res.reply}"`
-      : `⚠️ Campo output non trovato — risposta grezza: ${JSON.stringify(res)}`;
+      ? `Risposta: "${res.reply}"`
+      : `Campo output non trovato — risposta grezza: ${JSON.stringify(res)}`;
   } catch (e) {
     result.style.color = 'var(--error)';
-    result.textContent = `❌ ${e.message}`;
+    result.textContent = e.message;
   }
 }
 
@@ -2402,11 +2407,11 @@ async function removeBackground() {
   await api.put(`/api/admin/avatars/${currentId}`, { background: '#0a0a0f' });
   avatars = avatars.map(a => a.id===currentId ? {...a, background:'#0a0a0f'} : a);
   document.getElementById('f-bg-color').value = '#0a0a0f';
-  document.getElementById('bg-label').textContent = '🖼 Immagine sfondo (opzionale)';
+  document.getElementById('bg-label').textContent = 'Trascina o clicca';
   document.getElementById('bg-drop').classList.remove('has-file');
   document.getElementById('remove-bg-btn').style.display = 'none';
   reloadPreview();
-  toast('✅ Sfondo rimosso');
+  toast('Sfondo rimosso');
 }
 
 // ── Init ──────────────────────────────────────────────────────────────────────
