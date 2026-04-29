@@ -319,41 +319,61 @@ app.post('/api/admin/avatars/:id/publish', (req, res) => {
   res.json({ published });
 });
 
-// ─── Upload FBX per avatar specifico ─────────────────────────────────────────
+// ─── Upload FBX / GLB / GLTF per avatar specifico ────────────────────────────
 const uploadFbx = multer({ storage: multer.diskStorage({
   destination: (req, file, cb) => cb(null, join(__dirname, 'public', 'models')),
-  filename:    (req, file, cb) => cb(null, `${req.params.id}_tmp.fbx`),
+  filename: (req, file, cb) => {
+    const ext = file.originalname.split('.').pop().toLowerCase();
+    cb(null, `${req.params.id}_tmp.${ext}`);
+  },
 }) });
 
 app.post('/api/admin/avatars/:id/upload-model', uploadFbx.single('model'), async (req, res) => {
-  const tmpFbx  = join(__dirname, 'public', 'models', `${req.params.id}_tmp.fbx`);
   const rawGlb  = join(__dirname, 'public', 'models', `${req.params.id}_raw.glb`);
   const outGlb  = join(__dirname, 'public', 'models', `${req.params.id}.glb`);
   try {
     if (!req.file) return res.status(400).json({ error: 'Nessun file ricevuto' });
-    const { execFile, execFileSync } = await import('child_process');
-    const { promisify } = await import('util');
+    const ext = req.file.originalname.split('.').pop().toLowerCase();
+    const tmpFile = join(__dirname, 'public', 'models', req.file.filename);
 
-    // Trova FBX2glTF (fbx2gltf npm package o sistema)
-    let fbx2gltf = null;
-    const candidates = [
-      join(__dirname, 'node_modules/fbx2gltf/bin/Darwin/FBX2glTF'),
-      join(__dirname, 'node_modules/fbx2gltf/bin/Linux/FBX2glTF'),
-      join(__dirname, 'node_modules/fbx2gltf/bin/Windows_NT/FBX2glTF.exe'),
-      '/usr/local/bin/FBX2glTF',
-      '/opt/homebrew/bin/FBX2glTF',
-      join(process.env.HOME || '', '.npm-global/lib/node_modules/fbx2gltf/bin/Darwin/FBX2glTF'),
-      join(process.env.HOME || '', '.npm-global/lib/node_modules/fbx2gltf/bin/Linux/FBX2glTF'),
-    ];
-    for (const c of candidates) {
-      try { if (fs.existsSync(c)) { fbx2gltf = c; break; } } catch {}
+    if (ext === 'fbx') {
+      const { execFile } = await import('child_process');
+      const { promisify } = await import('util');
+
+      // Trova FBX2glTF (fbx2gltf npm package o sistema)
+      let fbx2gltf = null;
+      const candidates = [
+        join(__dirname, 'node_modules/fbx2gltf/bin/Darwin/FBX2glTF'),
+        join(__dirname, 'node_modules/fbx2gltf/bin/Linux/FBX2glTF'),
+        join(__dirname, 'node_modules/fbx2gltf/bin/Windows_NT/FBX2glTF.exe'),
+        '/usr/local/bin/FBX2glTF',
+        '/opt/homebrew/bin/FBX2glTF',
+        join(process.env.HOME || '', '.npm-global/lib/node_modules/fbx2gltf/bin/Darwin/FBX2glTF'),
+        join(process.env.HOME || '', '.npm-global/lib/node_modules/fbx2gltf/bin/Linux/FBX2glTF'),
+      ];
+      for (const c of candidates) {
+        try { if (fs.existsSync(c)) { fbx2gltf = c; break; } } catch {}
+      }
+      if (!fbx2gltf) return res.status(500).json({ error: 'FBX2glTF non trovato. Installalo con: npm install -g fbx2gltf' });
+
+      // FBX → GLB grezzo (output senza estensione, FBX2glTF aggiunge .glb)
+      const rawGlbBase = rawGlb.replace(/\.glb$/, '');
+      await promisify(execFile)(fbx2gltf, ['--binary', tmpFile, '--output', rawGlbBase]);
+      fs.unlinkSync(tmpFile);
+    } else if (ext === 'glb') {
+      // GLB: usa direttamente come raw
+      fs.renameSync(tmpFile, rawGlb);
+    } else if (ext === 'gltf') {
+      // GLTF: converti in GLB tramite gltf-pipeline
+      const gltfPipeline = (await import('gltf-pipeline')).default;
+      const gltfContent = JSON.parse(fs.readFileSync(tmpFile, 'utf8'));
+      const result = await gltfPipeline.gltfToGlb(gltfContent, { resourceDirectory: join(__dirname, 'public', 'models') });
+      fs.writeFileSync(rawGlb, result.glb);
+      fs.unlinkSync(tmpFile);
+    } else {
+      fs.unlinkSync(tmpFile);
+      return res.status(400).json({ error: 'Formato non supportato. Usa FBX, GLB o GLTF.' });
     }
-    if (!fbx2gltf) return res.status(500).json({ error: 'FBX2glTF non trovato. Installalo con: npm install -g fbx2gltf' });
-
-    // 1. FBX → GLB grezzo (output senza estensione, FBX2glTF aggiunge .glb)
-    const rawGlbBase = rawGlb.replace(/\.glb$/, '');
-    await promisify(execFile)(fbx2gltf, ['--binary', tmpFbx, '--output', rawGlbBase]);
-    fs.unlinkSync(tmpFbx);
 
     // 2. Comprimi texture PNG → JPEG nel GLB
     // Strategia: tieni il binario originale intatto, appendi le texture compresse in coda

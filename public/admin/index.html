@@ -602,13 +602,13 @@
 
       <!-- Step 3: Avatar 3D -->
       <div id="ws3" style="display:none">
-        <p style="font-size:.82rem;color:var(--text-dim);margin-bottom:14px">Carica un modello 3D <code>.fbx</code> — puoi farlo anche dopo dalla sezione Avatar 3D.</p>
+        <p style="font-size:.82rem;color:var(--text-dim);margin-bottom:14px">Carica un modello 3D <code>.fbx</code> <code>.glb</code> <code>.gltf</code> — puoi farlo anche dopo dalla sezione Avatar 3D.</p>
         <div class="upload-zone" id="wiz-model-drop"
           ondragover="event.preventDefault()"
           ondrop="wizHandleModelDrop(event)"
           onclick="document.getElementById('wiz-model-input').click()">
-          <div id="wiz-model-label"><svg viewBox="0 0 24 24" style="width:16px;height:16px;stroke:currentColor;fill:none;stroke-width:1.5;stroke-linecap:round;stroke-linejoin:round;display:inline-block;vertical-align:middle;margin-right:6px"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg>Trascina un file .fbx o clicca</div>
-          <input type="file" id="wiz-model-input" accept=".fbx" style="display:none"
+          <div id="wiz-model-label"><svg viewBox="0 0 24 24" style="width:16px;height:16px;stroke:currentColor;fill:none;stroke-width:1.5;stroke-linecap:round;stroke-linejoin:round;display:inline-block;vertical-align:middle;margin-right:6px"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg>Trascina un file .fbx / .glb / .gltf o clicca</div>
+          <input type="file" id="wiz-model-input" accept=".fbx,.glb,.gltf" style="display:none"
             onchange="wizUploadModel(this.files[0])"/>
         </div>
         <div id="wiz-preview-wrap" style="display:none;margin-top:14px;border-radius:12px;overflow:hidden;border:1px solid var(--border);aspect-ratio:9/16;width:min(100%,280px);margin-left:auto;margin-right:auto;position:relative">
@@ -1371,8 +1371,8 @@
             ondragleave="this.classList.remove('drag')"
             ondrop="handleModelDrop(event)"
             onclick="document.getElementById('model-input').click()">
-            <div id="model-label"><svg viewBox="0 0 24 24" style="width:18px;height:18px;stroke:currentColor;fill:none;stroke-width:1.5;stroke-linecap:round;stroke-linejoin:round;display:inline-block;vertical-align:middle;margin-right:6px"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg>Trascina un file .fbx o clicca</div>
-            <input type="file" id="model-input" accept=".fbx" style="display:none"
+            <div id="model-label"><svg viewBox="0 0 24 24" style="width:18px;height:18px;stroke:currentColor;fill:none;stroke-width:1.5;stroke-linecap:round;stroke-linejoin:round;display:inline-block;vertical-align:middle;margin-right:6px"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg>Trascina un file .fbx / .glb / .gltf o clicca</div>
+            <input type="file" id="model-input" accept=".fbx,.glb,.gltf" style="display:none"
               onchange="uploadModel(this.files[0])"/>
           </div>
         </div>
@@ -1618,7 +1618,7 @@ function selectAvatar(id) {
   const _boxSvg = '<svg viewBox="0 0 24 24" style="width:14px;height:14px;stroke:currentColor;fill:none;stroke-width:1.5;stroke-linecap:round;stroke-linejoin:round;display:inline-block;vertical-align:middle;margin-right:6px"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg>';
   const _chkSvg = '<svg viewBox="0 0 24 24" style="width:14px;height:14px;stroke:var(--success);fill:none;stroke-width:2.5;stroke-linecap:round;stroke-linejoin:round;display:inline-block;vertical-align:middle;margin-right:4px"><polyline points="20 6 9 17 4 12"/></svg>';
   document.getElementById('model-label').innerHTML =
-    a.model_file ? `${_chkSvg}${a.model_file}` : `${_boxSvg}Trascina un file .fbx o clicca`;
+    a.model_file ? `${_chkSvg}${a.model_file}` : `${_boxSvg}Trascina un file .fbx / .glb / .gltf o clicca`;
   document.getElementById('model-drop').className =
     `upload-zone${a.model_file?' has-file':''}`;
 
@@ -1998,7 +1998,7 @@ function createAvatar() {
   document.getElementById('wiz-voice-id').value = '';
   document.getElementById('wiz-ai-key').value   = '';
   document.getElementById('wiz-ai-model').value = '';
-  document.getElementById('wiz-model-label').innerHTML = '<svg viewBox="0 0 24 24" style="width:16px;height:16px;stroke:currentColor;fill:none;stroke-width:1.5;stroke-linecap:round;stroke-linejoin:round;display:inline-block;vertical-align:middle;margin-right:6px"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg>Trascina un file .fbx o clicca';
+  document.getElementById('wiz-model-label').innerHTML = '<svg viewBox="0 0 24 24" style="width:16px;height:16px;stroke:currentColor;fill:none;stroke-width:1.5;stroke-linecap:round;stroke-linejoin:round;display:inline-block;vertical-align:middle;margin-right:6px"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg>Trascina un file .fbx / .glb / .gltf o clicca';
   _wizStep = 0; _wizAiMode = 'embedded'; _wizAiProv = 'anthropic'; _wizAvatarId = null;
   wizAiProv('anthropic');
   wizRender();
@@ -2085,7 +2085,7 @@ async function wizUploadModel(file) {
   const res  = await fetch(`/api/admin/avatars/${_wizAvatarId}/upload-model`, { method:'POST', body:form });
   const data = await res.json();
   document.getElementById('wiz-model-drop').style.opacity = '';
-  if (!res.ok) { document.getElementById('wiz-model-label').innerHTML='<svg viewBox="0 0 24 24" style="width:16px;height:16px;stroke:currentColor;fill:none;stroke-width:1.5;stroke-linecap:round;stroke-linejoin:round;display:inline-block;vertical-align:middle;margin-right:6px"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg>Trascina un file .fbx o clicca'; toast('Errore: ' + data.error, 'error'); return; }
+  if (!res.ok) { document.getElementById('wiz-model-label').innerHTML='<svg viewBox="0 0 24 24" style="width:16px;height:16px;stroke:currentColor;fill:none;stroke-width:1.5;stroke-linecap:round;stroke-linejoin:round;display:inline-block;vertical-align:middle;margin-right:6px"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg>Trascina un file .fbx / .glb / .gltf o clicca'; toast('Errore: ' + data.error, 'error'); return; }
   document.getElementById('wiz-model-label').innerHTML = `<svg viewBox="0 0 24 24" style="width:14px;height:14px;stroke:var(--success);fill:none;stroke-width:2.5;stroke-linecap:round;stroke-linejoin:round;display:inline-block;vertical-align:middle;margin-right:4px"><polyline points="20 6 9 17 4 12"/></svg>${file.name}`;
   // Mostra preview
   const wrap    = document.getElementById('wiz-preview-wrap');
@@ -2326,8 +2326,8 @@ function handleModelDrop(e) {
 
 async function uploadModel(file) {
   if (!currentId) return toast('Salva prima l\'avatar', 'error');
-  if (!file?.name.toLowerCase().endsWith('.fbx'))
-    return toast('Seleziona un file .fbx', 'error');
+  if (!/\.(fbx|glb|gltf)$/i.test(file?.name))
+    return toast('Seleziona un file .fbx, .glb o .gltf', 'error');
   document.getElementById('model-label').textContent = 'Conversione in corso...';
   const form = new FormData();
   form.append('model', file);
