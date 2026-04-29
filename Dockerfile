@@ -13,7 +13,7 @@ RUN npm install --omit=dev
 COPY . .
 
 # Directory dati (montate come volume in produzione)
-RUN mkdir -p public/models public/backgrounds public/icons
+RUN mkdir -p public/models public/backgrounds public/icons public/bg-videos public/idle-videos public/idle-bgs
 
 EXPOSE 3000
 

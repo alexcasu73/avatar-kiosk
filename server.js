@@ -455,8 +455,8 @@ app.post('/api/admin/avatars/:id/upload-model', uploadFbx.single('model'), async
     }
     res.json({ ok: true, model_file: modelFile, originalKB, compressedKB, animDuration });
   } catch (err) {
-    if (fs.existsSync(tmpFbx)) fs.unlinkSync(tmpFbx);
-    if (fs.existsSync(rawGlb)) fs.unlinkSync(rawGlb);
+    console.error('Upload model error:', err);
+    try { if (fs.existsSync(rawGlb)) fs.unlinkSync(rawGlb); } catch {}
     res.status(500).json({ error: 'Conversione fallita: ' + err.message });
   }
 });
