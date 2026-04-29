@@ -1728,13 +1728,10 @@ function updateMicBtn() {
   const root = document.documentElement;
 
   if (_isMobile) {
-    // Layout mobile: bottoni → gap → input → chat
-    const GAP_BOTTOM    = 12;
-    const GAP_BTN_INPUT = 66;  // +50 rispetto a prima
-    const btnBottom     = Math.max(4, GAP_BOTTOM + CONFIG.micIconY - 35);
-    const panelBottom   = GAP_BOTTOM + _micSz + GAP_BTN_INPUT;
-    root.style.setProperty('--btn-mobile-bottom',   btnBottom + 'px');
-    root.style.setProperty('--mobile-panel-bottom', panelBottom + 'px');
+    // Layout mobile: posizione fissa, ignora offset Y del desktop
+    const GAP_BTN_INPUT = 66;
+    root.style.setProperty('--btn-mobile-bottom',   '30px');
+    root.style.setProperty('--mobile-panel-bottom', (30 + _micSz + GAP_BTN_INPUT) + 'px');
   } else {
     const _cb = CONFIG._chatBottom || 0;
     root.style.setProperty('--btn-mobile-bottom', Math.max(8, Math.round((_cb - _micSz) / 2)) + CONFIG.micIconY + 'px');
