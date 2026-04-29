@@ -1228,8 +1228,7 @@
     <!-- Preview 3D -->
     <div id="preview-panel">
       <div id="preview-mode-bar" style="display:none">
-        <button id="btn-mode-kiosk"  class="active" onclick="setPreviewMode('kiosk')">📺 Kiosk 9:16</button>
-        <button id="btn-mode-mobile" onclick="setPreviewMode('mobile')">📱 Smartphone</button>
+        <button id="btn-mode-mobile" class="active" onclick="setPreviewMode('mobile')">📱 Smartphone</button>
         <button id="btn-mode-web"    onclick="setPreviewMode('web')">🖥 Web</button>
       </div>
       <div id="preview-viewport">
@@ -1237,7 +1236,7 @@
           <div class="icon">🎭</div>
           <p>Seleziona un avatar per la preview</p>
         </div>
-        <div id="preview-frame-wrap" class="mode-kiosk" style="display:none">
+        <div id="preview-frame-wrap" class="mode-mobile" style="display:none">
           <iframe id="preview-iframe"></iframe>
         </div>
       </div>
@@ -1581,15 +1580,13 @@ window.addEventListener('message', e => {
 
 // ── Dimensioni logiche per ogni modalità preview ──────────────────────────────
 const PREVIEW_MODES = {
-  kiosk:  { w: 1080, h: 1920 },   // 9:16 verticale
   mobile: { w:  390, h:  844 },   // iPhone-like
   web:    { w:  800, h: 1280 },   // browser verticale
 };
-let _previewMode = 'kiosk';
+let _previewMode = 'mobile';
 
 function setPreviewMode(mode) {
   _previewMode = mode;
-  document.getElementById('btn-mode-kiosk').classList.toggle('active',  mode === 'kiosk');
   document.getElementById('btn-mode-mobile').classList.toggle('active', mode === 'mobile');
   document.getElementById('btn-mode-web').classList.toggle('active',    mode === 'web');
   const wrap = document.getElementById('preview-frame-wrap');
