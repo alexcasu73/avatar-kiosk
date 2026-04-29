@@ -116,7 +116,7 @@
       position: absolute; bottom: var(--chat-bottom, 0px);
       height: var(--overlay-height, 65vh);
       width: var(--chat-max-width, 100%);
-      z-index: 21; display: flex; flex-direction: column;
+      z-index: 60; display: flex; flex-direction: column;
       touch-action: pan-y;
       overflow: hidden;
       /* posizione orizzontale: sovrascritta da JS via --chat-align */
@@ -381,7 +381,8 @@
 
     /* ─── Idle Overlay ──────────────────────────────── */
     body.idle-hidden #mic-btn,
-    body.idle-hidden #audio-btn {
+    body.idle-hidden #audio-btn,
+    body.idle-hidden #interaction-panel {
       opacity: 0 !important;
       pointer-events: none !important;
     }
@@ -599,6 +600,9 @@
         width:  var(--audio-icon-mobile-size, 14px) !important;
         height: var(--audio-icon-mobile-size, 14px) !important;
         font-size: var(--audio-icon-mobile-size, 14px) !important;
+      }
+      #input-area input {
+        font-size: 16px !important;
       }
     }
   </style>
@@ -835,6 +839,7 @@ const state = {
   mode: 'idle',      // idle | listening | recording | thinking | speaking
   sessionId: null,
   currentAudio: null,
+  unlockedAudio: null,
   mixer: null,
   avatar: null,
   vad: null,
@@ -1283,6 +1288,47 @@ function triggerTalkingGesture() {
 //  LIP SYNC — guida anim.lipTarget tramite audio
 // ═══════════════════════════════════════════════════════════════════════════
 let _lipAudioCtx = null;
+let _iosAudioSrc = null;
+const _isIOS = /iPhone|iPad|iPod/i.test(navigator.userAgent);
+
+function _b64ToArrayBuffer(b64) {
+  const bin = atob(b64);
+  const buf = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) buf[i] = bin.charCodeAt(i);
+  return buf.buffer;
+}
+
+async function playTTSAudio(ttsData) {
+  if (_isIOS) {
+    // Su iOS: decodifica e riproduce via AudioContext (sbloccato in wakeUp durante il gesto)
+    try {
+      if (_lipAudioCtx?.state === 'suspended') await _lipAudioCtx.resume().catch(() => {});
+      const buf = await _lipAudioCtx.decodeAudioData(_b64ToArrayBuffer(ttsData.audio));
+      if (_iosAudioSrc) { try { _iosAudioSrc.stop(); } catch(_){} }
+      _iosAudioSrc = _lipAudioCtx.createBufferSource();
+      _iosAudioSrc.buffer = buf;
+      _iosAudioSrc.connect(_lipAudioCtx.destination);
+      state.currentAudio = { pause: () => { try { _iosAudioSrc?.stop(); } catch(_){} }, _ios: true };
+      await new Promise(resolve => {
+        _iosAudioSrc.onended = resolve;
+        _iosAudioSrc.start(0);
+      });
+    } catch (e) { console.warn('iOS audio error', e); }
+    if (state.currentAudio?._ios) state.currentAudio = null;
+    return;
+  }
+  // Desktop: HTMLAudioElement
+  const audio = new Audio(`data:audio/mpeg;base64,${ttsData.audio}`);
+  state.currentAudio = audio;
+  if (_lipAudioCtx?.state === 'suspended') await _lipAudioCtx.resume().catch(() => {});
+  await new Promise(resolve => {
+    audio.addEventListener('ended', resolve, { once: true });
+    audio.addEventListener('error', resolve, { once: true });
+    startLipSync(audio, ttsData.alignment);
+    audio.play().catch(resolve);
+  });
+  if (state.currentAudio === audio) state.currentAudio = null;
+}
 
 function startLipSync(audioEl, alignment) {
   // Con alignment ElevenLabs: vocali → bocca aperta
@@ -1306,9 +1352,15 @@ function startLipSync(audioEl, alignment) {
   }
 
   // Fallback: analisi frequenze vocali (300–3000 Hz)
+  // Su iOS createMediaElementSource cattura l'audio e lo muta se il contesto è sospeso
+  if (_isIOS) { startProceduralLipSync(); return; }
   if (!_lipAudioCtx) _lipAudioCtx = new AudioContext();
-  const source   = _lipAudioCtx.createMediaElementSource(audioEl);
-  const analyser = _lipAudioCtx.createAnalyser();
+  if (_lipAudioCtx.state === 'suspended') { startProceduralLipSync(); return; }
+  let source, analyser;
+  try {
+    source   = _lipAudioCtx.createMediaElementSource(audioEl);
+    analyser = _lipAudioCtx.createAnalyser();
+  } catch (_) { startProceduralLipSync(); return; }
   analyser.fftSize = 256;
   source.connect(analyser);
   analyser.connect(_lipAudioCtx.destination);
@@ -1461,16 +1513,8 @@ async function processUserInput(text) {
       const ttsData = await ttsRes.json();
       stopCurrentAudio();
       if (CONFIG.audioEnabled) {
-        const audio = new Audio(`data:audio/mpeg;base64,${ttsData.audio}`);
-        state.currentAudio = audio;
         startProceduralLipSync();
-        await new Promise(resolve => {
-          audio.addEventListener('ended', resolve, { once: true });
-          audio.addEventListener('error', resolve, { once: true });
-          startLipSync(audio, ttsData.alignment);
-          audio.play().catch(resolve);
-        });
-        if (state.currentAudio === audio) state.currentAudio = null;
+        await playTTSAudio(ttsData);
       }
     }
 
@@ -1644,7 +1688,7 @@ function updateMicBtn() {
   const _micSz  = Math.round(CONFIG.micIconSize  * 0.5);
   const _audSz  = Math.round(CONFIG.audioIconSize * 0.5);
   const _totW   = _micSz + 10 + _audSz;
-  const _cb     = CONFIG._chatBottom || 0;
+  const _cb     = (CONFIG._chatBottom || 0) * (window.innerWidth <= 600 ? 0.5 : 1);
   const _mBottom = Math.max(8, Math.round((_cb - _micSz) / 2)) + CONFIG.micIconY;
   const root = document.documentElement;
   root.style.setProperty('--mic-mobile-size',       _micSz + 'px');
@@ -1783,8 +1827,20 @@ async function wakeUp() {
   setMode('listening');
   resetIdleTimer();
 
-  // Prima visita: mostra benvenuto
-  addToHistory('avatar', `Ciao! Sono ${CONFIG.avatarName}. Come posso aiutarti?`);
+  // Sblocca AudioContext su iOS durante il gesto utente (obbligatorio per resume())
+  try {
+    if (!_lipAudioCtx) _lipAudioCtx = new AudioContext();
+    if (_lipAudioCtx.state === 'suspended') await _lipAudioCtx.resume();
+    // Buffer silenzioso per confermare sblocco
+    const buf = _lipAudioCtx.createBuffer(1, 1, 22050);
+    const src = _lipAudioCtx.createBufferSource();
+    src.buffer = buf;
+    src.connect(_lipAudioCtx.destination);
+    src.start(0);
+  } catch (_) {}
+
+  // Prima visita: mostra benvenuto (piccolo delay per garantire repaint pannello)
+  setTimeout(() => addToHistory('avatar', `Ciao! Sono ${CONFIG.avatarName}. Come posso aiutarti?`), 50);
 
   // Avvia VAD solo se microfono abilitato
   if (!CONFIG.micEnabled) return;
@@ -2119,6 +2175,13 @@ function loadGLBAvatar(url) {
   const draco  = new THREE.DRACOLoader();
   draco.setDecoderPath('/lib/draco/');
   loader.setDRACOLoader(draco);
+
+  // Richiesta HEAD per ottenere dimensione file e calcolare % reale
+  let _glbTotal = 0;
+  fetch(url, { method: 'HEAD' }).then(r => {
+    _glbTotal = parseInt(r.headers.get('content-length') || '0');
+  }).catch(() => {});
+
   loader.load(
     url,
     gltf => {
@@ -2194,10 +2257,14 @@ function loadGLBAvatar(url) {
       console.log('✅ Modello GLB caricato:', url);
     },
     xhr => {
-      const pct = xhr.total ? Math.round(xhr.loaded / xhr.total * 100) : '…';
       const el = document.querySelector('#avatar-loader .loader-text');
-      if (el) el.textContent = `Caricamento avatar… ${pct}%`;
-      console.log(`Caricamento modello: ${pct}%`);
+      if (!el) return;
+      const total = xhr.total || _glbTotal;
+      if (total) {
+        el.textContent = `Caricamento avatar… ${Math.round(xhr.loaded / total * 100)}%`;
+      } else if (xhr.loaded > 0) {
+        el.textContent = `Caricamento avatar… ${(xhr.loaded / 1048576).toFixed(1)} MB`;
+      }
     },
     err => {
       document.getElementById('avatar-loader').classList.add('hidden');
@@ -2417,7 +2484,8 @@ function applyParamLive(key, v) {
     speech_end:      () => { ANIM_RANGE.speechEnd   = v; },
     chat_bottom:     () => {
       CONFIG._chatBottom = parseFloat(v);
-      document.documentElement.style.setProperty('--chat-bottom', `${v}px`);
+      const bottom = window.innerWidth <= 600 ? parseFloat(v) * 0.5 : parseFloat(v);
+      document.documentElement.style.setProperty('--chat-bottom', `${bottom}px`);
       applyOverlay(CONFIG._overlayColor || '#0a0a0f', CONFIG._overlayOpacity ?? 0.75);
     },
     chat_max_width:  () => { document.documentElement.style.setProperty('--chat-max-width', `${v}%`); },
@@ -2442,7 +2510,11 @@ function applyParamLive(key, v) {
         el.style.setProperty('--chat-font-family', 'inherit');
       }
     },
-    chat_font_size: () => { document.getElementById('interaction-panel')?.style.setProperty('--chat-font-size', v + 'rem'); },
+    chat_font_size: () => {
+      CONFIG.chatFontSize = parseFloat(v);
+      const size = window.innerWidth <= 600 ? '1rem' : (v + 'rem');
+      document.getElementById('interaction-panel')?.style.setProperty('--chat-font-size', size);
+    },
     model_file:   () => {
       const url = v ? `/${v}` : null;
       if (!url || url === CONFIG.avatarModelUrl) return;
@@ -2547,12 +2619,19 @@ async function initAvatar() {
     applyOverlay(cfg.overlay_color || '#0a0a0f', cfg.overlay_opacity ?? 0.75);
     document.documentElement.style.setProperty('--overlay-height', `${CONFIG._overlayHeight}vh`);
     CONFIG._chatBottom = cfg.chat_bottom ?? 0;
-    document.documentElement.style.setProperty('--chat-bottom',    `${CONFIG._chatBottom}px`);
+    const _initBottom = window.innerWidth <= 600 ? CONFIG._chatBottom * 0.5 : CONFIG._chatBottom;
+    document.documentElement.style.setProperty('--chat-bottom', `${_initBottom}px`);
     document.documentElement.style.setProperty('--chat-max-width', `${cfg.chat_max_width ?? 100}%`);
     applyParamLive('chat_align',      cfg.chat_align      || 'center');
     applyParamLive('chat_hide_input', cfg.chat_hide_input ?? 0);
     applyParamLive('chat_font',      cfg.chat_font      || '');
     applyParamLive('chat_font_size', cfg.chat_font_size ?? 1.0);
+    window.addEventListener('resize', () => {
+      applyParamLive('chat_font_size', CONFIG.chatFontSize ?? 1.0);
+      applyParamLive('chat_bottom', CONFIG._chatBottom ?? 0);
+      updateMicBtn();
+      updateAudioBtn();
+    });
     applyParamLive('show_controls',   cfg.show_controls   ?? 1);
     applyTheme(cfg.theme || 'viola');
     updateMicBtn();
