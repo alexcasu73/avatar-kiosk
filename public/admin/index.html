@@ -1780,19 +1780,38 @@ function scrubPreview(value) {
   const t = parseFloat(value);
   document.getElementById('v-scrub').textContent = t.toFixed(2);
   if (_playingRange) stopPlayRange();
-  sendToPreview({ type: 'scrubTo', time: t }); // pausa e si ferma al frame
+  if (_playingMarked) {
+    _playingMarked = false;
+    const btn = document.querySelector('[onclick="playMarkedRange()"]');
+    if (btn) btn.innerHTML = '<svg viewBox="0 0 24 24" style="width:11px;height:11px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round"><polygon points="5 3 19 12 5 21 5 3"/></svg> Play';
+  }
+  sendToPreview({ type: 'scrubTo', time: t });
 }
 
 function playMarkedRange() {
   if (_marked.start === null || _marked.end === null) {
     toast('Segna prima Start e End', 'error'); return;
   }
+  const btn = document.querySelector('[onclick="playMarkedRange()"]');
+  if (_playingMarked) {
+    _playingMarked = false;
+    sendToPreview({ type: 'stopRange' });
+    if (btn) btn.innerHTML = '<svg viewBox="0 0 24 24" style="width:11px;height:11px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round"><polygon points="5 3 19 12 5 21 5 3"/></svg> Play';
+    return;
+  }
   if (_playingRange) stopPlayRange();
+  _playingMarked = true;
   sendToPreview({ type: 'playFrom', time: _marked.start, end: _marked.end });
+  if (btn) btn.innerHTML = '<svg viewBox="0 0 24 24" style="width:11px;height:11px;stroke:currentColor;fill:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round"><rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/></svg> Stop';
 }
 
 function resetAnimPreview() {
   if (_playingRange) stopPlayRange();
+  if (_playingMarked) {
+    _playingMarked = false;
+    const btn = document.querySelector('[onclick="playMarkedRange()"]');
+    if (btn) btn.innerHTML = '<svg viewBox="0 0 24 24" style="width:11px;height:11px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round"><polygon points="5 3 19 12 5 21 5 3"/></svg> Play';
+  }
   const dur = parseFloat(document.getElementById('v-dur').textContent) || 0;
   _marked.start = 0;
   _marked.end   = dur;
@@ -1840,6 +1859,7 @@ function assignRange(target) {
 
 // ── Play/Stop loop range ──────────────────────────────────────────────────────
 let _playingRange = null;
+let _playingMarked = false;
 
 function togglePlayRange(range) {
   if (_playingRange === range) {
