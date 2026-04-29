@@ -354,12 +354,48 @@ app.post('/api/admin/avatars/:id/upload-model', uploadFbx.single('model'), async
       for (const c of candidates) {
         try { if (fs.existsSync(c)) { fbx2gltf = c; break; } } catch {}
       }
-      if (!fbx2gltf) return res.status(500).json({ error: 'FBX2glTF non trovato. Installalo con: npm install -g fbx2gltf' });
 
-      // FBX → GLB grezzo (output senza estensione, FBX2glTF aggiunge .glb)
-      const rawGlbBase = rawGlb.replace(/\.glb$/, '');
-      await promisify(execFile)(fbx2gltf, ['--binary', tmpFile, '--output', rawGlbBase]);
+      let converted = false;
+
+      // Prova FBX2glTF
+      if (fbx2gltf) {
+        try {
+          const rawGlbBase = rawGlb.replace(/\.glb$/, '');
+          await promisify(execFile)(fbx2gltf, ['--binary', tmpFile, '--output', rawGlbBase]);
+          converted = true;
+        } catch (e) {
+          console.warn('FBX2glTF fallito, provo Blender:', e.message);
+        }
+      }
+
+      // Fallback: Blender headless (ARM64 / FBX2glTF non disponibile)
+      if (!converted) {
+        const blenderScript = `
+import bpy, sys
+bpy.ops.wm.read_factory_settings(use_empty=True)
+bpy.ops.import_scene.fbx(filepath=sys.argv[-2])
+bpy.ops.export_scene.gltf(filepath=sys.argv[-1], export_format='GLB', use_selection=False)
+`.trim();
+        const scriptFile = tmpFile + '.py';
+        fs.writeFileSync(scriptFile, blenderScript);
+        try {
+          await promisify(execFile)('blender', [
+            '--background', '--python', scriptFile, '--',
+            tmpFile, rawGlb.replace(/\.glb$/, '')
+          ], { timeout: 120000 });
+          // Blender aggiunge .glb al nome output
+          const blenderOut = rawGlb.replace(/\.glb$/, '') + '.glb';
+          if (fs.existsSync(blenderOut) && blenderOut !== rawGlb) fs.renameSync(blenderOut, rawGlb);
+          converted = true;
+        } catch (e) {
+          console.error('Blender fallback fallito:', e.message);
+        } finally {
+          try { fs.unlinkSync(scriptFile); } catch {}
+        }
+      }
+
       fs.unlinkSync(tmpFile);
+      if (!converted) return res.status(500).json({ error: 'Conversione FBX fallita. Esporta il modello in .glb o .gltf e caricalo direttamente.' });
     } else if (ext === 'glb') {
       // GLB: usa direttamente come raw
       fs.renameSync(tmpFile, rawGlb);
@@ -375,8 +411,7 @@ app.post('/api/admin/avatars/:id/upload-model', uploadFbx.single('model'), async
       return res.status(400).json({ error: 'Formato non supportato. Usa FBX, GLB o GLTF.' });
     }
 
-    // 2. Comprimi texture PNG → JPEG nel GLB
-    // Strategia: tieni il binario originale intatto, appendi le texture compresse in coda
+    // 2. Comprimi texture PNG → JPEG nel GLB (ricostruisce il binary da zero)
     const sharp = (await import('sharp')).default;
     const rawKB = Math.round(fs.statSync(rawGlb).size / 1024);
     const glbBuf = fs.readFileSync(rawGlb);
@@ -384,38 +419,55 @@ app.post('/api/admin/avatars/:id/upload-model', uploadFbx.single('model'), async
     const json = JSON.parse(glbBuf.slice(20, 20 + jsonLen).toString());
     const binOffset = 12 + 8 + jsonLen + 8;
     const origBin = glbBuf.slice(binOffset);
-    const extraChunks = [];
-    let extraOffset = origBin.length;
 
-    for (const img of (json.images || [])) {
-      if (img.bufferView === undefined) continue;
-      const bv = json.bufferViews[img.bufferView];
-      const imgBuf = origBin.slice(bv.byteOffset, bv.byteOffset + bv.byteLength);
-      if (img.mimeType === 'image/png' || img.mimeType === 'image/jpeg') {
-        try {
-          const meta = await sharp(imgBuf).metadata();
-          const MAX_TEX = 4096;
-          const needsResize = (meta.width > MAX_TEX || meta.height > MAX_TEX);
-          const pipeline = needsResize
-            ? sharp(imgBuf).resize(MAX_TEX, MAX_TEX, { fit: 'inside', withoutEnlargement: true })
-            : sharp(imgBuf);
-          const compressed = await pipeline.jpeg({ quality: 75, mozjpeg: true }).toBuffer();
-          if (needsResize || compressed.length < imgBuf.length) {
-            const aligned = Buffer.alloc(Math.ceil(compressed.length / 4) * 4, 0x00);
-            compressed.copy(aligned);
-            bv.byteOffset = extraOffset;
-            bv.byteLength = compressed.length;
-            extraChunks.push(aligned);
-            extraOffset += aligned.length;
-            img.mimeType = 'image/jpeg';
-          }
-        } catch (_) {}
+    // Raccoglie i chunk del nuovo binary: per ogni bufferView, usa dati originali o compressi
+    const newChunks = [];
+    let newOffset = 0;
+
+    // Mappa bufferView → nuovo chunk (per gestire bufferView non-texture invariate)
+    const bvRemap = new Map(); // bvIndex → { offset, length }
+
+    // Prima passa: comprime le texture e raccoglie i chunk
+    const imgBvSet = new Set((json.images || []).map(img => img.bufferView).filter(i => i !== undefined));
+
+    for (let bvIdx = 0; bvIdx < (json.bufferViews || []).length; bvIdx++) {
+      const bv = json.bufferViews[bvIdx];
+      const data = origBin.slice(bv.byteOffset ?? 0, (bv.byteOffset ?? 0) + bv.byteLength);
+      let outData = data;
+
+      if (imgBvSet.has(bvIdx)) {
+        const img = (json.images || []).find(i => i.bufferView === bvIdx);
+        if (img && (img.mimeType === 'image/png' || img.mimeType === 'image/jpeg')) {
+          try {
+            const meta = await sharp(data).metadata();
+            const MAX_TEX = 4096;
+            const needsResize = meta.width > MAX_TEX || meta.height > MAX_TEX;
+            const pipeline = needsResize
+              ? sharp(data).resize(MAX_TEX, MAX_TEX, { fit: 'inside', withoutEnlargement: true })
+              : sharp(data);
+            const compressed = await pipeline.jpeg({ quality: 75, mozjpeg: true }).toBuffer();
+            if (needsResize || compressed.length < data.length) {
+              outData = compressed;
+              img.mimeType = 'image/jpeg';
+            }
+          } catch (_) {}
+        }
       }
+
+      const aligned = Buffer.alloc(Math.ceil(outData.length / 4) * 4, 0x00);
+      outData.copy(aligned);
+      newChunks.push(aligned);
+      bvRemap.set(bvIdx, { offset: newOffset, length: outData.length });
+      newOffset += aligned.length;
     }
 
-    const newBin = extraChunks.length > 0
-      ? Buffer.concat([origBin, ...extraChunks])
-      : origBin;
+    // Aggiorna gli offset dei bufferViews nel JSON
+    for (let bvIdx = 0; bvIdx < (json.bufferViews || []).length; bvIdx++) {
+      const r = bvRemap.get(bvIdx);
+      if (r) { json.bufferViews[bvIdx].byteOffset = r.offset; json.bufferViews[bvIdx].byteLength = r.length; }
+    }
+
+    const newBin = Buffer.concat(newChunks);
     json.buffers[0].byteLength = newBin.length;
 
     const newJsonStr = JSON.stringify(json);
