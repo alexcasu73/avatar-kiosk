@@ -459,10 +459,8 @@ bpy.ops.export_scene.gltf(filepath=sys.argv[-1], export_format='GLB', use_select
               ? sharp(data).resize(MAX_TEX, MAX_TEX, { fit: 'inside', withoutEnlargement: true })
               : sharp(data);
             const compressed = await pipeline.jpeg({ quality: TEX_QUALITY, mozjpeg: true }).toBuffer();
-            if (needsResize || compressed.length < data.length) {
-              outData = compressed;
-              img.mimeType = 'image/jpeg';
-            }
+            outData = compressed;
+            img.mimeType = 'image/jpeg';
           } catch (_) {}
         }
       }
