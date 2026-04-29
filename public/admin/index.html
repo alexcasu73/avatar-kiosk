@@ -2224,7 +2224,17 @@ async function uploadModel(file) {
   if (!res.ok) { toast('Errore: ' + data.error, 'error'); return; }
   document.getElementById('model-label').innerHTML = `<svg viewBox="0 0 24 24" style="width:14px;height:14px;stroke:var(--success);fill:none;stroke-width:2.5;stroke-linecap:round;stroke-linejoin:round;display:inline-block;vertical-align:middle;margin-right:4px"><polyline points="20 6 9 17 4 12"/></svg>${data.model_file}`;
   document.getElementById('model-drop').classList.add('has-file');
-  avatars = avatars.map(a => a.id===currentId ? {...a, model_file: data.model_file} : a);
+  const dur = data.animDuration;
+  avatars = avatars.map(a => a.id===currentId ? {
+    ...a, model_file: data.model_file,
+    ...(dur != null ? { idle_start: 0, idle_end: dur, speech_start: 0, speech_end: dur } : {})
+  } : a);
+  if (dur != null) {
+    setSlider('idle-start',   0);
+    setSlider('idle-end',     dur);
+    setSlider('speech-start', 0);
+    setSlider('speech-end',   dur);
+  }
   reloadPreview();
   const sizeInfo = data.compressedKB ? ` (${data.originalKB}KB → ${data.compressedKB}KB)` : '';
   toast(`Modello caricato${sizeInfo}`);

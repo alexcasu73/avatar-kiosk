@@ -414,10 +414,26 @@ app.post('/api/admin/avatars/:id/upload-model', uploadFbx.single('model'), async
     const compressedKB = Math.round(fs.statSync(outGlb).size / 1024);
     console.log(`Texture compress: ${originalKB}KB → ${compressedKB}KB (-${Math.round((1-compressedKB/originalKB)*100)}%)`);
 
+    // Calcola durata animazioni per settare idle/speech interval di default
+    let animDuration = null;
+    try {
+      for (const anim of (json.animations || [])) {
+        for (const sampler of (anim.samplers || [])) {
+          const acc = json.accessors[sampler.input];
+          if (acc?.max?.[0] != null) animDuration = Math.max(animDuration ?? 0, acc.max[0]);
+        }
+      }
+    } catch (_) {}
+
     const modelFile = `models/${req.params.id}.glb`;
-    db.prepare("UPDATE avatars SET model_file = ?, updated_at = datetime('now') WHERE id = ?")
-      .run(modelFile, req.params.id);
-    res.json({ ok: true, model_file: modelFile, originalKB, compressedKB });
+    if (animDuration != null) {
+      db.prepare("UPDATE avatars SET model_file = ?, idle_start = 0, idle_end = ?, speech_start = 0, speech_end = ?, updated_at = datetime('now') WHERE id = ?")
+        .run(modelFile, animDuration, animDuration, req.params.id);
+    } else {
+      db.prepare("UPDATE avatars SET model_file = ?, updated_at = datetime('now') WHERE id = ?")
+        .run(modelFile, req.params.id);
+    }
+    res.json({ ok: true, model_file: modelFile, originalKB, compressedKB, animDuration });
   } catch (err) {
     if (fs.existsSync(tmpFbx)) fs.unlinkSync(tmpFbx);
     if (fs.existsSync(rawGlb)) fs.unlinkSync(rawGlb);
