@@ -872,7 +872,7 @@ app.post('/api/admin/avatars/import', requireAdmin, express.json({ limit: '200mb
   const bundle = req.body;
   if (!bundle?.version || !bundle?.params) return res.status(400).json({ error: 'File non valido' });
 
-  const newId = uuidv4();
+  const newId = uuidv4().split('-')[0];
   const FILE_FIELDS = ['model_file', 'bg_video', 'idle_video', 'idle_bg_image', 'idle_icon_img'];
 
   // Ripristina file binari
