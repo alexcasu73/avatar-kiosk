@@ -1408,6 +1408,13 @@
               <input type="hidden" id="s-speech-end" value="9"/>
             </div>
           </div>
+          <div class="field" style="margin-top:12px">
+            <label style="display:flex;align-items:center;gap:10px;cursor:pointer;font-size:.85rem">
+              <input type="checkbox" id="f-anim-pingpong"
+                onchange="sendToPreview({type:'avatarParam',key:'anim_pingpong',value:this.checked?1:0})"/>
+              Loop ping-pong (avanti+indietro, movimento realistico)
+            </label>
+          </div>
         </div>
 
         <div class="section">
@@ -1695,7 +1702,8 @@ function selectAvatar(id) {
   const idleFontSize = a.idle_font_size ?? 1.1;
   document.getElementById('s-idle-font-size').value         = idleFontSize;
   document.getElementById('val-idle-font-size').textContent = idleFontSize.toFixed(2);
-  document.getElementById('f-idle-disabled').checked = (a.idle_disabled ?? 0) !== 0;
+  document.getElementById('f-idle-disabled').checked  = (a.idle_disabled  ?? 0) !== 0;
+  document.getElementById('f-anim-pingpong').checked  = (a.anim_pingpong  ?? 0) !== 0;
   const idleTimeout = a.idle_timeout ?? 90;
   document.getElementById('s-idle-timeout').value        = idleTimeout;
   document.getElementById('val-idle-timeout').textContent = idleTimeout;
@@ -2154,6 +2162,7 @@ async function saveAvatar() {
     idle_end:        parseFloat(document.getElementById('s-idle-end').value),
     speech_start:    parseFloat(document.getElementById('s-speech-start').value),
     speech_end:      parseFloat(document.getElementById('s-speech-end').value),
+    anim_pingpong:   document.getElementById('f-anim-pingpong').checked ? 1 : 0,
     avatar_scale:    parseFloat(document.getElementById('s-scale').value),
     avatar_offset_x: parseFloat(document.getElementById('s-offset-x').value),
     avatar_offset_y: parseFloat(document.getElementById('s-offset-y').value),

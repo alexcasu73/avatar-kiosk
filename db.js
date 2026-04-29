@@ -14,6 +14,7 @@ db.exec(`
     background        TEXT DEFAULT '#0a0a0f',
     model_file        TEXT DEFAULT '',
     bg_video          TEXT DEFAULT '',
+    anim_pingpong     INTEGER DEFAULT 0,
     idle_start        REAL DEFAULT 0,
     idle_end          REAL DEFAULT 2,
     speech_start      REAL DEFAULT 2,
@@ -205,6 +206,8 @@ if (!existing.includes('idle_bg_color_alpha'))
   db.exec("ALTER TABLE avatars ADD COLUMN idle_bg_color_alpha REAL DEFAULT 1")
 if (!existing.includes('idle_disabled'))
   db.exec("ALTER TABLE avatars ADD COLUMN idle_disabled INTEGER DEFAULT 0")
+if (!existing.includes('anim_pingpong'))
+  db.exec("ALTER TABLE avatars ADD COLUMN anim_pingpong INTEGER DEFAULT 0")
 if (!existing.includes('idle_bg_opacity'))
   db.exec("ALTER TABLE avatars ADD COLUMN idle_bg_opacity REAL DEFAULT 1")
 if (!existing.includes('bg_video'))
