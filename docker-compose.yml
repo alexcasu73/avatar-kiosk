@@ -9,6 +9,9 @@ services:
       - ./public/models:/app/public/models
       - ./public/backgrounds:/app/public/backgrounds
       - ./public/icons:/app/public/icons
+      - ./public/bg-videos:/app/public/bg-videos
+      - ./public/idle-videos:/app/public/idle-videos
+      - ./public/idle-bgs:/app/public/idle-bgs
       - ./avatars.db:/app/avatars.db
       - ./.env:/app/.env
     env_file:

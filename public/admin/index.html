@@ -886,6 +886,20 @@
                 oninput="document.getElementById('v-tts-similarity').textContent=parseFloat(this.value).toFixed(2)"/>
             </div>
           </div>
+          <div class="field" style="margin-top:10px">
+            <label>Text Normalization</label>
+            <select id="f-tts-text-norm" style="width:100%">
+              <option value="auto">Auto</option>
+              <option value="on">On</option>
+              <option value="off">Off</option>
+            </select>
+          </div>
+          <div class="field" style="margin-top:6px">
+            <label style="display:flex;align-items:center;gap:10px;cursor:pointer;font-size:.85rem">
+              <input type="checkbox" id="f-tts-lang-norm"/>
+              Language Text Normalization <span class="hint" style="margin:0">(può aumentare latenza)</span>
+            </label>
+          </div>
         </div>
 
         <!-- AI Agent -->
@@ -1573,6 +1587,8 @@ function selectAvatar(id) {
   document.getElementById('v-tts-stability').textContent = stab.toFixed(2);
   document.getElementById('s-tts-similarity').value = sim;
   document.getElementById('v-tts-similarity').textContent = sim.toFixed(2);
+  document.getElementById('f-tts-text-norm').value = a.tts_text_normalization || 'auto';
+  document.getElementById('f-tts-lang-norm').checked = !!(a.tts_language_normalization);
   // AI Agent
   setAiProvider(a.ai_provider || 'anthropic');
   document.getElementById('f-anthropic-api-key').value = a.anthropic_api_key || '';
@@ -2144,7 +2160,9 @@ async function saveAvatar() {
     tts_api_key:     document.getElementById('f-tts-api-key').value.trim(),
     tts_model:       document.getElementById('f-tts-model').value.trim(),
     tts_stability:   parseFloat(document.getElementById('s-tts-stability').value),
-    tts_similarity:  parseFloat(document.getElementById('s-tts-similarity').value),
+    tts_similarity:             parseFloat(document.getElementById('s-tts-similarity').value),
+    tts_text_normalization:     document.getElementById('f-tts-text-norm').value,
+    tts_language_normalization: document.getElementById('f-tts-lang-norm').checked ? 1 : 0,
     ai_provider:        setAiProvider._current,
     anthropic_api_key:  document.getElementById('f-anthropic-api-key').value.trim(),
     anthropic_model:    document.getElementById('f-anthropic-model').value.trim(),

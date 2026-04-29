@@ -116,7 +116,7 @@ app.get('/api/avatar/:id', (req, res) => {
   const avatar = db.prepare('SELECT * FROM avatars WHERE id = ? AND published = 1').get(req.params.id);
   if (!avatar) return res.status(404).json({ error: 'Avatar non trovato o non pubblicato' });
   const { id, name, background, bg_video, model_file, idle_start, idle_end,
-          speech_start, speech_end, anim_pingpong, avatar_scale, avatar_offset_x,
+          speech_start, speech_end, anim_pingpong, tts_text_normalization, tts_language_normalization, avatar_scale, avatar_offset_x,
           avatar_offset_y, avatar_rot_y, camera_z, camera_y, camera_look_at_y,
           overlay_color, overlay_opacity, overlay_height, chat_height, chat_bottom, chat_max_width, chat_align, chat_hide_input,
           idle_disabled, idle_timeout, idle_icon, idle_icon_img, idle_video, idle_bg_image, idle_bg_color, idle_bg_color_alpha, idle_bg_opacity, idle_title, idle_subtitle, idle_hint, idle_font, idle_font_size,
@@ -126,7 +126,7 @@ app.get('/api/avatar/:id', (req, res) => {
           audio_icon, audio_icon_disabled, audio_icon_size, audio_icon_x, audio_icon_y, audio_visible, audio_bg_color, audio_disabled_color, audio_border_color, audio_border_disabled_color,
           mic_wave_color, audio_wave_color, theme } = avatar;
   res.json({ id, name, background, bg_video, model_file, idle_start, idle_end,
-             speech_start, speech_end, anim_pingpong, avatar_scale, avatar_offset_x,
+             speech_start, speech_end, anim_pingpong, tts_text_normalization, tts_language_normalization, avatar_scale, avatar_offset_x,
              avatar_offset_y, avatar_rot_y, camera_z, camera_y, camera_look_at_y,
              overlay_color, overlay_opacity, overlay_height, chat_height, chat_bottom, chat_max_width, chat_align, chat_hide_input,
              idle_disabled, idle_timeout, idle_icon, idle_icon_img, idle_video, idle_bg_image, idle_bg_color, idle_bg_color_alpha, idle_bg_opacity, idle_title, idle_subtitle, idle_hint, idle_font, idle_font_size,
@@ -155,7 +155,7 @@ app.get('/api/preview/:id', (req, res) => {
   const avatar = db.prepare('SELECT * FROM avatars WHERE id = ?').get(req.params.id);
   if (!avatar) return res.status(404).json({ error: 'Non trovato' });
   const { id, name, background, bg_video, model_file, idle_start, idle_end,
-          speech_start, speech_end, anim_pingpong, avatar_scale, avatar_offset_x,
+          speech_start, speech_end, anim_pingpong, tts_text_normalization, tts_language_normalization, avatar_scale, avatar_offset_x,
           avatar_offset_y, avatar_rot_y, camera_z, camera_y, camera_look_at_y,
           overlay_color, overlay_opacity, overlay_height, chat_height, chat_bottom, chat_max_width, chat_align, chat_hide_input,
           idle_disabled, idle_timeout, idle_icon, idle_icon_img, idle_video, idle_bg_image, idle_bg_color, idle_bg_color_alpha, idle_bg_opacity, idle_title, idle_subtitle, idle_hint, idle_font, idle_font_size,
@@ -165,7 +165,7 @@ app.get('/api/preview/:id', (req, res) => {
           audio_icon, audio_icon_disabled, audio_icon_size, audio_icon_x, audio_icon_y, audio_visible, audio_bg_color, audio_disabled_color, audio_border_color, audio_border_disabled_color,
           mic_wave_color, audio_wave_color, theme } = avatar;
   res.json({ id, name, background, bg_video, model_file, idle_start, idle_end,
-             speech_start, speech_end, anim_pingpong, avatar_scale, avatar_offset_x,
+             speech_start, speech_end, anim_pingpong, tts_text_normalization, tts_language_normalization, avatar_scale, avatar_offset_x,
              avatar_offset_y, avatar_rot_y, camera_z, camera_y, camera_look_at_y,
              overlay_color, overlay_opacity, overlay_height, chat_height, chat_bottom, chat_max_width, chat_align, chat_hide_input,
              idle_disabled, idle_timeout, idle_icon, idle_icon_img, idle_video, idle_bg_image, idle_bg_color, idle_bg_color_alpha, idle_bg_opacity, idle_title, idle_subtitle, idle_hint, idle_font, idle_font_size,
@@ -259,7 +259,7 @@ app.put('/api/admin/avatars/:id', (req, res) => {
                   'avatar_rot_y','camera_z','camera_y','camera_look_at_y',
                   'overlay_color','overlay_opacity','overlay_height','chat_height','chat_bottom','chat_max_width','chat_align','chat_hide_input',
                   'stt_api_key','stt_model','stt_language',
-                  'tts_api_key','tts_model','tts_stability','tts_similarity',
+                  'tts_api_key','tts_model','tts_stability','tts_similarity','tts_text_normalization','tts_language_normalization',
                   'ai_provider','ai_max_tokens','anthropic_api_key','anthropic_model','openai_api_key','openai_model',
                   'avatar_mode','webhook_url','webhook_input_template','webhook_output_field','webhook_headers',
                   'idle_disabled','idle_timeout','idle_icon','idle_title','idle_subtitle','idle_hint','idle_font','idle_font_size','idle_bg_image','idle_bg_color','idle_bg_color_alpha','idle_bg_opacity','anim_pingpong','theme',
@@ -802,6 +802,8 @@ app.post('/api/tts', async (req, res) => {
     const ttsModel   = avatar?.tts_model   || DEFAULT_TTS_MODEL;
     const ttsStab    = (avatar?.tts_stability  >= 0) ? avatar.tts_stability  : DEFAULT_TTS_STAB;
     const ttsSim     = (avatar?.tts_similarity >= 0) ? avatar.tts_similarity : DEFAULT_TTS_SIM;
+    const ttsTextNorm = avatar?.tts_text_normalization || 'auto';
+    const ttsLangNorm = !!avatar?.tts_language_normalization;
     if (!voiceId) return res.status(400).json({ error: 'Voice ID non configurato' });
 
     const spokenText = text
@@ -823,7 +825,9 @@ app.post('/api/tts', async (req, res) => {
         method: 'POST',
         headers: { 'xi-api-key': ttsKey, 'Content-Type': 'application/json' },
         body: JSON.stringify({ text: spokenText, model_id: ttsModel,
-          voice_settings: { stability: ttsStab, similarity_boost: ttsSim } }),
+          voice_settings: { stability: ttsStab, similarity_boost: ttsSim },
+          apply_text_normalization: ttsTextNorm,
+          ...(ttsLangNorm ? { apply_language_text_normalization: true } : {}) }),
       }
     );
     if (!response.ok) throw new Error(`ElevenLabs error: ${await response.text()}`);
