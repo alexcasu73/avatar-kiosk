@@ -453,7 +453,7 @@ bpy.ops.export_scene.gltf(filepath=sys.argv[-1], export_format='GLB', use_select
         if (img && (img.mimeType === 'image/png' || img.mimeType === 'image/jpeg')) {
           try {
             const meta = await sharp(data).metadata();
-            const MAX_TEX = 4096;
+            const MAX_TEX = 2048;
             const needsResize = meta.width > MAX_TEX || meta.height > MAX_TEX;
             const pipeline = needsResize
               ? sharp(data).resize(MAX_TEX, MAX_TEX, { fit: 'inside', withoutEnlargement: true })
@@ -461,7 +461,7 @@ bpy.ops.export_scene.gltf(filepath=sys.argv[-1], export_format='GLB', use_select
             const compressed = await pipeline.jpeg({ quality: TEX_QUALITY, mozjpeg: true }).toBuffer();
             outData = compressed;
             img.mimeType = 'image/jpeg';
-          } catch (_) {}
+          } catch (e) { console.error('Sharp compress error bv'+bvIdx+':', e.message); }
         }
       }
 
