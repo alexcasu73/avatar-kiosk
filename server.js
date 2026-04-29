@@ -379,16 +379,16 @@ bpy.ops.export_scene.gltf(filepath=sys.argv[-1], export_format='GLB', use_select
         const scriptFile = tmpFile + '.py';
         fs.writeFileSync(scriptFile, blenderScript);
         try {
-          await promisify(execFile)('blender', [
-            '--background', '--python', scriptFile, '--',
-            tmpFile, rawGlb.replace(/\.glb$/, '')
-          ], { timeout: 120000, shell: true });
+          const { exec } = await import('child_process');
+          const blenderCmd = `blender --background --python "${scriptFile}" -- "${tmpFile}" "${rawGlb.replace(/\.glb$/, '')}"`;
+          await promisify(exec)(blenderCmd, { timeout: 120000 });
           // Blender aggiunge .glb al nome output
           const blenderOut = rawGlb.replace(/\.glb$/, '') + '.glb';
           if (fs.existsSync(blenderOut) && blenderOut !== rawGlb) fs.renameSync(blenderOut, rawGlb);
           converted = fs.existsSync(rawGlb);
+          if (!converted) console.error('Blender non ha prodotto output GLB');
         } catch (e) {
-          console.error('Blender fallback fallito:', e.message);
+          console.error('Blender fallback fallito:', e.message, e.stderr || '');
         } finally {
           try { fs.unlinkSync(scriptFile); } catch {}
         }
