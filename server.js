@@ -371,17 +371,34 @@ app.post('/api/admin/avatars/:id/upload-model', uploadFbx.single('model'), async
       // Fallback: Blender headless (ARM64 / FBX2glTF non disponibile)
       if (!converted) {
         const blenderScript = `
-import bpy, sys
+import bpy, sys, os
+print("Blender script start, args:", sys.argv)
 bpy.ops.wm.read_factory_settings(use_empty=True)
-bpy.ops.import_scene.fbx(filepath=sys.argv[-2])
-bpy.ops.export_scene.gltf(filepath=sys.argv[-1], export_format='GLB', use_selection=False)
+try:
+    bpy.ops.preferences.addon_enable(module='io_scene_fbx')
+except Exception as e:
+    print("addon_enable fbx:", e)
+try:
+    bpy.ops.preferences.addon_enable(module='io_scene_gltf2')
+except Exception as e:
+    print("addon_enable gltf2:", e)
+fbx_path = sys.argv[-2]
+glb_path = sys.argv[-1]
+print("Importing FBX:", fbx_path)
+result = bpy.ops.import_scene.fbx(filepath=fbx_path)
+print("Import result:", result)
+print("Exporting GLB:", glb_path)
+result = bpy.ops.export_scene.gltf(filepath=glb_path, export_format='GLB', use_selection=False)
+print("Export result:", result)
 `.trim();
         const scriptFile = tmpFile + '.py';
         fs.writeFileSync(scriptFile, blenderScript);
         try {
           const { exec } = await import('child_process');
           const blenderCmd = `blender --background --python "${scriptFile}" -- "${tmpFile}" "${rawGlb.replace(/\.glb$/, '')}"`;
-          await promisify(exec)(blenderCmd, { timeout: 120000 });
+          const { stdout: bOut, stderr: bErr } = await promisify(exec)(blenderCmd, { timeout: 120000 });
+          if (bOut) console.log('Blender stdout:', bOut.slice(-2000));
+          if (bErr) console.log('Blender stderr:', bErr.slice(-1000));
           // Blender aggiunge .glb al nome output
           const blenderOut = rawGlb.replace(/\.glb$/, '') + '.glb';
           if (fs.existsSync(blenderOut) && blenderOut !== rawGlb) fs.renameSync(blenderOut, rawGlb);
