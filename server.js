@@ -57,6 +57,7 @@ function requireAdmin(req, res, next) {
   res.redirect('/admin/login');
 }
 
+app.set('trust proxy', 1);
 app.use(compression({ level: 6 }));
 app.use(cors());
 app.use(express.json());
@@ -217,7 +218,8 @@ app.post('/admin/login', (req, res) => {
     return res.redirect('/admin/login?err=1');
   const token = genToken();
   adminTokens.set(token, Date.now() + 8 * 60 * 60 * 1000); // 8 ore
-  res.setHeader('Set-Cookie', `admin_token=${token}; HttpOnly; Path=/; SameSite=Strict; Max-Age=2592000`);
+  const isHttps = req.headers['x-forwarded-proto'] === 'https' || req.secure;
+  res.setHeader('Set-Cookie', `admin_token=${token}; HttpOnly; Path=/; SameSite=Strict; Max-Age=2592000${isHttps ? '; Secure' : ''}`);
   res.redirect('/admin');
 });
 
@@ -349,17 +351,58 @@ app.post('/api/admin/avatars/:id/upload-model', uploadFbx.single('model'), async
     await promisify(execFile)(assimp, ['export', tmpFbx, rawGlb]);
     fs.unlinkSync(tmpFbx);
 
-    // 2. GLB → GLB con compressione Draco
-    const { default: gltfPipeline } = await import('gltf-pipeline');
-    const { processGlb } = gltfPipeline;
+    // 2. Comprimi texture PNG → JPEG nel GLB
+    // Strategia: tieni il binario originale intatto, appendi le texture compresse in coda
+    const sharp = (await import('sharp')).default;
+    const rawKB = Math.round(fs.statSync(rawGlb).size / 1024);
     const glbBuf = fs.readFileSync(rawGlb);
-    const result = await processGlb(glbBuf, { dracoOptions: { compressionLevel: 7 } });
-    fs.writeFileSync(outGlb, result.glb);
+    const jsonLen = glbBuf.readUInt32LE(12);
+    const json = JSON.parse(glbBuf.slice(20, 20 + jsonLen).toString());
+    const binOffset = 12 + 8 + jsonLen + 8;
+    const origBin = glbBuf.slice(binOffset);
+    const extraChunks = [];
+    let extraOffset = origBin.length;
+
+    for (const img of (json.images || [])) {
+      if (img.bufferView === undefined) continue;
+      const bv = json.bufferViews[img.bufferView];
+      const imgBuf = origBin.slice(bv.byteOffset, bv.byteOffset + bv.byteLength);
+      if (img.mimeType === 'image/png' || img.mimeType === 'image/jpeg') {
+        try {
+          const compressed = await sharp(imgBuf).jpeg({ quality: 75, mozjpeg: true }).toBuffer();
+          if (compressed.length < imgBuf.length) {
+            const aligned = Buffer.alloc(Math.ceil(compressed.length / 4) * 4, 0x00);
+            compressed.copy(aligned);
+            bv.byteOffset = extraOffset;
+            bv.byteLength = compressed.length;
+            extraChunks.push(aligned);
+            extraOffset += aligned.length;
+            img.mimeType = 'image/jpeg';
+          }
+        } catch (_) {}
+      }
+    }
+
+    const newBin = extraChunks.length > 0
+      ? Buffer.concat([origBin, ...extraChunks])
+      : origBin;
+    json.buffers[0].byteLength = newBin.length;
+
+    const newJsonStr = JSON.stringify(json);
+    const jsonPadded = Buffer.alloc(Math.ceil(newJsonStr.length / 4) * 4, 0x20);
+    Buffer.from(newJsonStr).copy(jsonPadded);
+    const binPadded = Buffer.alloc(Math.ceil(newBin.length / 4) * 4, 0x00);
+    newBin.copy(binPadded);
+    const totalLen = 12 + 8 + jsonPadded.length + 8 + binPadded.length;
+    const header = Buffer.alloc(12); header.writeUInt32LE(0x46546C67,0); header.writeUInt32LE(2,4); header.writeUInt32LE(totalLen,8);
+    const jh = Buffer.alloc(8); jh.writeUInt32LE(jsonPadded.length,0); jh.writeUInt32LE(0x4E4F534A,4);
+    const bh = Buffer.alloc(8); bh.writeUInt32LE(binPadded.length,0);  bh.writeUInt32LE(0x004E4942,4);
+    fs.writeFileSync(outGlb, Buffer.concat([header,jh,jsonPadded,bh,binPadded]));
     fs.unlinkSync(rawGlb);
 
-    const originalKB  = Math.round(glbBuf.length / 1024);
-    const compressedKB = Math.round(result.glb.length / 1024);
-    console.log(`GLB Draco: ${originalKB}KB → ${compressedKB}KB (-${Math.round((1-compressedKB/originalKB)*100)}%)`);
+    const originalKB   = rawKB;
+    const compressedKB = Math.round(fs.statSync(outGlb).size / 1024);
+    console.log(`Texture compress: ${originalKB}KB → ${compressedKB}KB (-${Math.round((1-compressedKB/originalKB)*100)}%)`);
 
     const modelFile = `models/${req.params.id}.glb`;
     db.prepare("UPDATE avatars SET model_file = ?, updated_at = datetime('now') WHERE id = ?")

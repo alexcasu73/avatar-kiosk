@@ -2173,7 +2173,8 @@ async function uploadModel(file) {
   document.getElementById('model-drop').classList.add('has-file');
   avatars = avatars.map(a => a.id===currentId ? {...a, model_file: data.model_file} : a);
   reloadPreview();
-  toast('Modello caricato');
+  const sizeInfo = data.compressedKB ? ` (${data.originalKB}KB → ${data.compressedKB}KB)` : '';
+  toast(`Modello caricato${sizeInfo}`);
 }
 
 // ── Upload sfondo ─────────────────────────────────────────────────────────────
