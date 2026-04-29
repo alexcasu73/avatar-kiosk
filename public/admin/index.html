@@ -661,6 +661,9 @@
             <button class="btn btn-success" id="publish-btn" onclick="togglePublish()"><svg viewBox="0 0 24 24"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg> Pubblica</button>
             <button class="btn btn-primary" onclick="saveAvatar()"><svg viewBox="0 0 24 24"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg> Salva</button>
             <button class="btn btn-neutral btn-icon" onclick="openKiosk()" title="Apri kiosk"><svg viewBox="0 0 24 24"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg></button>
+            <button class="btn btn-neutral btn-icon" onclick="exportAvatar()" title="Esporta configurazione"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg></button>
+            <button class="btn btn-neutral btn-icon" onclick="document.getElementById('import-file-input').click()" title="Importa configurazione"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg></button>
+            <input type="file" id="import-file-input" accept=".json" style="display:none" onchange="importAvatar(this)"/>
             <button class="btn btn-neutral btn-icon" onclick="duplicateAvatar()" title="Duplica"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg></button>
             <button class="btn btn-danger  btn-icon" onclick="deleteAvatar()" title="Elimina"><svg viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg></button>
           </div>
@@ -2235,6 +2238,35 @@ async function togglePublish() {
 }
 
 // ── Duplica ───────────────────────────────────────────────────────────────────
+async function exportAvatar() {
+  if (!currentId) return;
+  const a = document.createElement('a');
+  a.href = `/api/admin/avatars/${currentId}/export`;
+  a.download = '';
+  a.click();
+}
+
+async function importAvatar(input) {
+  const file = input.files[0];
+  if (!file) return;
+  input.value = '';
+  let bundle;
+  try { bundle = JSON.parse(await file.text()); } catch { return toast('File JSON non valido', 'error'); }
+  if (!bundle?.version || !bundle?.params) return toast('Formato non riconosciuto', 'error');
+  const res = await fetch('/api/admin/avatars/import', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(bundle)
+  });
+  const data = await res.json();
+  if (!data?.id) return toast('Errore durante l\'importazione', 'error');
+  const list = await api.get('/api/admin/avatars');
+  avatars = list;
+  renderList();
+  selectAvatar(data.id);
+  toast(`Avatar importato: ${bundle.name || 'Senza nome'}`);
+}
+
 async function duplicateAvatar() {
   if (!currentId) return;
   const res = await api.post(`/api/admin/avatars/${currentId}/duplicate`);

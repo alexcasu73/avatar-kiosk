@@ -841,6 +841,72 @@ app.delete('/api/session/:id', (req, res) => {
   res.json({ ok: true });
 });
 
+// ─── Export/Import configurazione avatar ──────────────────────────────────────
+
+app.get('/api/admin/avatars/:id/export', requireAdmin, (req, res) => {
+  const avatar = db.prepare('SELECT * FROM avatars WHERE id = ?').get(req.params.id);
+  if (!avatar) return res.status(404).json({ error: 'Non trovato' });
+
+  const FILE_FIELDS = ['model_file', 'bg_video', 'idle_video', 'idle_bg_image', 'idle_icon_img'];
+  const files = {};
+  for (const field of FILE_FIELDS) {
+    const rel = avatar[field];
+    if (!rel) continue;
+    const abs = join(__dirname, 'public', rel);
+    if (!fs.existsSync(abs)) continue;
+    const data = fs.readFileSync(abs).toString('base64');
+    const name = rel.split('/').pop();
+    files[field] = { name, data };
+  }
+
+  const { id, created_at, updated_at, published, ...params } = avatar;
+  const bundle = { version: 1, name: avatar.name, params, files };
+
+  const slug = avatar.name.replace(/[^a-z0-9]/gi, '_').toLowerCase();
+  res.setHeader('Content-Disposition', `attachment; filename="avatar_${slug}.json"`);
+  res.setHeader('Content-Type', 'application/json');
+  res.send(JSON.stringify(bundle, null, 2));
+});
+
+app.post('/api/admin/avatars/import', requireAdmin, express.json({ limit: '200mb' }), async (req, res) => {
+  const bundle = req.body;
+  if (!bundle?.version || !bundle?.params) return res.status(400).json({ error: 'File non valido' });
+
+  const newId = uuidv4();
+  const FILE_FIELDS = ['model_file', 'bg_video', 'idle_video', 'idle_bg_image', 'idle_icon_img'];
+
+  // Ripristina file binari
+  const remapped = { ...bundle.params };
+  for (const field of FILE_FIELDS) {
+    const f = bundle.files?.[field];
+    if (!f?.data || !f?.name) { remapped[field] = ''; continue; }
+    // Determina sottocartella in base al campo
+    const subdir = field === 'model_file' ? 'models'
+      : field === 'bg_video'    ? 'bg-videos'
+      : field === 'idle_video'  ? 'idle-videos'
+      : field === 'idle_bg_image' ? 'idle-bgs'
+      : 'icons';
+    const dir = join(__dirname, 'public', subdir);
+    fs.mkdirSync(dir, { recursive: true });
+    const ext  = f.name.split('.').pop();
+    const dest = `${subdir}/${newId}_${field}.${ext}`;
+    fs.writeFileSync(join(__dirname, 'public', dest), Buffer.from(f.data, 'base64'));
+    remapped[field] = dest;
+  }
+
+  // Colonne valide del DB
+  const cols = db.prepare("PRAGMA table_info(avatars)").all().map(c => c.name);
+  const allowed = cols.filter(c => !['id','created_at','updated_at','published'].includes(c));
+  const fields = allowed.filter(c => remapped[c] !== undefined);
+  const placeholders = fields.map(c => `${c} = ?`).join(', ');
+  const values = fields.map(c => remapped[c]);
+
+  db.prepare(`INSERT INTO avatars (id, name) VALUES (?, ?)`).run(newId, bundle.name || 'Importato');
+  if (fields.length) db.prepare(`UPDATE avatars SET ${placeholders} WHERE id = ?`).run(...values, newId);
+
+  res.json({ ok: true, id: newId });
+});
+
 // ─── Avvio server ─────────────────────────────────────────────────────────────
 server.on('error', (err) => {
   if (err.code === 'EADDRINUSE') {
