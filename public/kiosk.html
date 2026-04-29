@@ -567,6 +567,35 @@
     #fbx-status.error { color: var(--error); }
     #fbx-status.loading { color: var(--accent2); }
 
+    /* ─── Layout responsive bottoni mic/audio ──────── */
+    @media (max-width: 600px) {
+      #mic-btn {
+        top: auto !important;
+        bottom: var(--btn-mobile-bottom, 20px) !important;
+        right: auto !important;
+        left: calc(50% - var(--btn-half-total-w, 27px)) !important;
+        width:  var(--mic-mobile-size, 22px) !important;
+        height: var(--mic-mobile-size, 22px) !important;
+      }
+      #mic-btn img, #mic-btn span {
+        width:  var(--mic-icon-mobile-size, 14px) !important;
+        height: var(--mic-icon-mobile-size, 14px) !important;
+        font-size: var(--mic-icon-mobile-size, 14px) !important;
+      }
+      #audio-btn {
+        top: auto !important;
+        bottom: var(--btn-mobile-bottom, 20px) !important;
+        right: auto !important;
+        left: calc(50% - var(--btn-half-total-w, 27px) + var(--mic-mobile-size, 22px) + 10px) !important;
+        width:  var(--audio-mobile-size, 22px) !important;
+        height: var(--audio-mobile-size, 22px) !important;
+      }
+      #audio-btn img, #audio-btn span {
+        width:  var(--audio-icon-mobile-size, 14px) !important;
+        height: var(--audio-icon-mobile-size, 14px) !important;
+        font-size: var(--audio-icon-mobile-size, 14px) !important;
+      }
+    }
   </style>
 </head>
 <body>
@@ -759,6 +788,7 @@
 // ═══════════════════════════════════════════════════════════════════════════
 //  CONFIGURAZIONE
 // ═══════════════════════════════════════════════════════════════════════════
+
 const CONFIG = {
   serverUrl:    window.location.origin,
   idleTimeout:  90000,
@@ -1600,14 +1630,26 @@ function updateMicBtn() {
   const useDisabledIcon = !CONFIG.micEnabled && CONFIG.micIconDisabled;
   _applyIconToBtn('mic-icon-img', 'mic-icon-fallback', useDisabledIcon ? '' : CONFIG.micIcon);
   _applyDisabledIcon('mic-icon-disabled-img', useDisabledIcon ? CONFIG.micIconDisabled : '', 'mic-icon-fallback');
-  // mic in alto a 32px dal top
-  const micTopVh  = (32 / 1920 * 100).toFixed(4);
   const micRightVw = ((32 - CONFIG.micIconX) / 1080 * 100).toFixed(4);
   const mic = document.getElementById('mic-btn');
+  // calcola CSS vars per layout mobile (applicate da @media query)
+  const _micSz  = Math.round(CONFIG.micIconSize  * 0.5);
+  const _audSz  = Math.round(CONFIG.audioIconSize * 0.5);
+  const _totW   = _micSz + 10 + _audSz;
+  const _cb     = CONFIG._chatBottom || 0;
+  const _mBottom = Math.max(8, Math.round((_cb - _micSz) / 2)) + CONFIG.micIconY;
+  const root = document.documentElement;
+  root.style.setProperty('--mic-mobile-size',       _micSz + 'px');
+  root.style.setProperty('--audio-mobile-size',     _audSz + 'px');
+  root.style.setProperty('--btn-half-total-w',      (_totW / 2) + 'px');
+  root.style.setProperty('--btn-mobile-bottom',     _mBottom + 'px');
+  root.style.setProperty('--mic-icon-mobile-size',  Math.round(_micSz * 0.64) + 'px');
+  root.style.setProperty('--audio-icon-mobile-size',Math.round(_audSz * 0.64) + 'px');
   if (mic) {
     mic.style.width  = CONFIG.micIconSize + 'px';
     mic.style.height = CONFIG.micIconSize + 'px';
-    mic.style.top    = `calc(${micTopVh}vh + ${CONFIG.micIconY}px)`;
+    mic.style.top    = `${20 + CONFIG.micIconY}px`;
+    mic.style.bottom = '';
     mic.style.right  = micRightVw + 'vw';
     mic.style.left   = '';
     const s = Math.round(CONFIG.micIconSize * 0.64);
@@ -1636,15 +1678,13 @@ function updateAudioBtn() {
   const useDisabledIcon = !CONFIG.audioEnabled && CONFIG.audioIconDisabled;
   _applyIconToBtn('audio-icon-img', 'audio-icon-fallback', useDisabledIcon ? '' : CONFIG.audioIcon);
   _applyDisabledIcon('audio-icon-disabled-img', useDisabledIcon ? CONFIG.audioIconDisabled : '', 'audio-icon-fallback');
-  // audio sotto mic: top = mic_top(vh) + micSize(px) + gap(px)
-  const micTopVhAudio = (32 / 1920 * 100).toFixed(4);
-  const audioTopOffset = CONFIG.micIconSize + 24 + CONFIG.audioIconY;
   const audioRightVw = ((32 - CONFIG.audioIconX) / 1080 * 100).toFixed(4);
   const audio = document.getElementById('audio-btn');
   if (audio) {
     audio.style.width  = CONFIG.audioIconSize + 'px';
     audio.style.height = CONFIG.audioIconSize + 'px';
-    audio.style.top    = `calc(${micTopVhAudio}vh + ${audioTopOffset}px)`;
+    audio.style.top    = `${20 + CONFIG.micIconSize + 12 + CONFIG.audioIconY}px`;
+    audio.style.bottom = '';
     audio.style.right  = audioRightVw + 'vw';
     audio.style.left   = '';
     const s = Math.round(CONFIG.audioIconSize * 0.64);
@@ -2165,9 +2205,12 @@ const sp = document.getElementById('settings-panel');
 if (sp) sp.style.display = 'none';
 
 // ── postMessage: aggiornamenti real-time dall'admin ───────────────────────────
+
 window.addEventListener('message', e => {
   const msg = e.data;
   if (!msg) return;
+
+
 
   if (msg.type === 'idleParam') {
     applyIdleParam(msg.key, msg.value);
