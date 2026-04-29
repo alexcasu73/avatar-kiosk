@@ -224,13 +224,13 @@
     }
     .section-header {
       display:flex; align-items:center; justify-content:space-between;
-      padding:16px 18px; cursor:pointer; user-select:none;
+      padding:14px 18px; cursor:pointer; user-select:none;
       transition:background .15s;
     }
     .section-header:hover { background:var(--surface2); }
     .section h3 {
-      font-size:.75rem; font-weight:700; text-transform:uppercase;
-      letter-spacing:.08em; color:var(--accent2); margin:0;
+      font-size:.72rem; font-weight:700; text-transform:uppercase;
+      letter-spacing:.09em; color:var(--accent2); margin:0;
     }
     .section-arrow {
       font-size:.85rem; color:var(--text-dim);
@@ -241,10 +241,36 @@
     .section-header:hover .section-arrow { color:var(--accent2); background:var(--surface3); }
     .section.collapsed .section-arrow { transform:rotate(-90deg); }
     .section-body {
-      padding:0 18px 16px;
+      padding:0 18px 18px;
       display:block;
     }
     .section.collapsed .section-body { display:none; }
+    /* separatore tra sezioni */
+    .section + .section { border-top: 1px solid var(--border); }
+    /* sotto-sezione dentro una section (es. Mic / Audio) */
+    .subsection {
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 12px 14px;
+      margin-bottom: 10px;
+    }
+    .subsection:last-child { margin-bottom: 0; }
+    .subsection-title {
+      font-size:.7rem; font-weight:700; text-transform:uppercase;
+      letter-spacing:.08em; color:var(--text-dim); margin-bottom:10px;
+      display:flex; align-items:center; justify-content:space-between;
+    }
+    .icon-slot { display:flex; flex-direction:column; align-items:center; gap:4px; cursor:pointer; }
+    .icon-slot-thumb {
+      width:52px; height:52px; border-radius:10px; background:#1a1a2e;
+      border:2px dashed #333; display:flex; align-items:center; justify-content:center;
+      overflow:hidden; transition:border-color .2s; position:relative;
+    }
+    .icon-slot-thumb:hover { border-color:#6c63ff; }
+    .icon-slot-thumb img { width:100%; height:100%; object-fit:contain; display:none; }
+    .icon-slot-thumb .slot-placeholder { color:#555; font-size:1.2rem; }
+    .icon-slot-label { font-size:.68rem; color:#666; text-align:center; }
+    .icon-row { display:flex; gap:10px; margin-bottom:10px; }
 
     /* ── Form fields ────────────────────────────── */
     .fields { display:grid; grid-template-columns:1fr 1fr; gap:14px; }
@@ -892,76 +918,82 @@
       <div class="tab-pane" id="tab-aspetto">
 
         <div class="section">
-          <h3>Overlay Chat</h3>
-          <div class="fields" style="gap:12px;margin-bottom:12px">
-            <div class="field">
-              <label>Colore</label>
-              <div class="color-row">
-                <input type="color" id="f-overlay-color" value="#0a0a0f"
-                  class="color-input" oninput="applyOverlayLive()"/>
-                <span id="f-overlay-hex" class="color-hex">#0a0a0f</span>
+          <h3>Chat</h3>
+          <!-- Sfondo overlay -->
+          <div class="subsection">
+            <div class="subsection-title">Overlay</div>
+            <div class="fields" style="gap:12px">
+              <div class="field">
+                <label>Colore</label>
+                <div class="color-row">
+                  <input type="color" id="f-overlay-color" value="#0a0a0f"
+                    class="color-input" oninput="applyOverlayLive()"/>
+                  <span id="f-overlay-hex" class="color-hex">#0a0a0f</span>
+                </div>
+              </div>
+              <div class="slider-field">
+                <label>Opacità <span id="v-overlay-opacity">0.75</span></label>
+                <input type="range" min="0" max="1" step="0.01" id="s-overlay-opacity" value="0.75"
+                  oninput="document.getElementById('v-overlay-opacity').textContent=parseFloat(this.value).toFixed(2); applyOverlayLive()"/>
+              </div>
+              <div class="slider-field">
+                <label>Altezza % <span id="v-overlay-height">65</span></label>
+                <input type="range" min="10" max="95" step="1" id="s-overlay-height" value="65"
+                  oninput="document.getElementById('v-overlay-height').textContent=this.value; applyOverlayLive()"/>
+              </div>
+              <div class="slider-field">
+                <label>Margine inferiore px <span id="v-chat-bottom">100</span></label>
+                <input type="range" min="0" max="600" step="4" id="s-chat-bottom" value="100"
+                  oninput="document.getElementById('v-chat-bottom').textContent=this.value;
+                           sendToPreview({type:'avatarParam',key:'chat_bottom',value:this.value})"/>
+              </div>
+              <div class="slider-field">
+                <label>Larghezza max % <span id="v-chat-max-width">100</span></label>
+                <input type="range" min="30" max="100" step="5" id="s-chat-max-width" value="100"
+                  oninput="document.getElementById('v-chat-max-width').textContent=this.value;
+                           sendToPreview({type:'avatarParam',key:'chat_max_width',value:this.value})"/>
+              </div>
+            </div>
+            <div class="field" style="margin-top:12px">
+              <label>Posizione orizzontale</label>
+              <div class="btn-row" style="gap:6px">
+                <button id="align-left-btn"   class="btn btn-neutral" onclick="setChatAlign('left')">◀ Sinistra</button>
+                <button id="align-center-btn" class="btn btn-neutral active" onclick="setChatAlign('center')">● Centro</button>
+                <button id="align-right-btn"  class="btn btn-neutral" onclick="setChatAlign('right')">▶ Destra</button>
               </div>
             </div>
           </div>
-          <div class="fields" style="gap:12px">
-            <div class="slider-field">
-              <label>Opacità <span id="v-overlay-opacity">0.75</span></label>
-              <input type="range" min="0" max="1" step="0.01" id="s-overlay-opacity" value="0.75"
-                oninput="document.getElementById('v-overlay-opacity').textContent=parseFloat(this.value).toFixed(2); applyOverlayLive()"/>
-            </div>
-            <div class="slider-field">
-              <label>Altezza % <span id="v-overlay-height">65</span></label>
-              <input type="range" min="10" max="95" step="1" id="s-overlay-height" value="65"
-                oninput="document.getElementById('v-overlay-height').textContent=this.value; applyOverlayLive()"/>
-            </div>
-            <div class="slider-field">
-              <label>Margine inferiore px <span id="v-chat-bottom">100</span></label>
-              <input type="range" min="0" max="600" step="4" id="s-chat-bottom" value="100"
-                oninput="document.getElementById('v-chat-bottom').textContent=this.value;
-                         sendToPreview({type:'avatarParam',key:'chat_bottom',value:this.value})"/>
-            </div>
-            <div class="slider-field">
-              <label>Larghezza max % <span id="v-chat-max-width">100</span></label>
-              <input type="range" min="30" max="100" step="5" id="s-chat-max-width" value="100"
-                oninput="document.getElementById('v-chat-max-width').textContent=this.value;
-                         sendToPreview({type:'avatarParam',key:'chat_max_width',value:this.value})"/>
+          <!-- Font chat -->
+          <div class="subsection">
+            <div class="subsection-title">Font</div>
+            <div class="fields" style="gap:12px">
+              <div class="field">
+                <label>Font <span class="hint" style="margin:0">(Google Font o CSS)</span></label>
+                <input type="text" id="f-chat-font" placeholder="es. Roboto"
+                  oninput="sendToPreview({type:'avatarParam',key:'chat_font',value:this.value})"/>
+              </div>
+              <div class="field">
+                <label>Grandezza <span id="val-chat-font-size">1.1</span>rem</label>
+                <input type="range" id="s-chat-font-size" min="0.6" max="3.5" step="0.05" value="1.1"
+                  oninput="document.getElementById('val-chat-font-size').textContent=parseFloat(this.value).toFixed(2);
+                           sendToPreview({type:'avatarParam',key:'chat_font_size',value:this.value})"/>
+              </div>
             </div>
           </div>
-          <div class="field" style="margin-top:12px">
-            <label>Posizione orizzontale</label>
-            <div class="btn-row" style="gap:6px">
-              <button id="align-left-btn"   class="btn btn-neutral" onclick="setChatAlign('left')">◀ Sinistra</button>
-              <button id="align-center-btn" class="btn btn-neutral active" onclick="setChatAlign('center')">● Centro</button>
-              <button id="align-right-btn"  class="btn btn-neutral" onclick="setChatAlign('right')">▶ Destra</button>
-            </div>
-          </div>
-          <div style="display:flex;flex-direction:column;gap:8px;margin-top:12px">
-            <label style="display:flex;align-items:center;gap:10px;cursor:pointer;font-size:.78rem;color:var(--text-dim)">
-              <input type="checkbox" id="f-chat-hide-input"
-                onchange="sendToPreview({type:'avatarParam',key:'chat_hide_input',value:this.checked?1:0})"/>
-              Nascondi input testo
-            </label>
-            <label style="display:flex;align-items:center;gap:10px;cursor:pointer;font-size:.78rem;color:var(--text-dim)">
-              <input type="checkbox" id="f-show-controls" checked
-                onchange="sendToPreview({type:'avatarParam',key:'show_controls',value:this.checked?1:0})"/>
-              Mostra indicatori in alto a destra (mic / audio)
-            </label>
-          </div>
-        </div>
-
-        <div class="section">
-          <h3>Font chat</h3>
-          <div class="fields" style="gap:12px">
-            <div class="field">
-              <label>Font <span class="hint" style="margin:0">(Google Font o CSS)</span></label>
-              <input type="text" id="f-chat-font" placeholder="es. Roboto"
-                oninput="sendToPreview({type:'avatarParam',key:'chat_font',value:this.value})"/>
-            </div>
-            <div class="field">
-              <label>Grandezza <span id="val-chat-font-size">1.1</span>rem</label>
-              <input type="range" id="s-chat-font-size" min="0.6" max="3.5" step="0.05" value="1.1"
-                oninput="document.getElementById('val-chat-font-size').textContent=parseFloat(this.value).toFixed(2);
-                         sendToPreview({type:'avatarParam',key:'chat_font_size',value:this.value})"/>
+          <!-- Opzioni visibilità -->
+          <div class="subsection">
+            <div class="subsection-title">Opzioni</div>
+            <div style="display:flex;flex-direction:column;gap:8px">
+              <label style="display:flex;align-items:center;gap:10px;cursor:pointer;font-size:.78rem;color:var(--text-dim)">
+                <input type="checkbox" id="f-chat-hide-input"
+                  onchange="sendToPreview({type:'avatarParam',key:'chat_hide_input',value:this.checked?1:0})"/>
+                Nascondi input testo
+              </label>
+              <label style="display:flex;align-items:center;gap:10px;cursor:pointer;font-size:.78rem;color:var(--text-dim)">
+                <input type="checkbox" id="f-show-controls" checked
+                  onchange="sendToPreview({type:'avatarParam',key:'show_controls',value:this.checked?1:0})"/>
+                Mostra indicatori mic / audio
+              </label>
             </div>
           </div>
         </div>
@@ -969,79 +1001,84 @@
         <div class="section">
           <h3>Icone controlli</h3>
 
-          <!-- Microfono -->
-          <div style="margin-bottom:14px">
-            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
-              <span style="font-size:.78rem;color:#aaa;font-weight:600">Microfono</span>
-              <label style="display:flex;align-items:center;gap:6px;font-size:.78rem;color:#aaa;cursor:pointer">
+          <!-- ── Microfono ───────────────────────────── -->
+          <div class="subsection">
+            <div class="subsection-title">
+              <span>Microfono</span>
+              <label style="display:flex;align-items:center;gap:6px;font-size:.7rem;color:var(--text-dim);cursor:pointer;font-weight:400;text-transform:none;letter-spacing:0">
                 <input type="checkbox" id="f-mic-visible" checked
                   onchange="sendToPreview({type:'avatarParam',key:'mic_visible',value:this.checked?1:0})"/> Visibile
               </label>
             </div>
-            <div style="display:flex;align-items:center;gap:10px;margin-bottom:6px">
-              <img id="preview-mic-icon" src="" alt="" style="width:40px;height:40px;object-fit:contain;border-radius:8px;background:#1a1a2e;padding:4px;display:none"/>
-              <label style="cursor:pointer;background:#2a2a4a;border:1px dashed #444;border-radius:8px;padding:8px 14px;font-size:.8rem;color:#aaa">
-                📁 Attivo
+            <!-- Icone cliccabili -->
+            <div class="icon-row">
+              <label class="icon-slot" title="Clicca per cambiare icona attivo">
+                <div class="icon-slot-thumb" id="thumb-mic">
+                  <img id="preview-mic-icon" src="" alt=""/>
+                  <span class="slot-placeholder">🎙</span>
+                </div>
+                <span class="icon-slot-label">Attivo</span>
                 <input type="file" accept="image/*" style="display:none" onchange="uploadIcon('mic',this)"/>
               </label>
-              <span id="mic-icon-label" style="font-size:.75rem;color:#666">Nessuna</span>
-            </div>
-            <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px">
-              <img id="preview-mic-disabled-icon" src="" alt="" style="width:40px;height:40px;object-fit:contain;border-radius:8px;background:#1a1a2e;padding:4px;display:none"/>
-              <label style="cursor:pointer;background:#2a2a4a;border:1px dashed #444;border-radius:8px;padding:8px 14px;font-size:.8rem;color:#aaa">
-                📁 Disabilitato
+              <label class="icon-slot" title="Clicca per cambiare icona disabilitato">
+                <div class="icon-slot-thumb" id="thumb-mic-disabled">
+                  <img id="preview-mic-disabled-icon" src="" alt=""/>
+                  <span class="slot-placeholder">🎙</span>
+                </div>
+                <span class="icon-slot-label">Disabilitato</span>
                 <input type="file" accept="image/*" style="display:none" onchange="uploadIcon('mic-disabled',this)"/>
               </label>
-              <span id="mic-disabled-icon-label" style="font-size:.75rem;color:#666">Nessuna</span>
             </div>
+            <!-- Dimensione e posizione -->
             <div class="fields" style="gap:10px">
               <div class="field">
-                <label>Dimensione <span id="val-mic-icon-size">100</span>px</label>
+                <label>Dim. <span id="val-mic-icon-size">100</span>px</label>
                 <input type="range" id="s-mic-icon-size" min="10" max="300" step="2" value="100"
                   oninput="document.getElementById('val-mic-icon-size').textContent=this.value;
                            sendToPreview({type:'avatarParam',key:'mic_icon_size',value:this.value})"/>
               </div>
               <div class="field">
-                <label>Pos X <span id="val-mic-icon-x">0</span>px</label>
+                <label>X <span id="val-mic-icon-x">0</span></label>
                 <input type="range" id="s-mic-icon-x" min="-600" max="600" step="1" value="0"
                   oninput="document.getElementById('val-mic-icon-x').textContent=this.value;
                            sendToPreview({type:'avatarParam',key:'mic_icon_x',value:this.value})"/>
               </div>
               <div class="field">
-                <label>Pos Y <span id="val-mic-icon-y">0</span>px</label>
+                <label>Y <span id="val-mic-icon-y">0</span></label>
                 <input type="range" id="s-mic-icon-y" min="-600" max="600" step="1" value="0"
                   oninput="document.getElementById('val-mic-icon-y').textContent=this.value;
                            sendToPreview({type:'avatarParam',key:'mic_icon_y',value:this.value})"/>
               </div>
             </div>
-            <div class="fields" style="gap:10px;margin-top:8px">
+            <!-- Colori 2×2 -->
+            <div class="fields" style="gap:8px;margin-top:8px;grid-template-columns:1fr 1fr">
               <div class="field">
-                <label>Sfondo <span id="f-mic-bg-alpha-val">15%</span></label>
-                <div style="display:flex;align-items:center;gap:6px">
+                <label>Sfondo att. <span id="f-mic-bg-alpha-val">15%</span></label>
+                <div style="display:flex;align-items:center;gap:4px">
                   <input type="color" id="f-mic-bg-color" value="#f87171" oninput="colorChange('f-mic-bg-color','f-mic-bg-alpha','mic_bg_color')"/>
                   <input type="range" id="f-mic-bg-alpha" min="0" max="100" step="1" value="15" style="flex:1"
                     oninput="document.getElementById('f-mic-bg-alpha-val').textContent=this.value+'%';colorChange('f-mic-bg-color','f-mic-bg-alpha','mic_bg_color')"/>
                 </div>
               </div>
               <div class="field">
-                <label>Sfondo disabilitato <span id="f-mic-dis-alpha-val">15%</span></label>
-                <div style="display:flex;align-items:center;gap:6px">
+                <label>Sfondo dis. <span id="f-mic-dis-alpha-val">15%</span></label>
+                <div style="display:flex;align-items:center;gap:4px">
                   <input type="color" id="f-mic-disabled-color" value="#f87171" oninput="colorChange('f-mic-disabled-color','f-mic-dis-alpha','mic_disabled_color')"/>
                   <input type="range" id="f-mic-dis-alpha" min="0" max="100" step="1" value="15" style="flex:1"
                     oninput="document.getElementById('f-mic-dis-alpha-val').textContent=this.value+'%';colorChange('f-mic-disabled-color','f-mic-dis-alpha','mic_disabled_color')"/>
                 </div>
               </div>
               <div class="field">
-                <label>Bordo attivo <span id="f-mic-border-alpha-val">50%</span></label>
-                <div style="display:flex;align-items:center;gap:6px">
+                <label>Bordo att. <span id="f-mic-border-alpha-val">50%</span></label>
+                <div style="display:flex;align-items:center;gap:4px">
                   <input type="color" id="f-mic-border-color" value="#22d3a0" oninput="colorChange('f-mic-border-color','f-mic-border-alpha','mic_border_color')"/>
                   <input type="range" id="f-mic-border-alpha" min="0" max="100" step="1" value="50" style="flex:1"
                     oninput="document.getElementById('f-mic-border-alpha-val').textContent=this.value+'%';colorChange('f-mic-border-color','f-mic-border-alpha','mic_border_color')"/>
                 </div>
               </div>
               <div class="field">
-                <label>Bordo disabilitato <span id="f-mic-border-dis-alpha-val">40%</span></label>
-                <div style="display:flex;align-items:center;gap:6px">
+                <label>Bordo dis. <span id="f-mic-border-dis-alpha-val">40%</span></label>
+                <div style="display:flex;align-items:center;gap:4px">
                   <input type="color" id="f-mic-border-disabled-color" value="#f87171" oninput="colorChange('f-mic-border-disabled-color','f-mic-border-dis-alpha','mic_border_disabled_color')"/>
                   <input type="range" id="f-mic-border-dis-alpha" min="0" max="100" step="1" value="40" style="flex:1"
                     oninput="document.getElementById('f-mic-border-dis-alpha-val').textContent=this.value+'%';colorChange('f-mic-border-disabled-color','f-mic-border-dis-alpha','mic_border_disabled_color')"/>
@@ -1050,79 +1087,81 @@
             </div>
           </div>
 
-          <!-- Audio -->
-          <div>
-            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
-              <span style="font-size:.78rem;color:#aaa;font-weight:600">Audio</span>
-              <label style="display:flex;align-items:center;gap:6px;font-size:.78rem;color:#aaa;cursor:pointer">
+          <!-- ── Audio ──────────────────────────────── -->
+          <div class="subsection">
+            <div class="subsection-title">
+              <span>Audio</span>
+              <label style="display:flex;align-items:center;gap:6px;font-size:.7rem;color:var(--text-dim);cursor:pointer;font-weight:400;text-transform:none;letter-spacing:0">
                 <input type="checkbox" id="f-audio-visible" checked
                   onchange="sendToPreview({type:'avatarParam',key:'audio_visible',value:this.checked?1:0})"/> Visibile
               </label>
             </div>
-            <div style="display:flex;align-items:center;gap:10px;margin-bottom:6px">
-              <img id="preview-audio-icon" src="" alt="" style="width:40px;height:40px;object-fit:contain;border-radius:8px;background:#1a1a2e;padding:4px;display:none"/>
-              <label style="cursor:pointer;background:#2a2a4a;border:1px dashed #444;border-radius:8px;padding:8px 14px;font-size:.8rem;color:#aaa">
-                📁 Attivo
+            <div class="icon-row">
+              <label class="icon-slot" title="Clicca per cambiare icona attivo">
+                <div class="icon-slot-thumb" id="thumb-audio">
+                  <img id="preview-audio-icon" src="" alt=""/>
+                  <span class="slot-placeholder">🔊</span>
+                </div>
+                <span class="icon-slot-label">Attivo</span>
                 <input type="file" accept="image/*" style="display:none" onchange="uploadIcon('audio',this)"/>
               </label>
-              <span id="audio-icon-label" style="font-size:.75rem;color:#666">Nessuna</span>
-            </div>
-            <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px">
-              <img id="preview-audio-disabled-icon" src="" alt="" style="width:40px;height:40px;object-fit:contain;border-radius:8px;background:#1a1a2e;padding:4px;display:none"/>
-              <label style="cursor:pointer;background:#2a2a4a;border:1px dashed #444;border-radius:8px;padding:8px 14px;font-size:.8rem;color:#aaa">
-                📁 Disabilitato
+              <label class="icon-slot" title="Clicca per cambiare icona disabilitato">
+                <div class="icon-slot-thumb" id="thumb-audio-disabled">
+                  <img id="preview-audio-disabled-icon" src="" alt=""/>
+                  <span class="slot-placeholder">🔊</span>
+                </div>
+                <span class="icon-slot-label">Disabilitato</span>
                 <input type="file" accept="image/*" style="display:none" onchange="uploadIcon('audio-disabled',this)"/>
               </label>
-              <span id="audio-disabled-icon-label" style="font-size:.75rem;color:#666">Nessuna</span>
             </div>
             <div class="fields" style="gap:10px">
               <div class="field">
-                <label>Dimensione <span id="val-audio-icon-size">100</span>px</label>
+                <label>Dim. <span id="val-audio-icon-size">100</span>px</label>
                 <input type="range" id="s-audio-icon-size" min="10" max="300" step="2" value="100"
                   oninput="document.getElementById('val-audio-icon-size').textContent=this.value;
                            sendToPreview({type:'avatarParam',key:'audio_icon_size',value:this.value})"/>
               </div>
               <div class="field">
-                <label>Pos X <span id="val-audio-icon-x">0</span>px</label>
+                <label>X <span id="val-audio-icon-x">0</span></label>
                 <input type="range" id="s-audio-icon-x" min="-600" max="600" step="1" value="0"
                   oninput="document.getElementById('val-audio-icon-x').textContent=this.value;
                            sendToPreview({type:'avatarParam',key:'audio_icon_x',value:this.value})"/>
               </div>
               <div class="field">
-                <label>Pos Y <span id="val-audio-icon-y">0</span>px</label>
+                <label>Y <span id="val-audio-icon-y">0</span></label>
                 <input type="range" id="s-audio-icon-y" min="-600" max="600" step="1" value="0"
                   oninput="document.getElementById('val-audio-icon-y').textContent=this.value;
                            sendToPreview({type:'avatarParam',key:'audio_icon_y',value:this.value})"/>
               </div>
             </div>
-            <div class="fields" style="gap:10px;margin-top:8px">
+            <div class="fields" style="gap:8px;margin-top:8px;grid-template-columns:1fr 1fr">
               <div class="field">
-                <label>Sfondo <span id="f-audio-bg-alpha-val">15%</span></label>
-                <div style="display:flex;align-items:center;gap:6px">
+                <label>Sfondo att. <span id="f-audio-bg-alpha-val">15%</span></label>
+                <div style="display:flex;align-items:center;gap:4px">
                   <input type="color" id="f-audio-bg-color" value="#22d3a0" oninput="colorChange('f-audio-bg-color','f-audio-bg-alpha','audio_bg_color')"/>
                   <input type="range" id="f-audio-bg-alpha" min="0" max="100" step="1" value="15" style="flex:1"
                     oninput="document.getElementById('f-audio-bg-alpha-val').textContent=this.value+'%';colorChange('f-audio-bg-color','f-audio-bg-alpha','audio_bg_color')"/>
                 </div>
               </div>
               <div class="field">
-                <label>Sfondo disabilitato <span id="f-audio-dis-alpha-val">15%</span></label>
-                <div style="display:flex;align-items:center;gap:6px">
+                <label>Sfondo dis. <span id="f-audio-dis-alpha-val">15%</span></label>
+                <div style="display:flex;align-items:center;gap:4px">
                   <input type="color" id="f-audio-disabled-color" value="#22d3a0" oninput="colorChange('f-audio-disabled-color','f-audio-dis-alpha','audio_disabled_color')"/>
                   <input type="range" id="f-audio-dis-alpha" min="0" max="100" step="1" value="15" style="flex:1"
                     oninput="document.getElementById('f-audio-dis-alpha-val').textContent=this.value+'%';colorChange('f-audio-disabled-color','f-audio-dis-alpha','audio_disabled_color')"/>
                 </div>
               </div>
               <div class="field">
-                <label>Bordo attivo <span id="f-audio-border-alpha-val">50%</span></label>
-                <div style="display:flex;align-items:center;gap:6px">
+                <label>Bordo att. <span id="f-audio-border-alpha-val">50%</span></label>
+                <div style="display:flex;align-items:center;gap:4px">
                   <input type="color" id="f-audio-border-color" value="#22d3a0" oninput="colorChange('f-audio-border-color','f-audio-border-alpha','audio_border_color')"/>
                   <input type="range" id="f-audio-border-alpha" min="0" max="100" step="1" value="50" style="flex:1"
                     oninput="document.getElementById('f-audio-border-alpha-val').textContent=this.value+'%';colorChange('f-audio-border-color','f-audio-border-alpha','audio_border_color')"/>
                 </div>
               </div>
               <div class="field">
-                <label>Bordo disabilitato <span id="f-audio-border-dis-alpha-val">40%</span></label>
-                <div style="display:flex;align-items:center;gap:6px">
+                <label>Bordo dis. <span id="f-audio-border-dis-alpha-val">40%</span></label>
+                <div style="display:flex;align-items:center;gap:4px">
                   <input type="color" id="f-audio-border-disabled-color" value="#f87171" oninput="colorChange('f-audio-border-disabled-color','f-audio-border-dis-alpha','audio_border_disabled_color')"/>
                   <input type="range" id="f-audio-border-dis-alpha" min="0" max="100" step="1" value="40" style="flex:1"
                     oninput="document.getElementById('f-audio-border-dis-alpha-val').textContent=this.value+'%';colorChange('f-audio-border-disabled-color','f-audio-border-dis-alpha','audio_border_disabled_color')"/>
@@ -1130,23 +1169,26 @@
               </div>
             </div>
           </div>
-          <div class="fields" style="gap:12px;margin-top:10px">
-            <div class="field">
-              <label>Colore onda mic</label>
-              <div style="display:flex;align-items:center;gap:8px">
-                <input type="color" id="f-mic-wave-color" value="#ffffff"
-                  oninput="document.getElementById('f-mic-wave-hex').textContent=this.value;
-                           sendToPreview({type:'avatarParam',key:'mic_wave_color',value:this.value})"/>
-                <span id="f-mic-wave-hex" style="font-size:.8rem;opacity:.7">#ffffff</span>
+          <div class="subsection">
+            <div class="subsection-title">Onde</div>
+            <div class="fields" style="gap:12px">
+              <div class="field">
+                <label>Onda mic</label>
+                <div style="display:flex;align-items:center;gap:8px">
+                  <input type="color" id="f-mic-wave-color" value="#ffffff"
+                    oninput="document.getElementById('f-mic-wave-hex').textContent=this.value;
+                             sendToPreview({type:'avatarParam',key:'mic_wave_color',value:this.value})"/>
+                  <span id="f-mic-wave-hex" style="font-size:.8rem;opacity:.7">#ffffff</span>
+                </div>
               </div>
-            </div>
-            <div class="field">
-              <label>Colore onda audio</label>
-              <div style="display:flex;align-items:center;gap:8px">
-                <input type="color" id="f-audio-wave-color" value="#ffffff"
-                  oninput="document.getElementById('f-audio-wave-hex').textContent=this.value;
-                           sendToPreview({type:'avatarParam',key:'audio_wave_color',value:this.value})"/>
-                <span id="f-audio-wave-hex" style="font-size:.8rem;opacity:.7">#ffffff</span>
+              <div class="field">
+                <label>Onda audio</label>
+                <div style="display:flex;align-items:center;gap:8px">
+                  <input type="color" id="f-audio-wave-color" value="#ffffff"
+                    oninput="document.getElementById('f-audio-wave-hex').textContent=this.value;
+                             sendToPreview({type:'avatarParam',key:'audio_wave_color',value:this.value})"/>
+                  <span id="f-audio-wave-hex" style="font-size:.8rem;opacity:.7">#ffffff</span>
+                </div>
               </div>
             </div>
           </div>
@@ -1154,59 +1196,70 @@
 
         <div class="section">
           <h3>Schermata Idle</h3>
-          <div class="fields" style="gap:12px">
-            <div class="field">
-              <label>Emoji icona</label>
-              <input type="text" id="f-idle-icon" value="🤖" maxlength="8"
-                style="font-size:1.4rem;text-align:center;"
-                oninput="sendToPreview({type:'idleParam',key:'idle_icon',value:this.value})"/>
-            </div>
-            <div class="field">
-              <label>Timeout inattività <span id="val-idle-timeout">90</span>s</label>
-              <input type="range" id="s-idle-timeout" min="10" max="300" step="5" value="90"
-                oninput="document.getElementById('val-idle-timeout').textContent=this.value;
-                         sendToPreview({type:'idleParam',key:'idle_timeout',value:this.value})"/>
-            </div>
-          </div>
-          <div style="margin-top:10px">
-            <div style="font-size:.78rem;color:#aaa;margin-bottom:8px;font-weight:600">Immagine icona (sovrascrive emoji)</div>
-            <div style="display:flex;align-items:center;gap:10px">
-              <img id="preview-idle-icon" src="" alt="" style="width:48px;height:48px;object-fit:cover;border-radius:50%;background:#1a1a2e;display:none"/>
-              <label style="cursor:pointer;background:#2a2a4a;border:1px dashed #444;border-radius:8px;padding:8px 14px;font-size:.8rem;color:#aaa">
-                📁 Carica immagine
+          <!-- Icona + Timeout -->
+          <div class="subsection">
+            <div class="subsection-title">Icona</div>
+            <div style="display:flex;align-items:center;gap:14px;margin-bottom:10px">
+              <label class="icon-slot" title="Clicca per cambiare immagine icona">
+                <div class="icon-slot-thumb" style="width:60px;height:60px;border-radius:50%">
+                  <img id="preview-idle-icon" src="" alt="" style="border-radius:50%"/>
+                  <span class="slot-placeholder" id="f-idle-icon-placeholder">🤖</span>
+                </div>
+                <span class="icon-slot-label">Immagine</span>
                 <input type="file" accept="image/*" style="display:none" onchange="uploadIcon('idle',this)"/>
               </label>
-              <span id="idle-icon-label" style="font-size:.75rem;color:#666">Nessuna</span>
+              <div style="flex:1;display:flex;flex-direction:column;gap:8px">
+                <div class="field">
+                  <label>Emoji</label>
+                  <input type="text" id="f-idle-icon" value="🤖" maxlength="8"
+                    style="font-size:1.3rem;text-align:center;"
+                    oninput="document.getElementById('f-idle-icon-placeholder').textContent=this.value;sendToPreview({type:'idleParam',key:'idle_icon',value:this.value})"/>
+                </div>
+                <div class="field">
+                  <label>Timeout <span id="val-idle-timeout">90</span>s</label>
+                  <input type="range" id="s-idle-timeout" min="10" max="300" step="5" value="90"
+                    oninput="document.getElementById('val-idle-timeout').textContent=this.value;
+                             sendToPreview({type:'idleParam',key:'idle_timeout',value:this.value})"/>
+                </div>
+              </div>
             </div>
           </div>
-          <div class="fields" style="gap:12px;margin-top:12px">
-            <div class="field">
-              <label>Font testi</label>
-              <input type="text" id="f-idle-font" placeholder="Es: Montserrat"
-                oninput="sendToPreview({type:'idleParam',key:'idle_font',value:this.value})"/>
-            </div>
-            <div class="field">
-              <label>Grandezza testo <span id="val-idle-font-size">1.1</span>rem</label>
-              <input type="range" id="s-idle-font-size" min="0.5" max="4.0" step="0.05" value="1.1"
-                oninput="document.getElementById('val-idle-font-size').textContent=parseFloat(this.value).toFixed(2);
-                         sendToPreview({type:'idleParam',key:'idle_font_size',value:this.value})"/>
+          <!-- Font -->
+          <div class="subsection">
+            <div class="subsection-title">Font</div>
+            <div class="fields" style="gap:12px">
+              <div class="field">
+                <label>Font <span class="hint" style="margin:0">(Google Font o CSS)</span></label>
+                <input type="text" id="f-idle-font" placeholder="Es: Montserrat"
+                  oninput="sendToPreview({type:'idleParam',key:'idle_font',value:this.value})"/>
+              </div>
+              <div class="field">
+                <label>Grandezza <span id="val-idle-font-size">1.1</span>rem</label>
+                <input type="range" id="s-idle-font-size" min="0.5" max="4.0" step="0.05" value="1.1"
+                  oninput="document.getElementById('val-idle-font-size').textContent=parseFloat(this.value).toFixed(2);
+                           sendToPreview({type:'idleParam',key:'idle_font_size',value:this.value})"/>
+              </div>
             </div>
           </div>
-          <div class="fields single" style="gap:10px;margin-top:10px">
-            <div class="field">
-              <label>Titolo</label>
-              <input type="text" id="f-idle-title" placeholder="Ciao! Sono {nome}"
-                oninput="sendToPreview({type:'idleParam',key:'idle_title',value:this.value})"/>
-            </div>
-            <div class="field">
-              <label>Sottotitolo</label>
-              <input type="text" id="f-idle-subtitle" value="La tua assistente virtuale"
-                oninput="sendToPreview({type:'idleParam',key:'idle_subtitle',value:this.value})"/>
-            </div>
-            <div class="field">
-              <label>Hint / tasto</label>
-              <input type="text" id="f-idle-hint" value="✨ Tocca per iniziare"
-                oninput="sendToPreview({type:'idleParam',key:'idle_hint',value:this.value})"/>
+          <!-- Testi -->
+          <div class="subsection">
+            <div class="subsection-title">Testi</div>
+            <div class="fields single" style="gap:10px">
+              <div class="field">
+                <label>Titolo</label>
+                <input type="text" id="f-idle-title" placeholder="Ciao! Sono {nome}"
+                  oninput="sendToPreview({type:'idleParam',key:'idle_title',value:this.value})"/>
+              </div>
+              <div class="field">
+                <label>Sottotitolo</label>
+                <input type="text" id="f-idle-subtitle" value="La tua assistente virtuale"
+                  oninput="sendToPreview({type:'idleParam',key:'idle_subtitle',value:this.value})"/>
+              </div>
+              <div class="field">
+                <label>Hint / tasto</label>
+                <input type="text" id="f-idle-hint" value="✨ Tocca per iniziare"
+                  oninput="sendToPreview({type:'idleParam',key:'idle_hint',value:this.value})"/>
+              </div>
             </div>
           </div>
         </div>
@@ -1324,8 +1377,8 @@
     <!-- Preview 3D -->
     <div id="preview-panel">
       <div id="preview-mode-bar" style="display:none">
-        <button id="btn-mode-web"    onclick="setPreviewMode('web')">🖥 Web</button>
-        <button id="btn-mode-mobile" class="active" onclick="setPreviewMode('mobile')">📱 Smartphone</button>
+        <button id="btn-mode-web"    class="active" onclick="setPreviewMode('web')">🖥 Web</button>
+        <button id="btn-mode-mobile" onclick="setPreviewMode('mobile')">📱 Smartphone</button>
       </div>
       <div id="preview-viewport">
         <div id="preview-placeholder">
@@ -1723,7 +1776,7 @@ const PREVIEW_MODES = {
   mobile: { w:  390, h:  844 },   // iPhone-like
   web:    { w:  800, h: 1280 },   // browser verticale
 };
-let _previewMode = 'mobile';
+let _previewMode = 'web';
 
 function setPreviewMode(mode) {
   _previewMode = mode;
@@ -1740,10 +1793,9 @@ function _resizePreview() {
   if (wrap.style.display === 'none') return;
 
   const { w: LW, h: LH } = PREVIEW_MODES[_previewMode];
-  const modeBarH = document.getElementById('preview-mode-bar').offsetHeight || 0;
-  const barH     = document.getElementById('preview-bar').offsetHeight || 0;
+  const barH = document.getElementById('preview-bar').offsetHeight || 0;
   const vpW  = vp.clientWidth  - 32;
-  const vpH  = vp.clientHeight - 32;
+  const vpH  = vp.clientHeight - barH - 32;
 
   const scale = Math.min(vpW / LW, vpH / LH);
   const dispW = Math.round(LW * scale);
@@ -2122,16 +2174,18 @@ async function uploadIcon(type, input) {
 }
 
 function setIconPreview(type, path) {
-  const domType = type === 'mic-disabled' ? 'mic-disabled' : type === 'audio-disabled' ? 'audio-disabled' : type;
-  const img   = document.getElementById(`preview-${domType}-icon`);
-  const label = document.getElementById(`${domType}-icon-label`);
+  const img = document.getElementById(`preview-${type}-icon`);
+  if (!img) return;
+  const thumb = img.closest('.icon-slot-thumb');
+  const placeholder = thumb ? thumb.querySelector('.slot-placeholder') : null;
   if (path) {
     img.src = `/${path}?t=${Date.now()}`;
     img.style.display = 'block';
-    label.textContent = path.split('/').pop();
+    if (placeholder) placeholder.style.display = 'none';
+    if (type === 'idle') img.style.borderRadius = '50%';
   } else {
     img.style.display = 'none';
-    label.textContent = 'Nessuna';
+    if (placeholder) placeholder.style.display = '';
   }
 }
 
