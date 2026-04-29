@@ -1272,14 +1272,16 @@ function startRenderLoop() {
         if (CONFIG.animPingPong) {
           if (state.mainAction.timeScale >= 0 && t >= r.end) {
             state.mainAction.timeScale = -1;
-            state.mainAction.time = r.end - 0.001;
+            state.mainAction.startAt(state.mixer.time + (r.end - 0.001));
           } else if (state.mainAction.timeScale < 0 && t <= r.start) {
             state.mainAction.timeScale = 1;
-            state.mainAction.time = r.start + 0.001;
+            state.mainAction.startAt(state.mixer.time - (r.start + 0.001));
           }
         } else {
           state.mainAction.timeScale = 1;
-          if (t < r.start || t >= r.end) state.mainAction.time = r.start;
+          if (t < r.start || t >= r.end) {
+            state.mainAction.startAt(state.mixer.time - r.start);
+          }
         }
       }
     }
@@ -2322,7 +2324,6 @@ function loadGLBAvatar(url) {
         state.mainAction = state.mixer.clipAction(state._fullClip);
         state.mainAction.setLoop(THREE.LoopRepeat, Infinity);
         state.mainAction.timeScale = 1;
-        state.mainAction.time = ANIM_RANGE.idleStart;
         state.mainAction.play();
 
         // Comunica la durata del clip all'admin (se in preview)
@@ -2425,8 +2426,8 @@ window.addEventListener('message', e => {
       ? { start: ANIM_RANGE.idleStart,   end: ANIM_RANGE.idleEnd }
       : { start: ANIM_RANGE.speechStart, end: ANIM_RANGE.speechEnd };
     if (state.mainAction) {
-      state.mainAction.time = state._previewRange.start;
       state.mainAction.timeScale = 1;
+      state.mainAction.startAt(state.mixer.time - state._previewRange.start);
     }
     state._isPreviewLooping = true;
   }
@@ -2444,8 +2445,8 @@ window.addEventListener('message', e => {
     state._adminScrubbing = false;
     if (state.mainAction) {
       state.mainAction.paused    = false;
-      state.mainAction.time      = start;
       state.mainAction.timeScale = 1;
+      state.mainAction.startAt(state.mixer.time - start);
     }
     state._previewRange     = end !== null ? { start, end } : null;
     state._isPreviewLooping = end !== null;
