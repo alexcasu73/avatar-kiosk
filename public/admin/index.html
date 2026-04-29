@@ -1235,6 +1235,11 @@
                 <button class="btn btn-sm" style="margin-left:6px;font-size:.75rem" onclick="clearIdleBgColor()">Nessuno</button>
               </div>
             </div>
+            <div class="slider-field">
+              <label>Trasparenza colore <span id="v-idle-bg-color-alpha">100%</span></label>
+              <input type="range" min="0" max="100" step="1" id="s-idle-bg-color-alpha" value="100"
+                oninput="document.getElementById('v-idle-bg-color-alpha').textContent=this.value+'%'; applyIdleBgLive()"/>
+            </div>
             <div class="field">
               <label>Immagine di sfondo</label>
               <div id="idle-bg-drop" class="upload-zone" style="min-height:48px;display:flex;align-items:center;gap:10px;padding:10px 14px"
@@ -1669,6 +1674,9 @@ function selectAvatar(id) {
   idleBgColorInput.value = idleBgColor || '#000000';
   document.getElementById('f-idle-bg-hex').textContent = idleBgColor || '#000000';
   idleBgColorInput.dataset.active = idleBgColor ? '1' : '0';
+  const idleBgColorAlpha = Math.round((a.idle_bg_color_alpha ?? 1) * 100);
+  document.getElementById('s-idle-bg-color-alpha').value = idleBgColorAlpha;
+  document.getElementById('v-idle-bg-color-alpha').textContent = idleBgColorAlpha + '%';
   const idleBgOpacity = a.idle_bg_opacity ?? 1;
   document.getElementById('s-idle-bg-opacity').value = idleBgOpacity;
   document.getElementById('v-idle-bg-opacity').textContent = idleBgOpacity.toFixed(2);
@@ -2138,9 +2146,10 @@ async function saveAvatar() {
     idle_hint:       document.getElementById('f-idle-hint').value,
     idle_font:       document.getElementById('f-idle-font').value,
     idle_font_size:  parseFloat(document.getElementById('s-idle-font-size').value),
-    idle_bg_color:   document.getElementById('f-idle-bg-color').dataset.active === '1'
-                       ? document.getElementById('f-idle-bg-color').value : '',
-    idle_bg_opacity: parseFloat(document.getElementById('s-idle-bg-opacity').value),
+    idle_bg_color:       document.getElementById('f-idle-bg-color').dataset.active === '1'
+                           ? document.getElementById('f-idle-bg-color').value : '',
+    idle_bg_color_alpha: parseInt(document.getElementById('s-idle-bg-color-alpha').value) / 100,
+    idle_bg_opacity:     parseFloat(document.getElementById('s-idle-bg-opacity').value),
     mic_icon_size:   parseInt(document.getElementById('s-mic-icon-size').value),
     mic_icon_x:      parseInt(document.getElementById('s-mic-icon-x').value),
     mic_icon_y:      parseInt(document.getElementById('s-mic-icon-y').value),
@@ -2330,9 +2339,11 @@ function setIdleBgUI(path) {
 
 function applyIdleBgLive() {
   const val = document.getElementById('f-idle-bg-color').value;
+  const alpha = parseInt(document.getElementById('s-idle-bg-color-alpha').value) / 100;
   document.getElementById('f-idle-bg-hex').textContent = val;
   document.getElementById('f-idle-bg-color').dataset.active = '1';
   sendToPreview({ type:'idleParam', key:'idle_bg_color', value: val });
+  sendToPreview({ type:'idleParam', key:'idle_bg_color_alpha', value: alpha });
 }
 
 function clearIdleBgColor() {

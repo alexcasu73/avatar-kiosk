@@ -51,7 +51,8 @@ db.exec(`
     idle_hint         TEXT DEFAULT '✨ Tocca per iniziare',
     idle_video        TEXT DEFAULT '',
     idle_bg_image     TEXT DEFAULT '',
-    idle_bg_color     TEXT DEFAULT '',
+    idle_bg_color       TEXT DEFAULT '',
+    idle_bg_color_alpha REAL DEFAULT 1,
     idle_bg_opacity   REAL DEFAULT 1,
     idle_font         TEXT DEFAULT '',
     idle_font_size    REAL DEFAULT 1.1,
@@ -199,6 +200,8 @@ if (!existing.includes('idle_bg_image'))
   db.exec("ALTER TABLE avatars ADD COLUMN idle_bg_image TEXT DEFAULT ''")
 if (!existing.includes('idle_bg_color'))
   db.exec("ALTER TABLE avatars ADD COLUMN idle_bg_color TEXT DEFAULT ''")
+if (!existing.includes('idle_bg_color_alpha'))
+  db.exec("ALTER TABLE avatars ADD COLUMN idle_bg_color_alpha REAL DEFAULT 1")
 if (!existing.includes('idle_bg_opacity'))
   db.exec("ALTER TABLE avatars ADD COLUMN idle_bg_opacity REAL DEFAULT 1")
 if (!existing.includes('bg_video'))
