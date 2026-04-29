@@ -2456,10 +2456,12 @@ window.addEventListener('message', e => {
     if (state.mainAction && state.mixer) {
       state._isPreviewLooping = false;
       state._previewRange     = null;
-      state._adminScrubbing   = true;   // sospende il range control nel render loop
-      state.mainAction.paused = true;
-      state.mainAction.time   = parseFloat(msg.time);
+      state._adminScrubbing   = true;
+      const t = parseFloat(msg.time);
+      state.mainAction.paused = false;
+      state.mainAction.startAt(state.mixer.time - t);
       state.mixer.update(0);
+      state.mainAction.paused = true;
     }
   }
 
