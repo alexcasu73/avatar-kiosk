@@ -661,6 +661,7 @@
             <button class="btn btn-success" id="publish-btn" onclick="togglePublish()"><svg viewBox="0 0 24 24"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg> Pubblica</button>
             <button class="btn btn-primary" onclick="saveAvatar()"><svg viewBox="0 0 24 24"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg> Salva</button>
             <button class="btn btn-neutral btn-icon" onclick="openKiosk()" title="Apri kiosk"><svg viewBox="0 0 24 24"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg></button>
+            <button class="btn btn-neutral btn-icon" onclick="duplicateAvatar()" title="Duplica"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg></button>
             <button class="btn btn-danger  btn-icon" onclick="deleteAvatar()" title="Elimina"><svg viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg></button>
           </div>
         </div>
@@ -768,7 +769,11 @@
             <div class="webhook-block-title">Headers</div>
             <textarea id="f-webhook-headers" rows="3" class="mono-area"
               placeholder='{"Authorization":"Bearer xxx"}'
+              onblur="autoFormatJSON(this)"
             >{}</textarea>
+            <div class="webhook-block-hint">Esempio con autenticazione:<br>
+              <code>{"Authorization":"Bearer il-tuo-token", "X-Api-Key":"chiave"}</code>
+            </div>
           </div>
 
           <!-- BODY -->
@@ -776,13 +781,24 @@
             <div class="webhook-block-title">Body</div>
             <textarea id="f-webhook-input-template" rows="6" class="mono-area"
               placeholder='{"query":"{{query}}"}'
+              onblur="autoFormatJSON(this)"
             >{"query":"{{query}}"}</textarea>
+            <div class="webhook-block-hint">
+              Usa <code>{{query}}</code> come segnaposto per il messaggio dell'utente.<br>
+              Esempio n8n: <code>{"message":"{{query}}", "sessionId":"abc123"}</code><br>
+              Esempio con contesto: <code>{"input":"{{query}}", "language":"it"}</code>
+            </div>
           </div>
 
           <!-- RESPONSE -->
           <div class="webhook-block">
             <div class="webhook-block-title">Response</div>
             <input type="text" id="f-webhook-output-field" class="mono-input" placeholder="response" value="response"/>
+            <div class="webhook-block-hint">
+              Campo JSON della risposta da mostrare. Usa il punto per annidare.<br>
+              Esempio: <code>response</code> → <code>{"response":"Ciao!"}</code><br>
+              Esempio annidato: <code>data.message</code> → <code>{"data":{"message":"Ciao!"}}</code>
+            </div>
           </div>
 
           <button class="btn btn-neutral" onclick="testWebhook()"><svg viewBox="0 0 24 24"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg> Testa webhook</button>
@@ -1461,6 +1477,10 @@ function selectAvatar(id) {
   setAvatarMode(a.avatar_mode || 'embedded');
   document.getElementById('f-webhook-url').value              = a.webhook_url              || '';
   document.getElementById('f-webhook-input-template').value   = a.webhook_input_template   || '{"query":"{{query}}"}';
+  setTimeout(() => {
+    autoFormatJSON(document.getElementById('f-webhook-input-template'));
+    autoFormatJSON(document.getElementById('f-webhook-headers'));
+  }, 0);
   document.getElementById('f-webhook-output-field').value     = a.webhook_output_field     || 'response';
   document.getElementById('f-webhook-headers').value          = a.webhook_headers          || '{}';
   document.getElementById('webhook-test-result').textContent = '';
@@ -2099,6 +2119,17 @@ async function togglePublish() {
   toast(res.published ? 'Avatar pubblicato' : 'Avatar rimosso dalla pubblicazione');
 }
 
+// ── Duplica ───────────────────────────────────────────────────────────────────
+async function duplicateAvatar() {
+  if (!currentId) return;
+  const res = await api.post(`/api/admin/avatars/${currentId}/duplicate`);
+  if (!res?.id) return toast('Errore durante la duplicazione', 'error');
+  avatars.push(res);
+  renderList();
+  selectAvatar(res.id);
+  toast(`Avatar duplicato: ${res.name}`);
+}
+
 // ── Elimina ───────────────────────────────────────────────────────────────────
 async function deleteAvatar() {
   if (!currentId) return;
@@ -2353,6 +2384,18 @@ async function applyAvatarMode() {
   await saveAvatar();
   setAvatarMode._applied = setAvatarMode._current;
   _refreshModeBtns();
+}
+
+function autoFormatJSON(el) {
+  const raw = el.value.trim();
+  if (!raw) return;
+  try {
+    // Sostituisce i segnaposto prima del parse, poi li ripristina
+    const placeholder = '__QUERY_PLACEHOLDER__';
+    const safe = raw.replace(/\{\{query\}\}/g, placeholder);
+    const parsed = JSON.parse(safe);
+    el.value = JSON.stringify(parsed, null, 2).replace(new RegExp(placeholder, 'g'), '{{query}}');
+  } catch (_) {}
 }
 
 async function testWebhook() {

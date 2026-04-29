@@ -577,7 +577,7 @@
     @media (max-width: 600px) {
       #mic-btn {
         top: auto !important;
-        bottom: var(--btn-mobile-bottom, 20px) !important;
+        bottom: max(var(--btn-mobile-bottom, 20px), env(safe-area-inset-bottom, 4px)) !important;
         right: auto !important;
         left: calc(50% - var(--btn-half-total-w, 27px)) !important;
         width:  var(--mic-mobile-size, 22px) !important;
@@ -590,7 +590,7 @@
       }
       #audio-btn {
         top: auto !important;
-        bottom: var(--btn-mobile-bottom, 20px) !important;
+        bottom: max(var(--btn-mobile-bottom, 20px), env(safe-area-inset-bottom, 4px)) !important;
         right: auto !important;
         left: calc(50% - var(--btn-half-total-w, 27px) + var(--mic-mobile-size, 22px) + 10px) !important;
         width:  var(--audio-mobile-size, 22px) !important;
@@ -603,6 +603,9 @@
       }
       #input-area input {
         font-size: 16px !important;
+      }
+      #interaction-panel {
+        bottom: var(--mobile-panel-bottom, 80px) !important;
       }
     }
   </style>
@@ -764,7 +767,7 @@
         <input
           type="text"
           id="text-input"
-          placeholder="Oppure scrivi un messaggio..."
+          placeholder="Scrivi un messaggio"
           autocomplete="off"
         />
         <button id="send-btn" onclick="sendText()" title="Invia">
@@ -1024,8 +1027,15 @@ function applyWaveColors() {
 //  THREE.JS — SCENA
 // ═══════════════════════════════════════════════════════════════════════════
 const canvas = document.getElementById('avatar-canvas');
-const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true, powerPreference: 'high-performance' });
-renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.5));
+let renderer;
+try {
+  renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true, powerPreference: 'default' });
+} catch(_) {
+  try { renderer = new THREE.WebGLRenderer({ canvas, antialias: false, alpha: true }); } catch(e) {
+    document.getElementById('avatar-loader').innerHTML = '<span style="color:#fff;padding:20px;text-align:center">WebGL non supportato su questo dispositivo</span>';
+  }
+}
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1));
 renderer.outputEncoding  = THREE.sRGBEncoding;
 renderer.shadowMap.enabled = false;
 
@@ -1684,19 +1694,30 @@ function updateMicBtn() {
   _applyDisabledIcon('mic-icon-disabled-img', useDisabledIcon ? CONFIG.micIconDisabled : '', 'mic-icon-fallback');
   const micRightVw = ((32 - CONFIG.micIconX) / 1080 * 100).toFixed(4);
   const mic = document.getElementById('mic-btn');
-  // calcola CSS vars per layout mobile (applicate da @media query)
-  const _micSz  = Math.round(CONFIG.micIconSize  * 0.5);
-  const _audSz  = Math.round(CONFIG.audioIconSize * 0.5);
+  const _isMobile = window.innerWidth <= 600;
+  const _micSz  = Math.round(CONFIG.micIconSize  * (_isMobile ? 0.6 : 1));
+  const _audSz  = Math.round(CONFIG.audioIconSize * (_isMobile ? 0.6 : 1));
   const _totW   = _micSz + 10 + _audSz;
-  const _cb     = (CONFIG._chatBottom || 0) * (window.innerWidth <= 600 ? 0.5 : 1);
-  const _mBottom = Math.max(8, Math.round((_cb - _micSz) / 2)) + CONFIG.micIconY;
   const root = document.documentElement;
-  root.style.setProperty('--mic-mobile-size',       _micSz + 'px');
-  root.style.setProperty('--audio-mobile-size',     _audSz + 'px');
-  root.style.setProperty('--btn-half-total-w',      (_totW / 2) + 'px');
-  root.style.setProperty('--btn-mobile-bottom',     _mBottom + 'px');
-  root.style.setProperty('--mic-icon-mobile-size',  Math.round(_micSz * 0.64) + 'px');
-  root.style.setProperty('--audio-icon-mobile-size',Math.round(_audSz * 0.64) + 'px');
+
+  if (_isMobile) {
+    // Layout mobile: bottoni → gap → input → chat
+    const GAP_BOTTOM    = 12;
+    const GAP_BTN_INPUT = 66;  // +50 rispetto a prima
+    const btnBottom     = Math.max(4, GAP_BOTTOM + CONFIG.micIconY - 35);
+    const panelBottom   = GAP_BOTTOM + _micSz + GAP_BTN_INPUT;
+    root.style.setProperty('--btn-mobile-bottom',   btnBottom + 'px');
+    root.style.setProperty('--mobile-panel-bottom', panelBottom + 'px');
+  } else {
+    const _cb = CONFIG._chatBottom || 0;
+    root.style.setProperty('--btn-mobile-bottom', Math.max(8, Math.round((_cb - _micSz) / 2)) + CONFIG.micIconY + 'px');
+  }
+
+  root.style.setProperty('--mic-mobile-size',        _micSz + 'px');
+  root.style.setProperty('--audio-mobile-size',      _audSz + 'px');
+  root.style.setProperty('--btn-half-total-w',       (_totW / 2) + 'px');
+  root.style.setProperty('--mic-icon-mobile-size',   Math.round(_micSz * 0.64) + 'px');
+  root.style.setProperty('--audio-icon-mobile-size', Math.round(_audSz * 0.64) + 'px');
   if (mic) {
     mic.style.width  = CONFIG.micIconSize + 'px';
     mic.style.height = CONFIG.micIconSize + 'px';
@@ -2172,9 +2193,11 @@ cameraLookAtY: ${CONFIG.cameraLookAtY.toFixed(1)},`;
 // ═══════════════════════════════════════════════════════════════════════════
 function loadGLBAvatar(url) {
   const loader = new THREE.GLTFLoader();
-  const draco  = new THREE.DRACOLoader();
-  draco.setDecoderPath('/lib/draco/');
-  loader.setDRACOLoader(draco);
+  try {
+    const draco = new THREE.DRACOLoader();
+    draco.setDecoderPath('/lib/draco/');
+    loader.setDRACOLoader(draco);
+  } catch(_) {}
 
   // Richiesta HEAD per ottenere dimensione file e calcolare % reale
   let _glbTotal = 0;
@@ -2484,8 +2507,8 @@ function applyParamLive(key, v) {
     speech_end:      () => { ANIM_RANGE.speechEnd   = v; },
     chat_bottom:     () => {
       CONFIG._chatBottom = parseFloat(v);
-      const bottom = window.innerWidth <= 600 ? parseFloat(v) * 0.5 : parseFloat(v);
-      document.documentElement.style.setProperty('--chat-bottom', `${bottom}px`);
+      if (window.innerWidth > 600)
+        document.documentElement.style.setProperty('--chat-bottom', `${parseFloat(v)}px`);
       applyOverlay(CONFIG._overlayColor || '#0a0a0f', CONFIG._overlayOpacity ?? 0.75);
     },
     chat_max_width:  () => { document.documentElement.style.setProperty('--chat-max-width', `${v}%`); },
@@ -2619,8 +2642,8 @@ async function initAvatar() {
     applyOverlay(cfg.overlay_color || '#0a0a0f', cfg.overlay_opacity ?? 0.75);
     document.documentElement.style.setProperty('--overlay-height', `${CONFIG._overlayHeight}vh`);
     CONFIG._chatBottom = cfg.chat_bottom ?? 0;
-    const _initBottom = window.innerWidth <= 600 ? CONFIG._chatBottom * 0.5 : CONFIG._chatBottom;
-    document.documentElement.style.setProperty('--chat-bottom', `${_initBottom}px`);
+    if (window.innerWidth > 600)
+      document.documentElement.style.setProperty('--chat-bottom', `${CONFIG._chatBottom}px`);
     document.documentElement.style.setProperty('--chat-max-width', `${cfg.chat_max_width ?? 100}%`);
     applyParamLive('chat_align',      cfg.chat_align      || 'center');
     applyParamLive('chat_hide_input', cfg.chat_hide_input ?? 0);

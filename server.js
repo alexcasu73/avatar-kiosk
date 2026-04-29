@@ -287,10 +287,25 @@ app.put('/api/admin/avatars/:id', (req, res) => {
 app.delete('/api/admin/avatars/:id', (req, res) => {
   const avatar = db.prepare('SELECT * FROM avatars WHERE id = ?').get(req.params.id);
   if (!avatar) return res.status(404).json({ error: 'Non trovato' });
-  // Elimina file modello e sfondo
-  if (avatar.model_file) { try { fs.unlinkSync(join(__dirname, 'public', avatar.model_file)); } catch {} }
+  // Elimina file modello solo se nessun altro avatar lo usa
+  if (avatar.model_file) {
+    const refs = db.prepare('SELECT COUNT(*) as n FROM avatars WHERE model_file = ? AND id != ?').get(avatar.model_file, req.params.id);
+    if (refs.n === 0) { try { fs.unlinkSync(join(__dirname, 'public', avatar.model_file)); } catch {} }
+  }
   db.prepare('DELETE FROM avatars WHERE id = ?').run(req.params.id);
   res.json({ ok: true });
+});
+
+app.post('/api/admin/avatars/:id/duplicate', (req, res) => {
+  const src = db.prepare('SELECT * FROM avatars WHERE id = ?').get(req.params.id);
+  if (!src) return res.status(404).json({ error: 'Non trovato' });
+  const newId = Math.random().toString(36).slice(2, 10);
+  const { id, created_at, updated_at, published, name, ...rest } = src;
+  db.prepare(`INSERT INTO avatars (id, name, published, ${Object.keys(rest).join(',')})
+              VALUES (?, ?, 0, ${Object.keys(rest).map(() => '?').join(',')})`)
+    .run(newId, `${name} (copia)`, ...Object.values(rest));
+  const newAvatar = db.prepare('SELECT * FROM avatars WHERE id = ?').get(newId);
+  res.json(newAvatar);
 });
 
 app.post('/api/admin/avatars/:id/publish', (req, res) => {
