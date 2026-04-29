@@ -224,5 +224,7 @@ if (!existing.includes('idle_font_size'))
   db.exec("ALTER TABLE avatars ADD COLUMN idle_font_size REAL DEFAULT 1.1");
 if (!existing.includes('theme'))
   db.exec("ALTER TABLE avatars ADD COLUMN theme TEXT DEFAULT 'viola'");
+if (!existing.includes('model_hash'))
+  db.exec("ALTER TABLE avatars ADD COLUMN model_hash TEXT DEFAULT ''");
 
 export default db;

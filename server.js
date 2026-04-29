@@ -336,6 +336,15 @@ app.post('/api/admin/avatars/:id/upload-model', uploadFbx.single('model'), async
     const ext = req.file.originalname.split('.').pop().toLowerCase();
     const tmpFile = join(__dirname, 'public', 'models', req.file.filename);
 
+    // Controlla hash: se stesso file già convertito, salta la conversione
+    const { createHash } = await import('crypto');
+    const fileHash = createHash('sha256').update(fs.readFileSync(tmpFile)).digest('hex');
+    const avatarForHash = db.prepare('SELECT model_hash, model_file FROM avatars WHERE id = ?').get(req.params.id);
+    if (avatarForHash?.model_hash === fileHash && avatarForHash?.model_file && fs.existsSync(join(__dirname, 'public', avatarForHash.model_file))) {
+      fs.unlinkSync(tmpFile);
+      return res.json({ ok: true, model_file: avatarForHash.model_file, cached: true });
+    }
+
     if (ext === 'fbx') {
       const { execFile } = await import('child_process');
       const { promisify } = await import('util');
@@ -512,11 +521,11 @@ bpy.ops.export_scene.gltf(filepath=sys.argv[-1], export_format='GLB', use_select
 
     const modelFile = `models/${req.params.id}.glb`;
     if (animDuration != null) {
-      db.prepare("UPDATE avatars SET model_file = ?, idle_start = 0, idle_end = ?, speech_start = 0, speech_end = ?, updated_at = datetime('now') WHERE id = ?")
-        .run(modelFile, animDuration, animDuration, req.params.id);
+      db.prepare("UPDATE avatars SET model_file = ?, model_hash = ?, idle_start = 0, idle_end = ?, speech_start = 0, speech_end = ?, updated_at = datetime('now') WHERE id = ?")
+        .run(modelFile, fileHash, animDuration, animDuration, req.params.id);
     } else {
-      db.prepare("UPDATE avatars SET model_file = ?, updated_at = datetime('now') WHERE id = ?")
-        .run(modelFile, req.params.id);
+      db.prepare("UPDATE avatars SET model_file = ?, model_hash = ?, updated_at = datetime('now') WHERE id = ?")
+        .run(modelFile, fileHash, req.params.id);
     }
     res.json({ ok: true, model_file: modelFile, originalKB, compressedKB, animDuration });
   } catch (err) {

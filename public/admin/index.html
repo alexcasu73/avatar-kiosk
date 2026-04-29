@@ -2353,6 +2353,7 @@ async function uploadModel(file) {
   const res = await fetch(`/api/admin/avatars/${currentId}/upload-model?skipCompress=${skipCompress}&texQuality=${texQuality}`, { method:'POST', body:form });
   const data = await res.json();
   if (!res.ok) { toast('Errore: ' + data.error, 'error'); return; }
+  if (data.cached) { toast('Modello già convertito, nessuna riconversione necessaria', 'success'); }
   document.getElementById('model-label').innerHTML = `<svg viewBox="0 0 24 24" style="width:14px;height:14px;stroke:var(--success);fill:none;stroke-width:2.5;stroke-linecap:round;stroke-linejoin:round;display:inline-block;vertical-align:middle;margin-right:4px"><polyline points="20 6 9 17 4 12"/></svg>${data.model_file}`;
   document.getElementById('model-drop').classList.add('has-file');
   const dur = data.animDuration;
