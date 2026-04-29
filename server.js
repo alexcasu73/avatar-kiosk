@@ -115,7 +115,7 @@ app.get('/api/health', (req, res) => {
 app.get('/api/avatar/:id', (req, res) => {
   const avatar = db.prepare('SELECT * FROM avatars WHERE id = ? AND published = 1').get(req.params.id);
   if (!avatar) return res.status(404).json({ error: 'Avatar non trovato o non pubblicato' });
-  const { id, name, background, model_file, idle_start, idle_end,
+  const { id, name, background, bg_video, model_file, idle_start, idle_end,
           speech_start, speech_end, avatar_scale, avatar_offset_x,
           avatar_offset_y, avatar_rot_y, camera_z, camera_y, camera_look_at_y,
           overlay_color, overlay_opacity, overlay_height, chat_height, chat_bottom, chat_max_width, chat_align, chat_hide_input,
@@ -125,7 +125,7 @@ app.get('/api/avatar/:id', (req, res) => {
           mic_icon, mic_icon_disabled, mic_icon_size, mic_icon_x, mic_icon_y, mic_visible, mic_bg_color, mic_disabled_color, mic_border_color, mic_border_disabled_color,
           audio_icon, audio_icon_disabled, audio_icon_size, audio_icon_x, audio_icon_y, audio_visible, audio_bg_color, audio_disabled_color, audio_border_color, audio_border_disabled_color,
           mic_wave_color, audio_wave_color, theme } = avatar;
-  res.json({ id, name, background, model_file, idle_start, idle_end,
+  res.json({ id, name, background, bg_video, model_file, idle_start, idle_end,
              speech_start, speech_end, avatar_scale, avatar_offset_x,
              avatar_offset_y, avatar_rot_y, camera_z, camera_y, camera_look_at_y,
              overlay_color, overlay_opacity, overlay_height, chat_height, chat_bottom, chat_max_width, chat_align, chat_hide_input,
@@ -154,7 +154,7 @@ app.get('/preview/:id', (req, res) => {
 app.get('/api/preview/:id', (req, res) => {
   const avatar = db.prepare('SELECT * FROM avatars WHERE id = ?').get(req.params.id);
   if (!avatar) return res.status(404).json({ error: 'Non trovato' });
-  const { id, name, background, model_file, idle_start, idle_end,
+  const { id, name, background, bg_video, model_file, idle_start, idle_end,
           speech_start, speech_end, avatar_scale, avatar_offset_x,
           avatar_offset_y, avatar_rot_y, camera_z, camera_y, camera_look_at_y,
           overlay_color, overlay_opacity, overlay_height, chat_height, chat_bottom, chat_max_width, chat_align, chat_hide_input,
@@ -164,7 +164,7 @@ app.get('/api/preview/:id', (req, res) => {
           mic_icon, mic_icon_disabled, mic_icon_size, mic_icon_x, mic_icon_y, mic_visible, mic_bg_color, mic_disabled_color, mic_border_color, mic_border_disabled_color,
           audio_icon, audio_icon_disabled, audio_icon_size, audio_icon_x, audio_icon_y, audio_visible, audio_bg_color, audio_disabled_color, audio_border_color, audio_border_disabled_color,
           mic_wave_color, audio_wave_color, theme } = avatar;
-  res.json({ id, name, background, model_file, idle_start, idle_end,
+  res.json({ id, name, background, bg_video, model_file, idle_start, idle_end,
              speech_start, speech_end, avatar_scale, avatar_offset_x,
              avatar_offset_y, avatar_rot_y, camera_z, camera_y, camera_look_at_y,
              overlay_color, overlay_opacity, overlay_height, chat_height, chat_bottom, chat_max_width, chat_align, chat_hide_input,
@@ -453,6 +453,30 @@ app.post('/api/admin/avatars/:id/upload-background', uploadBg.single('background
   db.prepare("UPDATE avatars SET background = ?, updated_at = datetime('now') WHERE id = ?")
     .run(bgFile, req.params.id);
   res.json({ ok: true, background: bgFile });
+});
+
+// ─── Route: Upload video sfondo avatar ───────────────────────────────────────
+fs.mkdirSync(join(__dirname, 'public', 'bg-videos'), { recursive: true });
+app.use('/bg-videos', express.static(join(__dirname, 'public', 'bg-videos')));
+
+const uploadBgVideo = multer({ storage: multer.diskStorage({
+  destination: (req, file, cb) => cb(null, join(__dirname, 'public', 'bg-videos')),
+  filename:    (req, file, cb) => cb(null, `${req.params.id}${extname(file.originalname)}`),
+}) });
+
+app.post('/api/admin/avatars/:id/upload-bg-video', uploadBgVideo.single('video'), (req, res) => {
+  if (!req.file) return res.status(400).json({ error: 'Nessun file ricevuto' });
+  const videoFile = `bg-videos/${req.file.filename}`;
+  db.prepare("UPDATE avatars SET bg_video = ?, updated_at = datetime('now') WHERE id = ?")
+    .run(videoFile, req.params.id);
+  res.json({ ok: true, bg_video: videoFile });
+});
+
+app.delete('/api/admin/avatars/:id/bg-video', (req, res) => {
+  const avatar = db.prepare('SELECT bg_video FROM avatars WHERE id = ?').get(req.params.id);
+  if (avatar?.bg_video) { try { fs.unlinkSync(join(__dirname, 'public', avatar.bg_video)); } catch {} }
+  db.prepare("UPDATE avatars SET bg_video = '', updated_at = datetime('now') WHERE id = ?").run(req.params.id);
+  res.json({ ok: true });
 });
 
 // ─── Route: Upload video standby ─────────────────────────────────────────────

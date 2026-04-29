@@ -13,6 +13,7 @@ db.exec(`
     system_prompt     TEXT DEFAULT '',
     background        TEXT DEFAULT '#0a0a0f',
     model_file        TEXT DEFAULT '',
+    bg_video          TEXT DEFAULT '',
     idle_start        REAL DEFAULT 0,
     idle_end          REAL DEFAULT 2,
     speech_start      REAL DEFAULT 2,
@@ -200,6 +201,8 @@ if (!existing.includes('idle_bg_color'))
   db.exec("ALTER TABLE avatars ADD COLUMN idle_bg_color TEXT DEFAULT ''")
 if (!existing.includes('idle_bg_opacity'))
   db.exec("ALTER TABLE avatars ADD COLUMN idle_bg_opacity REAL DEFAULT 1")
+if (!existing.includes('bg_video'))
+  db.exec("ALTER TABLE avatars ADD COLUMN bg_video TEXT DEFAULT ''")
 if (!existing.includes('idle_font'))
   db.exec("ALTER TABLE avatars ADD COLUMN idle_font TEXT DEFAULT ''");
 if (!existing.includes('idle_font_size'))

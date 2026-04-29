@@ -671,6 +671,7 @@
     </div>
 
     <div id="avatar-panel">
+      <video id="avatar-bg-video" autoplay loop muted playsinline style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:none;z-index:0"></video>
       <canvas id="avatar-canvas"></canvas>
 
       <!-- Pannello impostazioni avatar -->
@@ -2355,7 +2356,16 @@ window.addEventListener('message', e => {
       applyOverlay(CONFIG._overlayColor || '#0a0a0f', CONFIG._overlayOpacity ?? 0.75);
       return;
     }
-    if (msg.key === 'background') {
+    if (msg.key === 'bg_video') {
+      const bgVid = document.getElementById('avatar-bg-video');
+      if (msg.value) {
+        bgVid.src = `/${msg.value}`; bgVid.style.display = 'block';
+        document.getElementById('avatar-panel').style.background = 'transparent';
+      } else {
+        bgVid.src = ''; bgVid.style.display = 'none';
+        document.getElementById('avatar-panel').style.background = '';
+      }
+    } else if (msg.key === 'background') {
       const color = msg.value;
       document.body.style.background = color;
       document.getElementById('avatar-panel').style.background =
@@ -2685,15 +2695,24 @@ async function initAvatar() {
     CONFIG.cameraLookAtY = cfg.camera_look_at_y;
 
     // Sfondo
-    const bg = cfg.background || '#0a0a0f';
-    if (bg.startsWith('#') || bg.startsWith('rgb')) {
-      document.body.style.background = bg;
-      document.getElementById('avatar-panel').style.background =
-        `radial-gradient(ellipse at 50% 60%, ${bg}aa 0%, ${bg} 70%)`;
+    const bgVid = document.getElementById('avatar-bg-video');
+    if (cfg.bg_video) {
+      bgVid.src = `/${cfg.bg_video}`;
+      bgVid.style.display = 'block';
+      document.getElementById('avatar-panel').style.background = 'transparent';
+      document.body.style.background = '#0a0a0f';
     } else {
-      document.getElementById('avatar-panel').style.backgroundImage = `url(/${bg})`;
-      document.getElementById('avatar-panel').style.backgroundSize  = 'cover';
-      document.getElementById('avatar-panel').style.backgroundPosition = 'center';
+      bgVid.src = ''; bgVid.style.display = 'none';
+      const bg = cfg.background || '#0a0a0f';
+      if (bg.startsWith('#') || bg.startsWith('rgb')) {
+        document.body.style.background = bg;
+        document.getElementById('avatar-panel').style.background =
+          `radial-gradient(ellipse at 50% 60%, ${bg}aa 0%, ${bg} 70%)`;
+      } else {
+        document.getElementById('avatar-panel').style.backgroundImage = `url(/${bg})`;
+        document.getElementById('avatar-panel').style.backgroundSize  = 'cover';
+        document.getElementById('avatar-panel').style.backgroundPosition = 'center';
+      }
     }
 
     // Overlay layer

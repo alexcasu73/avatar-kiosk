@@ -740,6 +740,16 @@
               style="margin-top:8px;display:none"
               onclick="removeBackground()"><svg viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg> Rimuovi</button>
           </div>
+          <div class="field" style="margin-top:12px">
+            <label>Video <span class="hint" style="margin:0">(sovrascrive colore e immagine)</span></label>
+            <div id="bg-video-drop" class="upload-zone" style="min-height:48px;display:flex;align-items:center;gap:10px;padding:10px 14px"
+              ondragover="event.preventDefault()" ondrop="event.preventDefault();uploadBgVideo(event.dataTransfer.files[0])">
+              <svg viewBox="0 0 24 24" style="width:18px;height:18px;flex-shrink:0;stroke:var(--text-dim);fill:none;stroke-width:1.5"><polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2"/></svg>
+              <span id="bg-video-label" style="font-size:.8rem;color:var(--text-dim)">Trascina un video o clicca</span>
+              <input type="file" accept="video/mp4,video/webm" style="display:none" id="bg-video-input" onchange="uploadBgVideo(this.files[0])"/>
+            </div>
+            <button class="btn btn-danger btn-sm" id="bg-video-remove-btn" style="display:none;margin-top:6px" onclick="removeBgVideo()">Rimuovi video</button>
+          </div>
         </div>
 
       </div><!-- /tab-generale -->
@@ -1563,6 +1573,8 @@ function selectAvatar(id) {
     document.getElementById('bg-drop').classList.add('has-file');
     document.getElementById('remove-bg-btn').style.display = 'block';
   }
+
+  setBgVideoUI(a.bg_video || '');
 
   // Modello
   const _boxSvg = '<svg viewBox="0 0 24 24" style="width:14px;height:14px;stroke:currentColor;fill:none;stroke-width:1.5;stroke-linecap:round;stroke-linejoin:round;display:inline-block;vertical-align:middle;margin-right:6px"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg>';
@@ -2607,6 +2619,44 @@ async function removeBackground() {
   document.getElementById('remove-bg-btn').style.display = 'none';
   reloadPreview();
   toast('Sfondo rimosso');
+}
+
+// ── Video sfondo avatar ───────────────────────────────────────────────────────
+async function uploadBgVideo(file) {
+  if (!currentId) return toast('Salva prima l\'avatar', 'error');
+  if (!file) return;
+  document.getElementById('bg-video-label').textContent = 'Caricamento...';
+  const form = new FormData(); form.append('video', file);
+  const res = await fetch(`/api/admin/avatars/${currentId}/upload-bg-video`, { method:'POST', body:form });
+  const data = await res.json();
+  if (!res.ok) { toast('Errore: ' + data.error, 'error'); return; }
+  avatars = avatars.map(a => a.id===currentId ? {...a, bg_video: data.bg_video} : a);
+  setBgVideoUI(data.bg_video);
+  sendToPreview({ type:'avatarParam', key:'bg_video', value: data.bg_video });
+  toast('Video sfondo caricato');
+}
+
+async function removeBgVideo() {
+  if (!currentId) return;
+  await api.delete(`/api/admin/avatars/${currentId}/bg-video`);
+  avatars = avatars.map(a => a.id===currentId ? {...a, bg_video: ''} : a);
+  setBgVideoUI('');
+  sendToPreview({ type:'avatarParam', key:'bg_video', value: '' });
+}
+
+function setBgVideoUI(path) {
+  const label = document.getElementById('bg-video-label');
+  const removeBtn = document.getElementById('bg-video-remove-btn');
+  const dropZone = document.getElementById('bg-video-drop');
+  if (path) {
+    label.textContent = path.split('/').pop();
+    removeBtn.style.display = '';
+    dropZone.onclick = null;
+  } else {
+    label.textContent = 'Trascina un video o clicca';
+    removeBtn.style.display = 'none';
+    dropZone.onclick = () => document.getElementById('bg-video-input').click();
+  }
 }
 
 // ── Init ──────────────────────────────────────────────────────────────────────
