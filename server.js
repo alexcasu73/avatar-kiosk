@@ -386,7 +386,7 @@ bpy.ops.export_scene.gltf(filepath=sys.argv[-1], export_format='GLB', use_select
           // Blender aggiunge .glb al nome output
           const blenderOut = rawGlb.replace(/\.glb$/, '') + '.glb';
           if (fs.existsSync(blenderOut) && blenderOut !== rawGlb) fs.renameSync(blenderOut, rawGlb);
-          converted = true;
+          converted = fs.existsSync(rawGlb);
         } catch (e) {
           console.error('Blender fallback fallito:', e.message);
         } finally {
