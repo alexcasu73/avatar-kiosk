@@ -259,7 +259,7 @@ app.put('/api/admin/avatars/:id', (req, res) => {
                   'avatar_rot_y','camera_z','camera_y','camera_look_at_y',
                   'overlay_color','overlay_opacity','overlay_height','chat_height','chat_bottom','chat_max_width','chat_align','chat_hide_input',
                   'stt_api_key','stt_model','stt_language',
-                  'tts_api_key','tts_model','tts_stability','tts_similarity','tts_text_normalization','tts_language_normalization',
+                  'tts_api_key','tts_model','tts_stability','tts_similarity','tts_text_normalization','tts_language_normalization','texture_quality',
                   'ai_provider','ai_max_tokens','anthropic_api_key','anthropic_model','openai_api_key','openai_model',
                   'avatar_mode','webhook_url','webhook_input_template','webhook_output_field','webhook_headers',
                   'idle_disabled','idle_timeout','idle_icon','idle_title','idle_subtitle','idle_hint','idle_font','idle_font_size','idle_bg_image','idle_bg_color','idle_bg_color_alpha','idle_bg_opacity','anim_pingpong','theme',
@@ -382,7 +382,7 @@ bpy.ops.export_scene.gltf(filepath=sys.argv[-1], export_format='GLB', use_select
           await promisify(execFile)('blender', [
             '--background', '--python', scriptFile, '--',
             tmpFile, rawGlb.replace(/\.glb$/, '')
-          ], { timeout: 120000 });
+          ], { timeout: 120000, shell: true });
           // Blender aggiunge .glb al nome output
           const blenderOut = rawGlb.replace(/\.glb$/, '') + '.glb';
           if (fs.existsSync(blenderOut) && blenderOut !== rawGlb) fs.renameSync(blenderOut, rawGlb);
@@ -412,6 +412,8 @@ bpy.ops.export_scene.gltf(filepath=sys.argv[-1], export_format='GLB', use_select
     }
 
     // 2. Comprimi texture PNG → JPEG nel GLB (ricostruisce il binary da zero)
+    const avatarRow = db.prepare('SELECT texture_quality FROM avatars WHERE id = ?').get(req.params.id);
+    const TEX_QUALITY = Math.max(60, Math.min(100, parseInt(avatarRow?.texture_quality) || 85));
     const sharp = (await import('sharp')).default;
     const rawKB = Math.round(fs.statSync(rawGlb).size / 1024);
     const glbBuf = fs.readFileSync(rawGlb);
@@ -445,7 +447,7 @@ bpy.ops.export_scene.gltf(filepath=sys.argv[-1], export_format='GLB', use_select
             const pipeline = needsResize
               ? sharp(data).resize(MAX_TEX, MAX_TEX, { fit: 'inside', withoutEnlargement: true })
               : sharp(data);
-            const compressed = await pipeline.jpeg({ quality: 75, mozjpeg: true }).toBuffer();
+            const compressed = await pipeline.jpeg({ quality: TEX_QUALITY, mozjpeg: true }).toBuffer();
             if (needsResize || compressed.length < data.length) {
               outData = compressed;
               img.mimeType = 'image/jpeg';

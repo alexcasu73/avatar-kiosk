@@ -1366,6 +1366,13 @@
 
         <div class="section">
           <h3>Modello 3D</h3>
+          <div class="slider-field" style="margin-bottom:14px">
+            <label>Qualità texture <span id="v-texture-quality">85</span>%
+              <span class="hint" style="margin:0">(applicata al prossimo upload)</span>
+            </label>
+            <input type="range" min="60" max="100" step="5" id="s-texture-quality" value="85"
+              oninput="document.getElementById('v-texture-quality').textContent=this.value"/>
+          </div>
           <div class="upload-zone" id="model-drop"
             ondragover="event.preventDefault(); this.classList.add('drag')"
             ondragleave="this.classList.remove('drag')"
@@ -1588,6 +1595,9 @@ function selectAvatar(id) {
   document.getElementById('s-tts-similarity').value = sim;
   document.getElementById('v-tts-similarity').textContent = sim.toFixed(2);
   document.getElementById('f-tts-text-norm').value = a.tts_text_normalization || 'auto';
+  const tq = a.texture_quality ?? 85;
+  document.getElementById('s-texture-quality').value = tq;
+  document.getElementById('v-texture-quality').textContent = tq;
   document.getElementById('f-tts-lang-norm').checked = !!(a.tts_language_normalization);
   // AI Agent
   setAiProvider(a.ai_provider || 'anthropic');
@@ -2162,6 +2172,7 @@ async function saveAvatar() {
     tts_stability:   parseFloat(document.getElementById('s-tts-stability').value),
     tts_similarity:             parseFloat(document.getElementById('s-tts-similarity').value),
     tts_text_normalization:     document.getElementById('f-tts-text-norm').value,
+    texture_quality:            parseInt(document.getElementById('s-texture-quality').value),
     tts_language_normalization: document.getElementById('f-tts-lang-norm').checked ? 1 : 0,
     ai_provider:        setAiProvider._current,
     anthropic_api_key:  document.getElementById('f-anthropic-api-key').value.trim(),

@@ -35,6 +35,7 @@ db.exec(`
     tts_similarity              REAL DEFAULT -1,
     tts_text_normalization      TEXT DEFAULT 'auto',
     tts_language_normalization  INTEGER DEFAULT 0,
+    texture_quality             INTEGER DEFAULT 85,
     ai_provider           TEXT DEFAULT 'anthropic',
     ai_max_tokens         INTEGER DEFAULT 0,
     anthropic_api_key     TEXT DEFAULT '',
@@ -111,6 +112,7 @@ if (!existing.includes('tts_stability'))   db.exec("ALTER TABLE avatars ADD COLU
 if (!existing.includes('tts_similarity'))             db.exec("ALTER TABLE avatars ADD COLUMN tts_similarity REAL DEFAULT -1");
 if (!existing.includes('tts_text_normalization'))     db.exec("ALTER TABLE avatars ADD COLUMN tts_text_normalization TEXT DEFAULT 'auto'");
 if (!existing.includes('tts_language_normalization')) db.exec("ALTER TABLE avatars ADD COLUMN tts_language_normalization INTEGER DEFAULT 0");
+if (!existing.includes('texture_quality'))            db.exec("ALTER TABLE avatars ADD COLUMN texture_quality INTEGER DEFAULT 85");
 if (!existing.includes('ai_provider'))      db.exec("ALTER TABLE avatars ADD COLUMN ai_provider TEXT DEFAULT 'anthropic'");
 if (!existing.includes('ai_max_tokens'))    db.exec("ALTER TABLE avatars ADD COLUMN ai_max_tokens INTEGER DEFAULT 0");
 if (!existing.includes('anthropic_api_key')) db.exec("ALTER TABLE avatars ADD COLUMN anthropic_api_key TEXT DEFAULT ''");
