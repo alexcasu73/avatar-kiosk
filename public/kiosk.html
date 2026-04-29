@@ -391,14 +391,14 @@
       inset: 0;
       width: 100%; height: 100%;
       object-fit: cover;
-      z-index: 0;
+      z-index: 1;
       display: none;
     }
-    #idle-overlay > *:not(#idle-overlay-video) { position: relative; z-index: 1; }
+    #idle-overlay > *:not(#idle-overlay-video) { position: relative; z-index: 2; }
     #idle-overlay {
       position: absolute;
       inset: 0;
-      background: rgba(10,10,15,0.93);
+      background: transparent;
       display: flex;
       flex-direction: column;
       align-items: center;
@@ -410,9 +410,21 @@
       --idle-font-size: 1rem;
       --idle-bg-opacity: 1;
       font-family: var(--idle-font-family);
-      opacity: var(--idle-bg-opacity);
     }
-    #idle-overlay.hidden { --idle-bg-opacity: 0 !important; pointer-events: none; }
+    #idle-overlay::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: rgba(10,10,15,1);
+      background-color: inherit;
+      background-image: inherit;
+      background-size: cover;
+      background-position: center;
+      opacity: var(--idle-bg-opacity);
+      transition: opacity 0.5s;
+      z-index: 0;
+    }
+    #idle-overlay.hidden { opacity: 0; pointer-events: none; }
 
     .idle-avatar-icon {
       width: 140px; height: 140px;
@@ -2440,26 +2452,16 @@ function applyIdleParam(key, value) {
     if (value) {
       vid.src = `/${value}`;
       vid.style.display = 'block';
-      overlay.style.background = 'transparent';
     } else {
       vid.src = '';
       vid.style.display = 'none';
-      overlay.style.background = '';
     }
     return;
   }
   if (key === 'idle_bg_image') {
     const overlay = document.getElementById('idle-overlay');
     if (!overlay) return;
-    if (value) {
-      overlay.style.backgroundImage = `url(/${value})`;
-      overlay.style.backgroundSize = 'cover';
-      overlay.style.backgroundPosition = 'center';
-    } else {
-      overlay.style.backgroundImage = '';
-      overlay.style.backgroundSize = '';
-      overlay.style.backgroundPosition = '';
-    }
+    overlay.style.backgroundImage = value ? `url(/${value})` : '';
     return;
   }
   if (key === 'idle_bg_color') {
