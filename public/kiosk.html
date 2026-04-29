@@ -380,6 +380,11 @@
     #send-btn svg    { fill: white; width: 20px; height: 20px; }
 
     /* ─── Idle Overlay ──────────────────────────────── */
+    body.idle-hidden #mic-btn,
+    body.idle-hidden #audio-btn {
+      opacity: 0 !important;
+      pointer-events: none !important;
+    }
     #idle-overlay {
       position: absolute;
       inset: 0;
@@ -598,7 +603,7 @@
     }
   </style>
 </head>
-<body>
+<body class="idle-hidden">
 <div id="app">
 
   <!-- Header -->
@@ -1004,8 +1009,10 @@ function setAudioWaveVisible(show) {
 }
 
 function applyWaveColors() {
-  micWaveEl.style.setProperty('--wave-color', CONFIG.micWaveColor  || '#ffffff');
-  audioWaveEl.style.setProperty('--wave-color', CONFIG.audioWaveColor || '#ffffff');
+  const mc = CONFIG.micWaveColor  || '#ffffff';
+  const ac = CONFIG.audioWaveColor || '#ffffff';
+  micWaveEl.querySelectorAll('.btn-wave-bar').forEach(b => b.style.background = mc);
+  audioWaveEl.querySelectorAll('.btn-wave-bar').forEach(b => b.style.background = ac);
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -1357,6 +1364,7 @@ function resetIdleTimer() {
   clearTimeout(_idleTimer);
   _idleTimer = setTimeout(() => {
     document.getElementById('idle-overlay').classList.remove('hidden');
+    setControlsVisible(false);
     document.getElementById('chat-history').innerHTML = '';
     setMode('idle');
     state.vad?.pause();
@@ -1765,8 +1773,13 @@ async function _startVad() {
   }
 }
 
+function setControlsVisible(visible) {
+  document.body.classList.toggle('idle-hidden', !visible);
+}
+
 async function wakeUp() {
   document.getElementById('idle-overlay').classList.add('hidden');
+  setControlsVisible(true);
   setMode('listening');
   resetIdleTimer();
 
