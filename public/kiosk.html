@@ -438,13 +438,16 @@
       margin-bottom: 10px;
       font-family: var(--idle-font-family);
     }
+    #idle-overlay h2:empty { display: none; }
 
     #idle-overlay p {
       font-size: calc(var(--idle-font-size) * 1.1);
       color: var(--text-dim);
       font-family: var(--idle-font-family);
     }
+    #idle-overlay p:empty { display: none; }
 
+    .tap-hint:empty { display: none; }
     .tap-hint {
       margin-top: 36px;
       font-size: calc(var(--idle-font-size) * 0.95);
