@@ -48,6 +48,7 @@ db.exec(`
     idle_title        TEXT DEFAULT '',
     idle_subtitle     TEXT DEFAULT 'La tua assistente virtuale',
     idle_hint         TEXT DEFAULT '✨ Tocca per iniziare',
+    idle_video        TEXT DEFAULT '',
     idle_font         TEXT DEFAULT '',
     idle_font_size    REAL DEFAULT 1.1,
     overlay_color     TEXT DEFAULT '#0a0a0f',
@@ -188,6 +189,8 @@ if (!existing.includes('audio_wave_color'))
   db.exec("ALTER TABLE avatars ADD COLUMN audio_wave_color TEXT DEFAULT '#ffffff'");
 if (!existing.includes('idle_icon_img'))
   db.exec("ALTER TABLE avatars ADD COLUMN idle_icon_img TEXT DEFAULT ''");
+if (!existing.includes('idle_video'))
+  db.exec("ALTER TABLE avatars ADD COLUMN idle_video TEXT DEFAULT ''")
 if (!existing.includes('idle_font'))
   db.exec("ALTER TABLE avatars ADD COLUMN idle_font TEXT DEFAULT ''");
 if (!existing.includes('idle_font_size'))

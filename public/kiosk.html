@@ -386,6 +386,15 @@
       opacity: 0 !important;
       pointer-events: none !important;
     }
+    #idle-overlay-video {
+      position: absolute;
+      inset: 0;
+      width: 100%; height: 100%;
+      object-fit: cover;
+      z-index: 0;
+      display: none;
+    }
+    #idle-overlay > *:not(#idle-overlay-video) { position: relative; z-index: 1; }
     #idle-overlay {
       position: absolute;
       inset: 0;
@@ -779,6 +788,7 @@
 
   <!-- Idle overlay -->
   <div id="idle-overlay" onclick="wakeUp()">
+    <video id="idle-overlay-video" autoplay loop muted playsinline></video>
     <div class="idle-avatar-icon" id="idle-icon">
       <img id="idle-icon-img" src="" alt="" style="display:none"/>
       <span id="idle-icon-emoji">🤖</span>
@@ -2418,6 +2428,21 @@ function applyIdleParam(key, value) {
     }
     return;
   }
+  if (key === 'idle_video') {
+    const vid = document.getElementById('idle-overlay-video');
+    const overlay = document.getElementById('idle-overlay');
+    if (!vid) return;
+    if (value) {
+      vid.src = `/${value}`;
+      vid.style.display = 'block';
+      overlay.style.background = 'transparent';
+    } else {
+      vid.src = '';
+      vid.style.display = 'none';
+      overlay.style.background = '';
+    }
+    return;
+  }
   if (key === 'idle_font') {
     const overlay = document.getElementById('idle-overlay');
     if (!overlay) return;
@@ -2464,6 +2489,7 @@ function applyIdleParam(key, value) {
         if (d.idle_subtitle !== undefined) applyIdleParam('idle_subtitle', d.idle_subtitle);
         if (d.idle_hint       !== undefined) applyIdleParam('idle_hint',       d.idle_hint);
         if (d.idle_icon_img   !== undefined) applyIdleParam('idle_icon_img',   d.idle_icon_img);
+        if (d.idle_video      !== undefined) applyIdleParam('idle_video',      d.idle_video);
         if (d.idle_font       !== undefined) applyIdleParam('idle_font',       d.idle_font);
         if (d.idle_font_size  !== undefined) applyIdleParam('idle_font_size',  d.idle_font_size);
       }
@@ -2668,6 +2694,7 @@ async function initAvatar() {
     if (idleIconEmoji) idleIconEmoji.textContent = cfg.idle_icon || '🤖';
     document.getElementById('idle-hint').textContent = cfg.idle_hint || '✨ Tocca per iniziare';
     applyIdleParam('idle_icon_img',  cfg.idle_icon_img  || '');
+    applyIdleParam('idle_video',     cfg.idle_video     || '');
     applyIdleParam('idle_font',      cfg.idle_font      || '');
     applyIdleParam('idle_font_size', cfg.idle_font_size ?? 1.0);
     CONFIG.idleTimeout = (cfg.idle_timeout ?? 90) * 1000;
