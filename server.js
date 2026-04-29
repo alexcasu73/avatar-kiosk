@@ -334,21 +334,25 @@ app.post('/api/admin/avatars/:id/upload-model', uploadFbx.single('model'), async
     const { execFile, execFileSync } = await import('child_process');
     const { promisify } = await import('util');
 
-    // Trova assimp nel PATH o nei percorsi comuni
-    let assimp = null;
+    // Trova FBX2glTF (fbx2gltf npm package o sistema)
+    let fbx2gltf = null;
     const candidates = [
-      'assimp',
-      '/usr/bin/assimp',
-      '/usr/local/bin/assimp',
-      '/opt/homebrew/bin/assimp',
+      join(__dirname, 'node_modules/fbx2gltf/bin/Darwin/FBX2glTF'),
+      join(__dirname, 'node_modules/fbx2gltf/bin/Linux/FBX2glTF'),
+      join(__dirname, 'node_modules/fbx2gltf/bin/Windows_NT/FBX2glTF.exe'),
+      '/usr/local/bin/FBX2glTF',
+      '/opt/homebrew/bin/FBX2glTF',
+      join(process.env.HOME || '', '.npm-global/lib/node_modules/fbx2gltf/bin/Darwin/FBX2glTF'),
+      join(process.env.HOME || '', '.npm-global/lib/node_modules/fbx2gltf/bin/Linux/FBX2glTF'),
     ];
     for (const c of candidates) {
-      try { execFileSync(c, ['version'], { stdio: 'ignore' }); assimp = c; break; } catch {}
+      try { if (fs.existsSync(c)) { fbx2gltf = c; break; } } catch {}
     }
-    if (!assimp) return res.status(500).json({ error: 'assimp non trovato. Installalo con: apt install assimp-utils (Linux) o brew install assimp (macOS)' });
+    if (!fbx2gltf) return res.status(500).json({ error: 'FBX2glTF non trovato. Installalo con: npm install -g fbx2gltf' });
 
-    // 1. FBX → GLB grezzo
-    await promisify(execFile)(assimp, ['export', tmpFbx, rawGlb]);
+    // 1. FBX → GLB grezzo (output senza estensione, FBX2glTF aggiunge .glb)
+    const rawGlbBase = rawGlb.replace(/\.glb$/, '');
+    await promisify(execFile)(fbx2gltf, ['--binary', tmpFbx, '--output', rawGlbBase]);
     fs.unlinkSync(tmpFbx);
 
     // 2. Comprimi texture PNG → JPEG nel GLB
