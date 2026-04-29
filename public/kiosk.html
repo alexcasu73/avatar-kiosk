@@ -796,9 +796,9 @@
       <img id="idle-icon-img" src="" alt="" style="display:none"/>
       <span id="idle-icon-emoji">🤖</span>
     </div>
-    <h2 id="idle-title">Ciao! Sono Sofia</h2>
-    <p id="idle-subtitle">La tua assistente virtuale</p>
-    <div class="tap-hint" id="idle-hint">✨ Tocca per iniziare</div>
+    <h2 id="idle-title"></h2>
+    <p id="idle-subtitle"></p>
+    <div class="tap-hint" id="idle-hint"></div>
   </div>
 
 </div>
@@ -2488,7 +2488,7 @@ function applyIdleParam(key, value) {
         if (d.theme           !== undefined) applyTheme(d.theme);
         if (d.idle_timeout   !== undefined) applyIdleParam('idle_timeout',  d.idle_timeout);
         if (d.idle_icon      !== undefined) applyIdleParam('idle_icon',     d.idle_icon);
-        if (d.idle_title    !== undefined) applyIdleParam('idle_title',    d.idle_title    || `Ciao! Sono ${d.name || ''}`);
+        if (d.idle_title    !== undefined) applyIdleParam('idle_title',    d.idle_title    ?? '');
         if (d.idle_subtitle !== undefined) applyIdleParam('idle_subtitle', d.idle_subtitle);
         if (d.idle_hint       !== undefined) applyIdleParam('idle_hint',       d.idle_hint);
         if (d.idle_icon_img   !== undefined) applyIdleParam('idle_icon_img',   d.idle_icon_img);
@@ -2691,11 +2691,11 @@ async function initAvatar() {
 
     // UI
     document.getElementById('avatar-response-label').textContent = cfg.name.toUpperCase();
-    document.getElementById('idle-title').textContent = cfg.idle_title || `Ciao! Sono ${cfg.name}`;
-    document.getElementById('idle-subtitle').textContent = cfg.idle_subtitle || 'La tua assistente virtuale';
+    document.getElementById('idle-title').textContent = cfg.idle_title ?? '';
+    document.getElementById('idle-subtitle').textContent = cfg.idle_subtitle ?? '';
     const idleIconEmoji = document.getElementById('idle-icon-emoji');
     if (idleIconEmoji) idleIconEmoji.textContent = cfg.idle_icon || '🤖';
-    document.getElementById('idle-hint').textContent = cfg.idle_hint || '✨ Tocca per iniziare';
+    document.getElementById('idle-hint').textContent = cfg.idle_hint ?? '';
     applyIdleParam('idle_icon_img',  cfg.idle_icon_img  || '');
     applyIdleParam('idle_video',     cfg.idle_video     || '');
     applyIdleParam('idle_font',      cfg.idle_font      || '');
