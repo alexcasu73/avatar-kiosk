@@ -847,7 +847,7 @@ app.get('/api/admin/avatars/:id/export', requireAdmin, (req, res) => {
   const avatar = db.prepare('SELECT * FROM avatars WHERE id = ?').get(req.params.id);
   if (!avatar) return res.status(404).json({ error: 'Non trovato' });
 
-  const FILE_FIELDS = ['model_file', 'bg_video', 'idle_video', 'idle_bg_image', 'idle_icon_img'];
+  const FILE_FIELDS = ['model_file', 'bg_video', 'idle_video', 'idle_bg_image', 'idle_icon_img', 'mic_icon', 'mic_icon_disabled', 'audio_icon', 'audio_icon_disabled'];
   const files = {};
   for (const field of FILE_FIELDS) {
     const rel = avatar[field];
@@ -873,7 +873,7 @@ app.post('/api/admin/avatars/import', requireAdmin, express.json({ limit: '200mb
   if (!bundle?.version || !bundle?.params) return res.status(400).json({ error: 'File non valido' });
 
   const newId = uuidv4().split('-')[0];
-  const FILE_FIELDS = ['model_file', 'bg_video', 'idle_video', 'idle_bg_image', 'idle_icon_img'];
+  const FILE_FIELDS = ['model_file', 'bg_video', 'idle_video', 'idle_bg_image', 'idle_icon_img', 'mic_icon', 'mic_icon_disabled', 'audio_icon', 'audio_icon_disabled'];
 
   // Ripristina file binari
   const remapped = { ...bundle.params };
@@ -881,11 +881,11 @@ app.post('/api/admin/avatars/import', requireAdmin, express.json({ limit: '200mb
     const f = bundle.files?.[field];
     if (!f?.data || !f?.name) { remapped[field] = ''; continue; }
     // Determina sottocartella in base al campo
-    const subdir = field === 'model_file' ? 'models'
-      : field === 'bg_video'    ? 'bg-videos'
-      : field === 'idle_video'  ? 'idle-videos'
-      : field === 'idle_bg_image' ? 'idle-bgs'
-      : 'icons';
+    const subdir = field === 'model_file'   ? 'models'
+      : field === 'bg_video'               ? 'bg-videos'
+      : field === 'idle_video'             ? 'idle-videos'
+      : field === 'idle_bg_image'          ? 'idle-bgs'
+      : 'icons'; // idle_icon_img, mic_icon, mic_icon_disabled, audio_icon, audio_icon_disabled
     const dir = join(__dirname, 'public', subdir);
     fs.mkdirSync(dir, { recursive: true });
     const ext  = f.name.split('.').pop();
