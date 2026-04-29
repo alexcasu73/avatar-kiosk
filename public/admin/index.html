@@ -2345,6 +2345,8 @@ async function uploadModel(file) {
   if (!currentId) return toast('Salva prima l\'avatar', 'error');
   if (!/\.(fbx|glb|gltf)$/i.test(file?.name))
     return toast('Seleziona un file .fbx, .glb o .gltf', 'error');
+  document.getElementById('model-input').value = '';
+  document.getElementById('wiz-model-input').value = '';
   document.getElementById('model-label').textContent = 'Conversione in corso...';
   const skipCompress = document.getElementById('f-skip-compress')?.checked ? '1' : '0';
   const texQuality = document.getElementById('s-texture-quality')?.value || '85';
