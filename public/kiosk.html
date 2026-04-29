@@ -2466,6 +2466,12 @@ function applyIdleParam(key, value) {
     overlay.style.backgroundColor = value || '';
     return;
   }
+  if (key === 'idle_bg_opacity') {
+    const overlay = document.getElementById('idle-overlay');
+    if (!overlay) return;
+    overlay.style.opacity = value != null ? parseFloat(value) : 1;
+    return;
+  }
   if (key === 'idle_font') {
     const overlay = document.getElementById('idle-overlay');
     if (!overlay) return;
@@ -2515,6 +2521,7 @@ function applyIdleParam(key, value) {
         if (d.idle_video      !== undefined) applyIdleParam('idle_video',      d.idle_video);
         if (d.idle_bg_image   !== undefined) applyIdleParam('idle_bg_image',   d.idle_bg_image);
         if (d.idle_bg_color   !== undefined) applyIdleParam('idle_bg_color',   d.idle_bg_color);
+        if (d.idle_bg_opacity !== undefined) applyIdleParam('idle_bg_opacity', d.idle_bg_opacity);
         if (d.idle_font       !== undefined) applyIdleParam('idle_font',       d.idle_font);
         if (d.idle_font_size  !== undefined) applyIdleParam('idle_font_size',  d.idle_font_size);
       }
@@ -2722,6 +2729,7 @@ async function initAvatar() {
     applyIdleParam('idle_video',     cfg.idle_video     || '');
     applyIdleParam('idle_bg_image',  cfg.idle_bg_image  || '');
     applyIdleParam('idle_bg_color',  cfg.idle_bg_color  || '');
+    applyIdleParam('idle_bg_opacity', cfg.idle_bg_opacity ?? 1);
     applyIdleParam('idle_font',      cfg.idle_font      || '');
     applyIdleParam('idle_font_size', cfg.idle_font_size ?? 1.0);
     CONFIG.idleTimeout = (cfg.idle_timeout ?? 90) * 1000;
