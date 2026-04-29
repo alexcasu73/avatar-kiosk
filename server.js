@@ -412,6 +412,17 @@ bpy.ops.export_scene.gltf(filepath=sys.argv[-1], export_format='GLB', use_select
     }
 
     // 2. Comprimi texture PNG → JPEG nel GLB (ricostruisce il binary da zero)
+    const skipCompress = req.query.skipCompress === '1';
+    let originalKB, compressedKB, jsonForAnim;
+    if (skipCompress) {
+      fs.renameSync(rawGlb, outGlb);
+      originalKB = compressedKB = Math.round(fs.statSync(outGlb).size / 1024);
+      try {
+        const buf = fs.readFileSync(outGlb);
+        const jl = buf.readUInt32LE(12);
+        jsonForAnim = JSON.parse(buf.slice(20, 20 + jl).toString());
+      } catch (_) {}
+    } else {
     const avatarRow = db.prepare('SELECT texture_quality FROM avatars WHERE id = ?').get(req.params.id);
     const TEX_QUALITY = Math.max(60, Math.min(100, parseInt(avatarRow?.texture_quality) || 85));
     const sharp = (await import('sharp')).default;
@@ -484,16 +495,18 @@ bpy.ops.export_scene.gltf(filepath=sys.argv[-1], export_format='GLB', use_select
     fs.writeFileSync(outGlb, Buffer.concat([header,jh,jsonPadded,bh,binPadded]));
     fs.unlinkSync(rawGlb);
 
-    const originalKB   = rawKB;
-    const compressedKB = Math.round(fs.statSync(outGlb).size / 1024);
+    originalKB   = rawKB;
+    compressedKB = Math.round(fs.statSync(outGlb).size / 1024);
     console.log(`Texture compress: ${originalKB}KB → ${compressedKB}KB (-${Math.round((1-compressedKB/originalKB)*100)}%)`);
+    jsonForAnim = json;
+    } // end else (skipCompress)
 
     // Calcola durata animazioni per settare idle/speech interval di default
     let animDuration = null;
     try {
-      for (const anim of (json.animations || [])) {
+      for (const anim of ((jsonForAnim || {}).animations || [])) {
         for (const sampler of (anim.samplers || [])) {
-          const acc = json.accessors[sampler.input];
+          const acc = (jsonForAnim.accessors || [])[sampler.input];
           if (acc?.max?.[0] != null) animDuration = Math.max(animDuration ?? 0, acc.max[0]);
         }
       }

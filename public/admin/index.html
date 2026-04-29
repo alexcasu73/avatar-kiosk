@@ -1366,12 +1366,18 @@
 
         <div class="section">
           <h3>Modello 3D</h3>
-          <div class="slider-field" style="margin-bottom:14px">
+          <div class="slider-field" style="margin-bottom:8px">
             <label>Qualità texture <span id="v-texture-quality">85</span>%
               <span class="hint" style="margin:0">(applicata al prossimo upload)</span>
             </label>
             <input type="range" min="60" max="100" step="5" id="s-texture-quality" value="85"
               oninput="document.getElementById('v-texture-quality').textContent=this.value"/>
+          </div>
+          <div class="field" style="margin-bottom:14px">
+            <label style="display:flex;align-items:center;gap:10px;cursor:pointer;font-size:.85rem">
+              <input type="checkbox" id="f-skip-compress"/>
+              Salta compressione texture (mantieni originali)
+            </label>
           </div>
           <div class="upload-zone" id="model-drop"
             ondragover="event.preventDefault(); this.classList.add('drag')"
@@ -2340,9 +2346,10 @@ async function uploadModel(file) {
   if (!/\.(fbx|glb|gltf)$/i.test(file?.name))
     return toast('Seleziona un file .fbx, .glb o .gltf', 'error');
   document.getElementById('model-label').textContent = 'Conversione in corso...';
+  const skipCompress = document.getElementById('f-skip-compress')?.checked ? '1' : '0';
   const form = new FormData();
   form.append('model', file);
-  const res = await fetch(`/api/admin/avatars/${currentId}/upload-model`, { method:'POST', body:form });
+  const res = await fetch(`/api/admin/avatars/${currentId}/upload-model?skipCompress=${skipCompress}`, { method:'POST', body:form });
   const data = await res.json();
   if (!res.ok) { toast('Errore: ' + data.error, 'error'); return; }
   document.getElementById('model-label').innerHTML = `<svg viewBox="0 0 24 24" style="width:14px;height:14px;stroke:var(--success);fill:none;stroke-width:2.5;stroke-linecap:round;stroke-linejoin:round;display:inline-block;vertical-align:middle;margin-right:4px"><polyline points="20 6 9 17 4 12"/></svg>${data.model_file}`;
