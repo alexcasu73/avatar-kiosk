@@ -408,9 +408,11 @@
       transition: opacity 0.5s;
       --idle-font-family: inherit;
       --idle-font-size: 1rem;
+      --idle-bg-opacity: 1;
       font-family: var(--idle-font-family);
+      opacity: var(--idle-bg-opacity);
     }
-    #idle-overlay.hidden { opacity: 0; pointer-events: none; }
+    #idle-overlay.hidden { --idle-bg-opacity: 0 !important; pointer-events: none; }
 
     .idle-avatar-icon {
       width: 140px; height: 140px;
@@ -2469,7 +2471,7 @@ function applyIdleParam(key, value) {
   if (key === 'idle_bg_opacity') {
     const overlay = document.getElementById('idle-overlay');
     if (!overlay) return;
-    overlay.style.opacity = value != null ? parseFloat(value) : 1;
+    overlay.style.setProperty('--idle-bg-opacity', value != null ? parseFloat(value) : 1);
     return;
   }
   if (key === 'idle_font') {
