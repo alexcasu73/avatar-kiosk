@@ -424,7 +424,7 @@ bpy.ops.export_scene.gltf(filepath=sys.argv[-1], export_format='GLB', use_select
       } catch (_) {}
     } else {
     const avatarRow = db.prepare('SELECT texture_quality FROM avatars WHERE id = ?').get(req.params.id);
-    const TEX_QUALITY = Math.max(60, Math.min(100, parseInt(avatarRow?.texture_quality) || 85));
+    const TEX_QUALITY = Math.max(60, Math.min(100, parseInt(req.query.texQuality) || parseInt(avatarRow?.texture_quality) || 85));
     const sharp = (await import('sharp')).default;
     const rawKB = Math.round(fs.statSync(rawGlb).size / 1024);
     const glbBuf = fs.readFileSync(rawGlb);
