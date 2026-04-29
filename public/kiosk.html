@@ -1453,6 +1453,7 @@ function setMode(mode) {
 let _idleTimer = null;
 
 function resetIdleTimer() {
+  if (CONFIG.idleDisabled) return;
   clearTimeout(_idleTimer);
   _idleTimer = setTimeout(() => {
     document.getElementById('idle-overlay').classList.remove('hidden');
@@ -2534,6 +2535,14 @@ function applyIdleParam(key, value) {
         if (d.chat_font_size  !== undefined) applyParamLive('chat_font_size',  d.chat_font_size);
         if (d.show_controls    !== undefined) applyParamLive('show_controls',    d.show_controls);
         if (d.theme           !== undefined) applyTheme(d.theme);
+        if (d.idle_disabled  !== undefined) {
+          CONFIG.idleDisabled = !!d.idle_disabled;
+          if (CONFIG.idleDisabled) {
+            clearTimeout(_idleTimer);
+            document.getElementById('idle-overlay').classList.add('hidden');
+            setControlsVisible(true);
+          }
+        }
         if (d.idle_timeout   !== undefined) applyIdleParam('idle_timeout',  d.idle_timeout);
         if (d.idle_icon      !== undefined) applyIdleParam('idle_icon',     d.idle_icon);
         if (d.idle_title    !== undefined) applyIdleParam('idle_title',    d.idle_title    ?? '');
@@ -2766,6 +2775,11 @@ async function initAvatar() {
     applyIdleParam('idle_font',      cfg.idle_font      || '');
     applyIdleParam('idle_font_size', cfg.idle_font_size ?? 1.0);
     CONFIG.idleTimeout = (cfg.idle_timeout ?? 90) * 1000;
+    CONFIG.idleDisabled = !!(cfg.idle_disabled);
+    if (CONFIG.idleDisabled) {
+      document.getElementById('idle-overlay').classList.add('hidden');
+      setControlsVisible(true);
+    }
 
     // Aggiorna camera
     camera.position.set(0, CONFIG.cameraY, CONFIG.cameraZ);

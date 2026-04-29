@@ -43,6 +43,7 @@ db.exec(`
     webhook_input_template TEXT DEFAULT '{"query":"{{query}}"}',
     webhook_output_field  TEXT DEFAULT 'response',
     webhook_headers       TEXT DEFAULT '{}',
+    idle_disabled     INTEGER DEFAULT 0,
     idle_timeout      INTEGER DEFAULT 90,
     idle_icon         TEXT DEFAULT '🤖',
     idle_icon_img     TEXT DEFAULT '',
@@ -202,6 +203,8 @@ if (!existing.includes('idle_bg_color'))
   db.exec("ALTER TABLE avatars ADD COLUMN idle_bg_color TEXT DEFAULT ''")
 if (!existing.includes('idle_bg_color_alpha'))
   db.exec("ALTER TABLE avatars ADD COLUMN idle_bg_color_alpha REAL DEFAULT 1")
+if (!existing.includes('idle_disabled'))
+  db.exec("ALTER TABLE avatars ADD COLUMN idle_disabled INTEGER DEFAULT 0")
 if (!existing.includes('idle_bg_opacity'))
   db.exec("ALTER TABLE avatars ADD COLUMN idle_bg_opacity REAL DEFAULT 1")
 if (!existing.includes('bg_video'))

@@ -1223,6 +1223,13 @@
 
         <div class="section">
           <h3>Schermata Idle</h3>
+          <div class="field" style="margin-bottom:4px">
+            <label style="display:flex;align-items:center;gap:10px;cursor:pointer;font-size:.85rem">
+              <input type="checkbox" id="f-idle-disabled"
+                onchange="sendToPreview({type:'avatarParam',key:'idle_disabled',value:this.checked?1:0})"/>
+              Disabilita schermata idle (mostra subito la chat)
+            </label>
+          </div>
           <!-- Sfondo -->
           <div class="subsection">
             <div class="subsection-title">Sfondo</div>
@@ -1688,6 +1695,7 @@ function selectAvatar(id) {
   const idleFontSize = a.idle_font_size ?? 1.1;
   document.getElementById('s-idle-font-size').value         = idleFontSize;
   document.getElementById('val-idle-font-size').textContent = idleFontSize.toFixed(2);
+  document.getElementById('f-idle-disabled').checked = (a.idle_disabled ?? 0) !== 0;
   const idleTimeout = a.idle_timeout ?? 90;
   document.getElementById('s-idle-timeout').value        = idleTimeout;
   document.getElementById('val-idle-timeout').textContent = idleTimeout;
@@ -2139,6 +2147,7 @@ async function saveAvatar() {
     chat_font:       document.getElementById('f-chat-font').value,
     chat_font_size:  parseFloat(document.getElementById('s-chat-font-size').value),
     show_controls:     document.getElementById('f-show-controls').checked    ? 1 : 0,
+    idle_disabled:   document.getElementById('f-idle-disabled').checked ? 1 : 0,
     idle_timeout:    parseInt(document.getElementById('s-idle-timeout').value),
     idle_icon:       document.getElementById('f-idle-icon').value,
     idle_title:      document.getElementById('f-idle-title').value,
