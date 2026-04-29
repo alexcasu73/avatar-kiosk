@@ -1629,8 +1629,8 @@ function selectAvatar(id) {
   document.getElementById('idle-video-drop').onclick = (a.idle_video) ? null : () => document.getElementById('idle-video-input').click();
   setIconPreview('idle', a.idle_icon_img || '');
   document.getElementById('f-idle-title').value    = a.idle_title    || '';
-  document.getElementById('f-idle-subtitle').value = a.idle_subtitle || 'La tua assistente virtuale';
-  document.getElementById('f-idle-hint').value     = a.idle_hint     || '✨ Tocca per iniziare';
+  document.getElementById('f-idle-subtitle').value = a.idle_subtitle ?? '';
+  document.getElementById('f-idle-hint').value     = a.idle_hint     ?? '';
   document.getElementById('f-idle-font').value     = a.idle_font     || '';
   const idleFontSize = a.idle_font_size ?? 1.1;
   document.getElementById('s-idle-font-size').value         = idleFontSize;
