@@ -2042,6 +2042,7 @@ async function _startVad() {
         if (state.mode === 'recording') {
           if (CONFIG.wakeWordAlwaysRequired && !state.wakeActivated && !state.bargeIn) {
             setMode('listening');
+            startWakeWord();
             return;
           }
           if (blob.size < 3000) {
