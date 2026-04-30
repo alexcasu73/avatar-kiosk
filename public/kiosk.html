@@ -3039,9 +3039,13 @@ async function initAvatar() {
     CONFIG.idleDisabled = !!(cfg.idle_disabled);
     CONFIG.wakeWordEnabled = !!(cfg.wake_word_enabled);
     CONFIG.wakeWordAlwaysRequired = !!(cfg.wake_word_always);
-    // startWakeWord richiede gesto utente: si avvia al primo click sulla pagina
     if (CONFIG.wakeWordEnabled || CONFIG.wakeWordAlwaysRequired) {
-      document.addEventListener('click', startWakeWord, { once: true });
+      // Prova subito (funziona se il permesso microfono è già stato concesso)
+      // fallback: al primo click utente
+      try { startWakeWord(); } catch(_) {}
+      if (!state.wakeRecognition) {
+        document.addEventListener('click', startWakeWord, { once: true });
+      }
     }
     if (CONFIG.idleDisabled) {
       document.getElementById('idle-overlay').classList.add('hidden');
