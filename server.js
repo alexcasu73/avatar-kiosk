@@ -356,15 +356,21 @@ app.post('/api/admin/avatars/:id/upload-model', uploadFbx.single('model'), async
       }
 
       let converted = false;
+      console.log('[FBX] fbx2gltf trovato:', fbx2gltf || 'no');
 
       // Prova FBX2glTF
       if (fbx2gltf) {
         try {
+          // Verifica che il binario sia eseguibile
+          fs.accessSync(fbx2gltf, fs.constants.X_OK);
+          console.log('[FBX] Uso fbx2gltf:', fbx2gltf);
           const rawGlbBase = rawGlb.replace(/\.glb$/, '');
           await promisify(execFile)(fbx2gltf, ['--binary', tmpFile, '--output', rawGlbBase]);
-          converted = true;
+          converted = fs.existsSync(rawGlb) && fs.statSync(rawGlb).size > 1024;
+          if (converted) console.log('[FBX] fbx2gltf OK');
+          else console.warn('[FBX] fbx2gltf non ha prodotto output');
         } catch (e) {
-          console.warn('FBX2glTF fallito, provo Blender:', e.message);
+          console.warn('[FBX] fbx2gltf fallito:', e.message);
         }
       }
 
@@ -372,16 +378,19 @@ app.post('/api/admin/avatars/:id/upload-model', uploadFbx.single('model'), async
       if (!converted) {
         try {
           const { exec } = await import('child_process');
+          console.log('[FBX] Provo assimp...');
           await promisify(exec)(`assimp export "${tmpFile}" "${rawGlb}"`, { timeout: 120000 });
           converted = fs.existsSync(rawGlb) && fs.statSync(rawGlb).size > 1024;
-          if (!converted) console.error('assimp non ha prodotto output GLB valido');
+          if (converted) console.log('[FBX] assimp OK');
+          else console.error('[FBX] assimp non ha prodotto output GLB valido');
         } catch (e) {
-          console.error('assimp fallback fallito:', e.message);
+          console.error('[FBX] assimp fallito:', e.message);
         }
       }
 
       // Fallback 2: Blender headless (ultimo tentativo)
       if (!converted) {
+        console.log('[FBX] Provo Blender...');
         const blenderScript = `
 import bpy, sys
 bpy.ops.wm.read_factory_settings(use_empty=True)
