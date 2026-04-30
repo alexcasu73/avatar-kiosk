@@ -916,6 +916,7 @@ class VAD {
     this._active    = false;
     this._paused    = false;
     this._speaking  = false;
+    this.recordingEnabled = true; // se false, monitora RMS ma non avvia il recorder
     this._speechStart  = null;
     this._silenceStart = null;
     this._chunks    = [];
@@ -1017,7 +1018,7 @@ class VAD {
 
     if (!this._speaking) {
       if (rms > activeThresh) {
-        if (!this._speechStart) {
+        if (!this._speechStart && this.recordingEnabled) {
           // Avvia la registrazione subito per non perdere la prima parola
           this._speechStart = now;
           this._chunks = [];
@@ -1113,11 +1114,13 @@ function startWakeWord() {
           } else if (state.mode === 'listening' && CONFIG.wakeWordAlwaysRequired) {
             stopWakeWord();
             state.wakeActivated = true;
+            if (state.vad) state.vad.recordingEnabled = true;
             setMode('recording');
             clearTimeout(state._wakeTimeout);
             state._wakeTimeout = setTimeout(() => {
               if (state.mode === 'recording' && state.wakeActivated) {
                 state.wakeActivated = false;
+                if (state.vad) state.vad.recordingEnabled = false;
                 setMode('listening');
                 startWakeWord();
               }
@@ -1730,6 +1733,7 @@ async function processUserInput(text) {
     state.vad?.resume();
     state.wakeActivated = false;
     state.bargeIn = false;
+    if (CONFIG.wakeWordAlwaysRequired && state.vad) state.vad.recordingEnabled = false;
     if (CONFIG.wakeWordAlwaysRequired) startWakeWord();
     resetIdleTimer();
   }
@@ -2065,6 +2069,8 @@ async function _startVad() {
       },
     });
     await state.vad.start();
+    // Se wakeWordAlwaysRequired: recorder disabilitato finché wake word non attiva
+    if (CONFIG.wakeWordAlwaysRequired) state.vad.recordingEnabled = false;
     // Se il mic è stato spento mentre getUserMedia era in attesa, ferma subito
     if (!CONFIG.micEnabled) { state.vad.stop(); state.vad = null; }
   } catch (err) {
