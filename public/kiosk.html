@@ -1080,8 +1080,11 @@ function _buildWakeWords() {
 }
 
 function startWakeWord() {
+  if (!CONFIG.wakeWordEnabled && !CONFIG.wakeWordAlwaysRequired) return;
   const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
   if (!SR) { console.warn('[WakeWord] Web Speech API non supportata'); return; }
+  if (state.wakeRecognition) { console.log('[WakeWord] già attiva'); return; }
+  console.log('[WakeWord] avvio, mode:', state.mode);
 
   const rec = new SR();
   rec.lang = 'it-IT';
@@ -1998,10 +2001,12 @@ function toggleAudio() {
 
 async function toggleMic() {
   CONFIG.micEnabled = !CONFIG.micEnabled;
+  console.log('[toggleMic] micEnabled:', CONFIG.micEnabled, 'mode:', state.mode, 'wakeAlways:', CONFIG.wakeWordAlwaysRequired, 'wakeRec:', !!state.wakeRecognition);
   updateMicBtn();
   if (CONFIG.micEnabled) {
     if (state.mode !== 'idle') await _startVad();
     if (CONFIG.wakeWordAlwaysRequired && state.mode !== 'idle') startWakeWord();
+    console.log('[toggleMic] dopo startWakeWord, wakeRec:', !!state.wakeRecognition);
   } else {
     const vad = state.vad;
     state.vad = null;
