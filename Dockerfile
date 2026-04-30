@@ -3,7 +3,7 @@ FROM node:20-alpine
 WORKDIR /app
 
 # Dipendenze di sistema per better-sqlite3, gltf-pipeline e Blender (fallback FBX su ARM64)
-RUN apk add --no-cache python3 py3-numpy make g++ cairo-dev pango-dev blender
+RUN apk add --no-cache python3 py3-numpy make g++ cairo-dev pango-dev assimp assimp-dev blender
 
 # Installa dipendenze npm
 COPY package*.json ./

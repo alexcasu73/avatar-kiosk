@@ -368,22 +368,34 @@ app.post('/api/admin/avatars/:id/upload-model', uploadFbx.single('model'), async
         }
       }
 
-      // Fallback: Blender headless (ARM64 / FBX2glTF non disponibile)
+      // Fallback 1: assimp (ARM64, multipiattaforma, gestisce scala e animazioni correttamente)
+      if (!converted) {
+        try {
+          const { exec } = await import('child_process');
+          const assimpOut = rawGlb.replace(/\.glb$/, '.gltf');
+          await promisify(exec)(`assimp export "${tmpFile}" "${assimpOut}" --config=PP_FD_REMOVE=1`, { timeout: 120000 });
+          if (fs.existsSync(assimpOut)) {
+            const gltfContent = JSON.parse(fs.readFileSync(assimpOut, 'utf8'));
+            const result = await gltfPipeline.gltfToGlb(gltfContent, { resourceDirectory: join(__dirname, 'public', 'models') });
+            fs.writeFileSync(rawGlb, result.glb);
+            fs.unlinkSync(assimpOut);
+            converted = fs.existsSync(rawGlb);
+          }
+          if (!converted) console.error('assimp non ha prodotto output');
+        } catch (e) {
+          console.error('assimp fallback fallito:', e.message);
+        }
+      }
+
+      // Fallback 2: Blender headless (ultimo tentativo)
       if (!converted) {
         const blenderScript = `
 import bpy, sys
 bpy.ops.wm.read_factory_settings(use_empty=True)
 fbx_path = sys.argv[-2]
 glb_path = sys.argv[-1]
-print("Importing FBX:", fbx_path)
 bpy.ops.import_scene.fbx(filepath=fbx_path, automatic_bone_orientation=True, global_scale=0.01)
-print("Exporting GLB:", glb_path)
-bpy.ops.export_scene.gltf(
-    filepath=glb_path,
-    export_format='GLB',
-    use_selection=False,
-    export_yup=True,
-)
+bpy.ops.export_scene.gltf(filepath=glb_path, export_format='GLB', use_selection=False, export_yup=True)
 print("Done")
 `.trim();
         const scriptFile = tmpFile + '.py';
@@ -391,16 +403,13 @@ print("Done")
         try {
           const { exec } = await import('child_process');
           const blenderCmd = `blender --background --python "${scriptFile}" -- "${tmpFile}" "${rawGlb.replace(/\.glb$/, '')}"`;
-          const { stdout: bOut, stderr: bErr } = await promisify(exec)(blenderCmd, { timeout: 120000 });
-          if (bOut) console.log('Blender stdout:', bOut.slice(-2000));
-          if (bErr) console.log('Blender stderr:', bErr.slice(-1000));
-          // Blender aggiunge .glb al nome output
+          await promisify(exec)(blenderCmd, { timeout: 120000 });
           const blenderOut = rawGlb.replace(/\.glb$/, '') + '.glb';
           if (fs.existsSync(blenderOut) && blenderOut !== rawGlb) fs.renameSync(blenderOut, rawGlb);
           converted = fs.existsSync(rawGlb);
           if (!converted) console.error('Blender non ha prodotto output GLB');
         } catch (e) {
-          console.error('Blender fallback fallito:', e.message, e.stderr || '');
+          console.error('Blender fallback fallito:', e.message);
         } finally {
           try { fs.unlinkSync(scriptFile); } catch {}
         }
