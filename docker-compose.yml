@@ -17,31 +17,8 @@ services:
     env_file:
       - .env
     networks:
-      - kiosk-net
-
-  nginx:
-    image: nginx:alpine
-    container_name: avatar-nginx
-    restart: unless-stopped
-    ports:
-      - "80:80"
-      - "443:443"
-    volumes:
-      - ./nginx/conf.d:/etc/nginx/conf.d:ro
-      - ./nginx/certbot/conf:/etc/letsencrypt:ro
-      - ./nginx/certbot/www:/var/www/certbot:ro
-    depends_on:
-      - avatar-kiosk
-    networks:
-      - kiosk-net
-
-  certbot:
-    image: certbot/certbot
-    container_name: avatar-certbot
-    volumes:
-      - ./nginx/certbot/conf:/etc/letsencrypt
-      - ./nginx/certbot/www:/var/www/certbot
-    entrypoint: "/bin/sh -c 'trap exit TERM; while :; do certbot renew --webroot -w /var/www/certbot --quiet; sleep 12h & wait $${!}; done'"
+      - nutriai_default
 
 networks:
-  kiosk-net:
+  nutriai_default:
+    external: true
