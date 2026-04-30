@@ -3,8 +3,8 @@ services:
     build: .
     container_name: avatar-kiosk
     restart: unless-stopped
-    ports:
-      - "${PORT:-3000}:3000"
+    expose:
+      - "3000"
     volumes:
       - ./public/models:/app/public/models
       - ./public/backgrounds:/app/public/backgrounds
@@ -16,3 +16,25 @@ services:
       - ./.env:/app/.env
     env_file:
       - .env
+
+  nginx:
+    image: nginx:alpine
+    container_name: avatar-nginx
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/conf.d:/etc/nginx/conf.d:ro
+      - ./nginx/certbot/conf:/etc/letsencrypt:ro
+      - ./nginx/certbot/www:/var/www/certbot:ro
+    depends_on:
+      - avatar-kiosk
+
+  certbot:
+    image: certbot/certbot
+    container_name: avatar-certbot
+    volumes:
+      - ./nginx/certbot/conf:/etc/letsencrypt
+      - ./nginx/certbot/www:/var/www/certbot
+    entrypoint: "/bin/sh -c 'trap exit TERM; while :; do certbot renew --webroot -w /var/www/certbot --quiet; sleep 12h & wait $${!}; done'"
