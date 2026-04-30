@@ -2077,7 +2077,8 @@ async function wakeUp() {
   stopWakeWord();
   document.getElementById('idle-overlay').classList.add('hidden');
   setControlsVisible(true);
-  setMode('listening'); // avvia anche startWakeWord se wakeWordAlwaysRequired
+  setMode('listening');
+  if (CONFIG.wakeWordAlwaysRequired) startWakeWord();
   resetIdleTimer();
 
   // Sblocca AudioContext su iOS durante il gesto utente (obbligatorio per resume())
