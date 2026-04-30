@@ -2001,6 +2001,7 @@ async function toggleMic() {
   updateMicBtn();
   if (CONFIG.micEnabled) {
     if (state.mode !== 'idle') await _startVad();
+    if (CONFIG.wakeWordAlwaysRequired && state.mode !== 'idle') startWakeWord();
   } else {
     const vad = state.vad;
     state.vad = null;
