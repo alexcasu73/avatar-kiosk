@@ -376,7 +376,7 @@ bpy.ops.wm.read_factory_settings(use_empty=True)
 fbx_path = sys.argv[-2]
 glb_path = sys.argv[-1]
 print("Importing FBX:", fbx_path)
-bpy.ops.import_scene.fbx(filepath=fbx_path, automatic_bone_orientation=True)
+bpy.ops.import_scene.fbx(filepath=fbx_path, automatic_bone_orientation=True, global_scale=0.01)
 print("Exporting GLB:", glb_path)
 bpy.ops.export_scene.gltf(
     filepath=glb_path,
