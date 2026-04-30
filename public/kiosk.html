@@ -1114,8 +1114,9 @@ function startWakeWord() {
           } else if (state.mode === 'listening' && CONFIG.wakeWordAlwaysRequired) {
             stopWakeWord();
             state.wakeActivated = true;
-            if (state.vad) state.vad.recordingEnabled = true;
             setMode('recording');
+            // Piccolo delay: lascia che Chrome rilasci il microfono dalla Web Speech API
+            setTimeout(() => { if (state.vad) state.vad.recordingEnabled = true; }, 300);
             clearTimeout(state._wakeTimeout);
             state._wakeTimeout = setTimeout(() => {
               if (state.mode === 'recording' && state.wakeActivated) {
