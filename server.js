@@ -342,15 +342,17 @@ app.post('/api/admin/avatars/:id/upload-model', uploadFbx.single('model'), async
 
       // Trova FBX2glTF (fbx2gltf npm package o sistema)
       let fbx2gltf = null;
+      const _platform = process.platform; // darwin | linux | win32
       const candidates = [
-        join(__dirname, 'node_modules/fbx2gltf/bin/Darwin/FBX2glTF'),
-        join(__dirname, 'node_modules/fbx2gltf/bin/Linux/FBX2glTF'),
-        join(__dirname, 'node_modules/fbx2gltf/bin/Windows_NT/FBX2glTF.exe'),
+        // Prima il binario della piattaforma corrente
+        _platform === 'darwin'  ? join(__dirname, 'node_modules/fbx2gltf/bin/Darwin/FBX2glTF') : null,
+        _platform === 'linux'   ? join(__dirname, 'node_modules/fbx2gltf/bin/Linux/FBX2glTF')  : null,
+        _platform === 'win32'   ? join(__dirname, 'node_modules/fbx2gltf/bin/Windows_NT/FBX2glTF.exe') : null,
         '/usr/local/bin/FBX2glTF',
         '/opt/homebrew/bin/FBX2glTF',
         join(process.env.HOME || '', '.npm-global/lib/node_modules/fbx2gltf/bin/Darwin/FBX2glTF'),
         join(process.env.HOME || '', '.npm-global/lib/node_modules/fbx2gltf/bin/Linux/FBX2glTF'),
-      ];
+      ].filter(Boolean);
       for (const c of candidates) {
         try { if (fs.existsSync(c)) { fbx2gltf = c; break; } } catch {}
       }
