@@ -226,5 +226,9 @@ if (!existing.includes('theme'))
   db.exec("ALTER TABLE avatars ADD COLUMN theme TEXT DEFAULT 'viola'");
 if (!existing.includes('model_hash'))
   db.exec("ALTER TABLE avatars ADD COLUMN model_hash TEXT DEFAULT ''");
+if (!existing.includes('wake_word_enabled'))
+  db.exec("ALTER TABLE avatars ADD COLUMN wake_word_enabled INTEGER DEFAULT 0");
+if (!existing.includes('wake_word_always'))
+  db.exec("ALTER TABLE avatars ADD COLUMN wake_word_always INTEGER DEFAULT 0");
 
 export default db;

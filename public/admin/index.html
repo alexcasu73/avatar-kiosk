@@ -1247,6 +1247,20 @@
               Disabilita schermata idle (mostra subito la chat)
             </label>
           </div>
+          <div class="field" style="margin-bottom:4px">
+            <label style="display:flex;align-items:center;gap:10px;cursor:pointer;font-size:.85rem">
+              <input type="checkbox" id="f-wake-word-enabled"
+                onchange="sendToPreview({type:'avatarParam',key:'wake_word_enabled',value:this.checked?1:0})"/>
+              Attiva wake word — "Ciao [nome avatar]" per uscire dall'idle
+            </label>
+          </div>
+          <div class="field" style="margin-bottom:4px">
+            <label style="display:flex;align-items:center;gap:10px;cursor:pointer;font-size:.85rem">
+              <input type="checkbox" id="f-wake-word-always"
+                onchange="sendToPreview({type:'avatarParam',key:'wake_word_always',value:this.checked?1:0})"/>
+              Richiedi wake word anche durante la sessione (registra solo dopo "Ciao [nome]")
+            </label>
+          </div>
           <!-- Sfondo -->
           <div class="subsection">
             <div class="subsection-title">Sfondo</div>
@@ -1737,7 +1751,9 @@ function selectAvatar(id) {
   const idleFontSize = a.idle_font_size ?? 1.1;
   document.getElementById('s-idle-font-size').value         = idleFontSize;
   document.getElementById('val-idle-font-size').textContent = idleFontSize.toFixed(2);
-  document.getElementById('f-idle-disabled').checked  = (a.idle_disabled  ?? 0) !== 0;
+  document.getElementById('f-idle-disabled').checked     = (a.idle_disabled     ?? 0) !== 0;
+  document.getElementById('f-wake-word-enabled').checked = (a.wake_word_enabled ?? 0) !== 0;
+  document.getElementById('f-wake-word-always').checked  = (a.wake_word_always  ?? 0) !== 0;
   document.getElementById('f-anim-pingpong').checked  = (a.anim_pingpong  ?? 0) !== 0;
   const idleTimeout = a.idle_timeout ?? 90;
   document.getElementById('s-idle-timeout').value        = idleTimeout;
@@ -2217,7 +2233,9 @@ async function saveAvatar() {
     chat_font:       document.getElementById('f-chat-font').value,
     chat_font_size:  parseFloat(document.getElementById('s-chat-font-size').value),
     show_controls:     document.getElementById('f-show-controls').checked    ? 1 : 0,
-    idle_disabled:   document.getElementById('f-idle-disabled').checked ? 1 : 0,
+    idle_disabled:      document.getElementById('f-idle-disabled').checked     ? 1 : 0,
+    wake_word_enabled:  document.getElementById('f-wake-word-enabled').checked ? 1 : 0,
+    wake_word_always:   document.getElementById('f-wake-word-always').checked  ? 1 : 0,
     idle_timeout:    parseInt(document.getElementById('s-idle-timeout').value),
     idle_icon:       document.getElementById('f-idle-icon').value,
     idle_title:      document.getElementById('f-idle-title').value,

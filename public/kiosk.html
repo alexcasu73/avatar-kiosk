@@ -864,6 +864,8 @@ const CONFIG = {
   audioIconX:   0,
   audioIconY:   0,
   avatarName:   'Sofia',
+  wakeWordEnabled: false,
+  wakeWordAlwaysRequired: false,
   avatarModelUrl: '/avatar.glb',
 
   // ── Posizione e scala avatar ──────────────────────
@@ -894,6 +896,9 @@ const state = window._dbgState = {
   mixer: null,
   avatar: null,
   vad: null,
+  wakeRecognition: null,
+  wakeActivated: false,
+  bargeIn: false,
 };
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -1056,6 +1061,92 @@ let _lastVolume = 0;
 
 function updateVadVisualizer(rms) {
   _lastVolume = rms;
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+//  WAKE WORD DETECTION (Web Speech API)
+// ═══════════════════════════════════════════════════════════════════════════
+function _buildWakeWords() {
+  const name = (CONFIG.avatarName || '').toLowerCase().trim();
+  const variants = [name, name.replace(/[aeiou]$/i, '')];  // es. "sofia" e "sofi"
+  const prefixes = ['ciao', 'hey', 'ok'];
+  const words = new Set();
+  for (const p of prefixes) {
+    words.add(p);
+    for (const v of variants) if (v) words.add(`${p} ${v}`);
+  }
+  if (name) words.add(name);
+  return [...words];
+}
+
+function startWakeWord() {
+  const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if (!SR) { console.warn('[WakeWord] Web Speech API non supportata'); return; }
+
+  const rec = new SR();
+  rec.lang = 'it-IT';
+  rec.continuous = true;
+  rec.interimResults = true;
+  rec.maxAlternatives = 3;
+  state.wakeRecognition = rec;
+
+  const wakeWords = _buildWakeWords();
+
+  rec.onresult = e => {
+    for (let i = e.resultIndex; i < e.results.length; i++) {
+      for (let j = 0; j < e.results[i].length; j++) {
+        const text = e.results[i][j].transcript.toLowerCase().trim();
+        const textWords = text.split(/\s+/);
+        const wakeMatch = wakeWords.some(w => {
+          const ww = w.split(/\s+/);
+          return textWords.some((_, k) => ww.every((p, j) => textWords[k + j] === p));
+        });
+        if (wakeMatch) {
+          const wordCount = text.trim().split(/\s+/).length;
+          if (state.mode === 'idle') {
+            stopWakeWord();
+            const idleOverlay = document.getElementById('idle-overlay');
+            if (idleOverlay) idleOverlay.click();
+          } else if (state.mode === 'listening' && CONFIG.wakeWordAlwaysRequired) {
+            stopWakeWord();
+            state.wakeActivated = true;
+            setMode('recording');
+            clearTimeout(state._wakeTimeout);
+            state._wakeTimeout = setTimeout(() => {
+              if (state.mode === 'recording' && state.wakeActivated) {
+                state.wakeActivated = false;
+                setMode('listening');
+                startWakeWord();
+              }
+            }, 3000);
+          }
+          return;
+        }
+      }
+    }
+  };
+
+  rec.onerror = e => {
+    if (e.error === 'no-speech' || e.error === 'aborted') return;
+    console.warn('[WakeWord] errore:', e.error);
+  };
+
+  rec.onend = () => {
+    const shouldRestart = state.wakeRecognition &&
+      (state.mode === 'idle' ||
+       (CONFIG.wakeWordAlwaysRequired && (state.mode === 'listening' || state.mode === 'speaking')));
+    if (shouldRestart) {
+      setTimeout(() => { try { rec.start(); } catch(e) {} }, 300);
+    }
+  };
+
+  try { rec.start(); } catch(e) { console.warn('[WakeWord] start fallito:', e.message); }
+}
+
+function stopWakeWord() {
+  if (!state.wakeRecognition) return;
+  try { state.wakeRecognition.stop(); } catch(_) {}
+  state.wakeRecognition = null;
 }
 
 // ── Barre animate nei bottoni ──────────────────────────────────────────────
@@ -1503,6 +1594,7 @@ function setMode(mode) {
   } else if (mode === 'idle') {
     // già in standby, niente da fare
   }
+
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -1519,6 +1611,7 @@ function resetIdleTimer() {
     document.getElementById('chat-history').innerHTML = '';
     setMode('idle');
     state.vad?.pause();
+    startWakeWord();
   }, CONFIG.idleTimeout);
 }
 
@@ -1615,6 +1708,11 @@ async function processUserInput(text) {
         startProceduralLipSync();
         await playTTSAudio(ttsData);
       }
+    } else {
+      const ttsErr = await ttsRes.json().catch(() => ({}));
+      if (ttsErr.error === 'quota_exceeded') {
+        addToHistory('avatar', '⚠️ Crediti vocali esauriti. Ricarica il piano ElevenLabs per ripristinare l\'audio.');
+      }
     }
 
   } catch (err) {
@@ -1627,6 +1725,9 @@ async function processUserInput(text) {
       setMode('listening');
     }
     state.vad?.resume();
+    state.wakeActivated = false;
+    state.bargeIn = false;
+    if (CONFIG.wakeWordAlwaysRequired) startWakeWord();
     resetIdleTimer();
   }
 }
@@ -1711,8 +1812,31 @@ async function transcribeAndProcess(blob) {
     const res  = await fetch(`${CONFIG.serverUrl}/api/stt`, { method: 'POST', body: formData });
     const data = await res.json();
     if (!res.ok) throw new Error(data.error);
-    if (data.transcript?.trim()) {
-      await processUserInput(data.transcript);
+    const transcript = data.transcript?.trim();
+    if (transcript) {
+      // Scarta trascrizioni composte solo da parole della wake word
+      if (CONFIG.wakeWordEnabled || CONFIG.wakeWordAlwaysRequired) {
+        const norm = s => s.normalize('NFD').replace(/[̀-ͯ]/g, '');
+        const t = norm(transcript.toLowerCase().replace(/[.,!?']/g, '').trim());
+        const wakeWordParts = new Set(_buildWakeWords().flatMap(w => norm(w).split(/\s+/)));
+        const contentWords = t.split(/\s+/).filter(w => w && !wakeWordParts.has(w));
+        if (contentWords.length === 0) {
+          // wakeActivated=true: la prossima frase parte senza richiedere di nuovo la wake word
+          state.wakeActivated = true;
+          state.vad?.resume();
+          setMode('listening');
+          if (CONFIG.wakeWordAlwaysRequired) startWakeWord();
+          resetIdleTimer();
+          clearTimeout(state._wakeTimeout);
+          state._wakeTimeout = setTimeout(() => {
+            if (state.mode === 'listening' && state.wakeActivated) {
+              state.wakeActivated = false;
+            }
+          }, 4000);
+          return;
+        }
+      }
+      await processUserInput(transcript);
     } else {
       setMode('listening');
       state.vad?.resume();
@@ -1902,17 +2026,33 @@ async function _startVad() {
       minSpeechDuration: CONFIG.vadMinSpeechDuration,
       onVolume:    rms => updateVadVisualizer(rms),
       onSpeechStart: () => {
-        console.log('[VAD] onSpeechStart, mode:', state.mode);
+        clearTimeout(state._wakeTimeout);
         if (state.mode === 'listening') {
+          if (CONFIG.wakeWordAlwaysRequired && !state.wakeActivated) return;
+          state.wakeActivated = false;
           setMode('recording');
         } else if (state.mode === 'speaking') {
+          // Barge-in: interrompe sempre, senza richiedere wake word
+          state.bargeIn = true;
           stopCurrentAudio();
           setMode('recording');
         }
       },
       onSpeechEnd: async blob => {
-        console.log('[VAD] onSpeechEnd, mode:', state.mode, 'blobSize:', blob.size);
         if (state.mode === 'recording') {
+          if (CONFIG.wakeWordAlwaysRequired && !state.wakeActivated && !state.bargeIn) {
+            setMode('listening');
+            return;
+          }
+          if (blob.size < 3000) {
+            state.wakeActivated = false;
+            state.bargeIn = false;
+            setMode('listening');
+            if (CONFIG.wakeWordAlwaysRequired) startWakeWord();
+            return;
+          }
+          state.wakeActivated = false;
+          state.bargeIn = false;
           setMode('thinking');
           await transcribeAndProcess(blob);
         }
@@ -1931,9 +2071,10 @@ function setControlsVisible(visible) {
 }
 
 async function wakeUp() {
+  stopWakeWord();
   document.getElementById('idle-overlay').classList.add('hidden');
   setControlsVisible(true);
-  setMode('listening');
+  setMode('listening'); // avvia anche startWakeWord se wakeWordAlwaysRequired
   resetIdleTimer();
 
   // Sblocca AudioContext su iOS durante il gesto utente (obbligatorio per resume())
@@ -1950,6 +2091,12 @@ async function wakeUp() {
 
   // Prima visita: mostra benvenuto (piccolo delay per garantire repaint pannello)
   setTimeout(() => addToHistory('avatar', `Ciao! Sono ${CONFIG.avatarName}. Come posso aiutarti?`), 50);
+
+  // Se wake word attiva, forza il microfono abilitato
+  if (CONFIG.wakeWordEnabled && !CONFIG.micEnabled) {
+    CONFIG.micEnabled = true;
+    updateMicBtn();
+  }
 
   // Avvia VAD solo se microfono abilitato
   if (!CONFIG.micEnabled) return;
@@ -2435,6 +2582,17 @@ window.addEventListener('message', e => {
       applyOverlay(CONFIG._overlayColor || '#0a0a0f', CONFIG._overlayOpacity ?? 0.75);
       return;
     }
+    if (msg.key === 'wake_word_enabled') {
+      CONFIG.wakeWordEnabled = !!parseInt(msg.value);
+      if (!CONFIG.wakeWordEnabled) stopWakeWord();
+      return;
+    }
+    if (msg.key === 'wake_word_always') {
+      CONFIG.wakeWordAlwaysRequired = !!parseInt(msg.value);
+      if (!CONFIG.wakeWordAlwaysRequired) { stopWakeWord(); state.wakeActivated = false; }
+      else if (state.mode === 'listening') startWakeWord();
+      return;
+    }
     if (msg.key === 'idle_disabled') {
       CONFIG.idleDisabled = !!parseInt(msg.value);
       if (CONFIG.idleDisabled) {
@@ -2866,6 +3024,8 @@ async function initAvatar() {
     applyIdleParam('idle_font_size', cfg.idle_font_size ?? 1.0);
     CONFIG.idleTimeout = (cfg.idle_timeout ?? 90) * 1000;
     CONFIG.idleDisabled = !!(cfg.idle_disabled);
+    CONFIG.wakeWordEnabled = !!(cfg.wake_word_enabled);
+    CONFIG.wakeWordAlwaysRequired = !!(cfg.wake_word_always);
     if (CONFIG.idleDisabled) {
       document.getElementById('idle-overlay').classList.add('hidden');
       setControlsVisible(true);
