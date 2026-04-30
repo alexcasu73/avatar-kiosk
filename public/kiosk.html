@@ -1080,8 +1080,10 @@ function _buildWakeWords() {
 }
 
 function startWakeWord() {
+  if (!CONFIG.wakeWordEnabled && !CONFIG.wakeWordAlwaysRequired) return;
   const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
   if (!SR) { console.warn('[WakeWord] Web Speech API non supportata'); return; }
+  if (state.wakeRecognition) return;
 
   const rec = new SR();
   rec.lang = 'it-IT';
