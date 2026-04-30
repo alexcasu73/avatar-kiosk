@@ -377,15 +377,11 @@ fbx_path = sys.argv[-2]
 glb_path = sys.argv[-1]
 print("Importing FBX:", fbx_path)
 bpy.ops.import_scene.fbx(filepath=fbx_path, automatic_bone_orientation=True)
-bpy.ops.object.select_all(action='SELECT')
-bpy.ops.object.transform_apply(location=False, rotation=True, scale=True)
-bpy.ops.object.select_all(action='DESELECT')
 print("Exporting GLB:", glb_path)
 bpy.ops.export_scene.gltf(
     filepath=glb_path,
     export_format='GLB',
     use_selection=False,
-    export_apply=True,
     export_yup=True,
 )
 print("Done")
