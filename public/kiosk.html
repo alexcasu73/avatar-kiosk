@@ -886,7 +886,7 @@ const CONFIG = {
 // ═══════════════════════════════════════════════════════════════════════════
 //  STATO
 // ═══════════════════════════════════════════════════════════════════════════
-const state = {
+const state = window._dbgState = {
   mode: 'idle',      // idle | listening | recording | thinking | speaking
   sessionId: null,
   currentAudio: null,
