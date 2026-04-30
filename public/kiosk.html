@@ -2074,7 +2074,8 @@ async function wakeUp() {
   stopWakeWord();
   document.getElementById('idle-overlay').classList.add('hidden');
   setControlsVisible(true);
-  setMode('listening'); // avvia anche startWakeWord se wakeWordAlwaysRequired
+  setMode('listening');
+  if (CONFIG.wakeWordAlwaysRequired) startWakeWord();
   resetIdleTimer();
 
   // Sblocca AudioContext su iOS durante il gesto utente (obbligatorio per resume())
@@ -3026,6 +3027,7 @@ async function initAvatar() {
     CONFIG.idleDisabled = !!(cfg.idle_disabled);
     CONFIG.wakeWordEnabled = !!(cfg.wake_word_enabled);
     CONFIG.wakeWordAlwaysRequired = !!(cfg.wake_word_always);
+    if (CONFIG.wakeWordEnabled || CONFIG.wakeWordAlwaysRequired) startWakeWord();
     if (CONFIG.idleDisabled) {
       document.getElementById('idle-overlay').classList.add('hidden');
       setControlsVisible(true);
