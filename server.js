@@ -368,20 +368,13 @@ app.post('/api/admin/avatars/:id/upload-model', uploadFbx.single('model'), async
         }
       }
 
-      // Fallback 1: assimp (ARM64, multipiattaforma, gestisce scala e animazioni correttamente)
+      // Fallback 1: assimp — esporta direttamente in GLB binario
       if (!converted) {
         try {
           const { exec } = await import('child_process');
-          const assimpOut = rawGlb.replace(/\.glb$/, '.gltf');
-          await promisify(exec)(`assimp export "${tmpFile}" "${assimpOut}" --config=PP_FD_REMOVE=1`, { timeout: 120000 });
-          if (fs.existsSync(assimpOut)) {
-            const gltfContent = JSON.parse(fs.readFileSync(assimpOut, 'utf8'));
-            const result = await gltfPipeline.gltfToGlb(gltfContent, { resourceDirectory: join(__dirname, 'public', 'models') });
-            fs.writeFileSync(rawGlb, result.glb);
-            fs.unlinkSync(assimpOut);
-            converted = fs.existsSync(rawGlb);
-          }
-          if (!converted) console.error('assimp non ha prodotto output');
+          await promisify(exec)(`assimp export "${tmpFile}" "${rawGlb}"`, { timeout: 120000 });
+          converted = fs.existsSync(rawGlb) && fs.statSync(rawGlb).size > 1024;
+          if (!converted) console.error('assimp non ha prodotto output GLB valido');
         } catch (e) {
           console.error('assimp fallback fallito:', e.message);
         }
