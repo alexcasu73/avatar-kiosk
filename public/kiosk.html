@@ -1080,10 +1080,8 @@ function _buildWakeWords() {
 }
 
 function startWakeWord() {
-  if (!CONFIG.wakeWordEnabled && !CONFIG.wakeWordAlwaysRequired) return;
   const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
   if (!SR) { console.warn('[WakeWord] Web Speech API non supportata'); return; }
-  if (state.wakeRecognition) return;
 
   const rec = new SR();
   rec.lang = 'it-IT';
@@ -2044,7 +2042,6 @@ async function _startVad() {
         if (state.mode === 'recording') {
           if (CONFIG.wakeWordAlwaysRequired && !state.wakeActivated && !state.bargeIn) {
             setMode('listening');
-            startWakeWord();
             return;
           }
           if (blob.size < 3000) {
@@ -2077,8 +2074,7 @@ async function wakeUp() {
   stopWakeWord();
   document.getElementById('idle-overlay').classList.add('hidden');
   setControlsVisible(true);
-  setMode('listening');
-  if (CONFIG.wakeWordAlwaysRequired) startWakeWord();
+  setMode('listening'); // avvia anche startWakeWord se wakeWordAlwaysRequired
   resetIdleTimer();
 
   // Sblocca AudioContext su iOS durante il gesto utente (obbligatorio per resume())
@@ -3030,7 +3026,6 @@ async function initAvatar() {
     CONFIG.idleDisabled = !!(cfg.idle_disabled);
     CONFIG.wakeWordEnabled = !!(cfg.wake_word_enabled);
     CONFIG.wakeWordAlwaysRequired = !!(cfg.wake_word_always);
-    if (CONFIG.wakeWordEnabled || CONFIG.wakeWordAlwaysRequired) startWakeWord();
     if (CONFIG.idleDisabled) {
       document.getElementById('idle-overlay').classList.add('hidden');
       setControlsVisible(true);
