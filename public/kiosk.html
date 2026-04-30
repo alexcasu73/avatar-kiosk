@@ -2115,21 +2115,7 @@ async function wakeUp() {
   if (!CONFIG.micEnabled) return;
 
   if (!state.vad) await _startVad();
-  else {
-    state.vad.resume();
-    // Reset stato VAD: evita che catturi residui audio della wake word idle
-    state.vad._speaking = false;
-    state.vad._speechStart = null;
-    state.vad._silenceStart = null;
-    if (state.vad._recorder?.state === 'recording') {
-      state.vad._recorder.ondataavailable = () => {};
-      state.vad._recorder.stop();
-      state.vad._chunks = [];
-      setTimeout(() => {
-        if (state.vad) state.vad._recorder.ondataavailable = e => { if (e.data.size > 0) state.vad._chunks.push(e.data); };
-      }, 100);
-    }
-  }
+  else state.vad.resume();
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -3053,13 +3039,9 @@ async function initAvatar() {
     CONFIG.idleDisabled = !!(cfg.idle_disabled);
     CONFIG.wakeWordEnabled = !!(cfg.wake_word_enabled);
     CONFIG.wakeWordAlwaysRequired = !!(cfg.wake_word_always);
+    // startWakeWord richiede gesto utente: si avvia al primo click sulla pagina
     if (CONFIG.wakeWordEnabled || CONFIG.wakeWordAlwaysRequired) {
-      // Prova subito (funziona se il permesso microfono è già stato concesso)
-      // fallback: al primo click utente
-      try { startWakeWord(); } catch(_) {}
-      if (!state.wakeRecognition) {
-        document.addEventListener('click', startWakeWord, { once: true });
-      }
+      document.addEventListener('click', startWakeWord, { once: true });
     }
     if (CONFIG.idleDisabled) {
       document.getElementById('idle-overlay').classList.add('hidden');
