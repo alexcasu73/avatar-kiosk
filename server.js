@@ -423,12 +423,12 @@ app.post('/api/admin/avatars/:id/upload-model', uploadFbx.single('model'), async
       }
 
       let converted = false;
-      console.log('[FBX] fbx2gltf trovato:', fbx2gltf || 'no');
+      const _arch = process.arch; // x64 | arm64 | arm
+      console.log('[FBX] piattaforma:', _platform, _arch, '| fbx2gltf:', fbx2gltf || 'no');
 
-      // Prova FBX2glTF
-      if (fbx2gltf) {
+      // Prova FBX2glTF (solo su x64 — il binario npm non supporta ARM)
+      if (fbx2gltf && _arch === 'x64') {
         try {
-          // Verifica che il binario sia eseguibile
           fs.accessSync(fbx2gltf, fs.constants.X_OK);
           console.log('[FBX] Uso fbx2gltf:', fbx2gltf);
           const rawGlbBase = rawGlb.replace(/\.glb$/, '');
@@ -441,25 +441,7 @@ app.post('/api/admin/avatars/:id/upload-model', uploadFbx.single('model'), async
         }
       }
 
-      // Fallback 1: assimp — esporta direttamente in GLB binario
-      if (!converted) {
-        try {
-          const { exec } = await import('child_process');
-          console.log('[FBX] Provo assimp...');
-          await promisify(exec)(`assimp export "${tmpFile}" "${rawGlb}"`, { timeout: 120000 });
-          converted = fs.existsSync(rawGlb) && fs.statSync(rawGlb).size > 1024;
-          if (converted) {
-            console.log('[FBX] assimp OK — rimuovo shadow plane...');
-            glbRemoveFlatMeshes(rawGlb);
-          } else {
-            console.error('[FBX] assimp non ha prodotto output GLB valido');
-          }
-        } catch (e) {
-          console.error('[FBX] assimp fallito:', e.message);
-        }
-      }
-
-      // Fallback 2: Blender headless (ultimo tentativo)
+      // Blender (ottimo su ARM64, produce GLB pulito senza shadow plane)
       if (!converted) {
         console.log('[FBX] Provo Blender...');
         const blenderScript = `
@@ -467,7 +449,7 @@ import bpy, sys
 bpy.ops.wm.read_factory_settings(use_empty=True)
 fbx_path = sys.argv[-2]
 glb_path = sys.argv[-1]
-bpy.ops.import_scene.fbx(filepath=fbx_path, automatic_bone_orientation=True, global_scale=0.01)
+bpy.ops.import_scene.fbx(filepath=fbx_path, automatic_bone_orientation=True)
 bpy.ops.export_scene.gltf(filepath=glb_path, export_format='GLB', use_selection=False, export_yup=True)
 print("Done")
 `.trim();
@@ -480,11 +462,30 @@ print("Done")
           const blenderOut = rawGlb.replace(/\.glb$/, '') + '.glb';
           if (fs.existsSync(blenderOut) && blenderOut !== rawGlb) fs.renameSync(blenderOut, rawGlb);
           converted = fs.existsSync(rawGlb);
-          if (!converted) console.error('Blender non ha prodotto output GLB');
+          if (converted) console.log('[FBX] Blender OK');
+          else console.error('[FBX] Blender non ha prodotto output GLB');
         } catch (e) {
-          console.error('Blender fallback fallito:', e.message);
+          console.error('[FBX] Blender fallito:', e.message);
         } finally {
           try { fs.unlinkSync(scriptFile); } catch {}
+        }
+      }
+
+      // Ultimo fallback: assimp (include shadow plane ma almeno converte)
+      if (!converted) {
+        try {
+          const { exec } = await import('child_process');
+          console.log('[FBX] Provo assimp (ultimo fallback)...');
+          await promisify(exec)(`assimp export "${tmpFile}" "${rawGlb}"`, { timeout: 120000 });
+          converted = fs.existsSync(rawGlb) && fs.statSync(rawGlb).size > 1024;
+          if (converted) {
+            console.log('[FBX] assimp OK');
+            glbRemoveFlatMeshes(rawGlb);
+          } else {
+            console.error('[FBX] assimp non ha prodotto output GLB valido');
+          }
+        } catch (e) {
+          console.error('[FBX] assimp fallito:', e.message);
         }
       }
 
