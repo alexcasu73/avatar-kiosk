@@ -2288,15 +2288,17 @@ function loadGLBAvatar(url) {
       model.position.y = -box.min.y * scale + CONFIG.avatarOffsetY;
       model.rotation.y = CONFIG.avatarRotY;
 
-      // Nascondi shadow plane / ground disc (mesh piatte con altezza << larghezza vicino a Y=0)
+      // Nascondi shadow plane / ground disc da conversione assimp
       model.traverse(o => {
         if (!o.isMesh) return;
-        const b = new THREE.Box3().setFromObject(o);
-        const s = b.getSize(new THREE.Vector3());
+        o.geometry.computeBoundingBox();
+        const s = o.geometry.boundingBox.getSize(new THREE.Vector3());
         const flatRatio = s.y / Math.max(s.x, s.z, 0.0001);
-        if (flatRatio < 0.05 && b.max.y * scale < 0.3) {
+        const isFlat = flatRatio < 0.02;
+        const isShadowName = /shadow|ground|plane|circle|disc|floor/i.test(o.name);
+        if (isFlat || isShadowName) {
           o.visible = false;
-          console.log('[Avatar] nascosto shadow mesh:', o.name, 'flatRatio:', flatRatio.toFixed(4));
+          console.log('[Avatar] nascosto mesh:', o.name, 'flatRatio:', flatRatio.toFixed(5));
         }
       });
 
