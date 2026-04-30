@@ -22,16 +22,13 @@ const server = createServer(app);
 const wss    = new WebSocketServer({ server });
 
 // Rimuove mesh piatti (shadow plane) da un GLB prodotto da assimp
-function glbRemoveFlatMeshes(glbPath) {
+async function glbRemoveFlatMeshes(glbPath) {
   try {
-    const buf = fs.readFileSync(glbPath);
-    const jsonLen = buf.readUInt32LE(12);
-    const jsonStr = buf.slice(20, 20 + jsonLen).toString('utf8');
-    const gltf = JSON.parse(jsonStr);
-    if (!gltf.meshes || !gltf.accessors || !gltf.bufferViews) return;
+    const gltfPipeline = (await import('gltf-pipeline')).default;
+    const glb = fs.readFileSync(glbPath);
+    const { gltf } = await gltfPipeline.glbToGltf(glb);
 
-    const binOffset = 20 + jsonLen + 8;
-    const binBuf = buf.slice(binOffset);
+    if (!gltf.meshes || !gltf.accessors) return;
 
     const meshesToRemove = new Set();
     for (let mi = 0; mi < gltf.meshes.length; mi++) {
@@ -40,22 +37,13 @@ function glbRemoveFlatMeshes(glbPath) {
         const posIdx = prim.attributes?.POSITION;
         if (posIdx === undefined) continue;
         const acc = gltf.accessors[posIdx];
-        const bv  = gltf.bufferViews[acc.bufferViewIndex ?? acc.bufferView];
-        if (!bv) continue;
-        const byteOffset = (bv.byteOffset || 0) + (acc.byteOffset || 0);
-        const count = acc.count;
-        let minY = Infinity, maxY = -Infinity;
-        for (let i = 0; i < count; i++) {
-          const y = binBuf.readFloatLE(byteOffset + i * 12 + 4);
-          if (y < minY) minY = y;
-          if (y > maxY) maxY = y;
-        }
-        const rangeY = maxY - minY;
-        const acc2 = gltf.accessors[posIdx];
-        const rangeX = (acc2.max?.[0] ?? 0) - (acc2.min?.[0] ?? 0);
-        const rangeZ = (acc2.max?.[2] ?? 0) - (acc2.min?.[2] ?? 0);
+        if (!acc.min || !acc.max) continue;
+        const rangeX = acc.max[0] - acc.min[0];
+        const rangeY = acc.max[1] - acc.min[1];
+        const rangeZ = acc.max[2] - acc.min[2];
         const flatRatio = rangeY / Math.max(rangeX, rangeZ, 0.0001);
-        if (flatRatio < 0.02) {
+        const isShadowName = /shadow|ground|plane|circle|disc|floor/i.test(mesh.name || '');
+        if (flatRatio < 0.02 || isShadowName) {
           console.log(`[GLB] shadow mesh rimosso: "${mesh.name}" flatRatio=${flatRatio.toFixed(5)}`);
           meshesToRemove.add(mi);
         }
@@ -63,24 +51,15 @@ function glbRemoveFlatMeshes(glbPath) {
     }
     if (meshesToRemove.size === 0) return;
 
-    // Rimuovi i nodi che referenziano questi mesh
     if (gltf.nodes) {
       for (const node of gltf.nodes) {
-        if (node.mesh !== undefined && meshesToRemove.has(node.mesh)) {
-          delete node.mesh;
-        }
+        if (node.mesh !== undefined && meshesToRemove.has(node.mesh)) delete node.mesh;
       }
     }
-    meshesToRemove.forEach(i => { gltf.meshes[i] = { name: gltf.meshes[i].name + '_removed', primitives: [] }; });
+    meshesToRemove.forEach(i => { gltf.meshes[i].primitives = []; });
 
-    const newJson = JSON.stringify(gltf);
-    const newJsonBuf = Buffer.from(newJson.padEnd(Math.ceil(newJson.length / 4) * 4, ' '));
-    const header = Buffer.alloc(12); header.writeUInt32LE(0x46546C67, 0); header.writeUInt32LE(2, 4);
-    const jsonChunkHeader = Buffer.alloc(8); jsonChunkHeader.writeUInt32LE(newJsonBuf.length, 0); jsonChunkHeader.writeUInt32LE(0x4E4F534A, 4);
-    const origBinChunkHeader = buf.slice(20 + jsonLen, 20 + jsonLen + 8);
-    const totalLen = 12 + 8 + newJsonBuf.length + 8 + binBuf.length;
-    header.writeUInt32LE(totalLen, 8);
-    fs.writeFileSync(glbPath, Buffer.concat([header, jsonChunkHeader, newJsonBuf, origBinChunkHeader, binBuf]));
+    const result = await gltfPipeline.gltfToGlb(gltf);
+    fs.writeFileSync(glbPath, result.glb);
   } catch (e) {
     console.warn('[GLB] glbRemoveFlatMeshes fallito:', e.message);
   }
@@ -441,7 +420,25 @@ app.post('/api/admin/avatars/:id/upload-model', uploadFbx.single('model'), async
         }
       }
 
-      // Blender (ottimo su ARM64, produce GLB pulito senza shadow plane)
+      // assimp (funziona bene su ARM64, rimuoviamo shadow plane dopo)
+      if (!converted) {
+        try {
+          const { exec } = await import('child_process');
+          console.log('[FBX] Provo assimp...');
+          await promisify(exec)(`assimp export "${tmpFile}" "${rawGlb}"`, { timeout: 120000 });
+          converted = fs.existsSync(rawGlb) && fs.statSync(rawGlb).size > 1024;
+          if (converted) {
+            console.log('[FBX] assimp OK — rimuovo shadow plane...');
+            await glbRemoveFlatMeshes(rawGlb);
+          } else {
+            console.error('[FBX] assimp non ha prodotto output GLB valido');
+          }
+        } catch (e) {
+          console.error('[FBX] assimp fallito:', e.message);
+        }
+      }
+
+      // Blender (ultimo tentativo)
       if (!converted) {
         console.log('[FBX] Provo Blender...');
         const blenderScript = `
@@ -472,23 +469,6 @@ print("Done")
       }
 
       // Ultimo fallback: assimp (include shadow plane ma almeno converte)
-      if (!converted) {
-        try {
-          const { exec } = await import('child_process');
-          console.log('[FBX] Provo assimp (ultimo fallback)...');
-          await promisify(exec)(`assimp export "${tmpFile}" "${rawGlb}"`, { timeout: 120000 });
-          converted = fs.existsSync(rawGlb) && fs.statSync(rawGlb).size > 1024;
-          if (converted) {
-            console.log('[FBX] assimp OK');
-            glbRemoveFlatMeshes(rawGlb);
-          } else {
-            console.error('[FBX] assimp non ha prodotto output GLB valido');
-          }
-        } catch (e) {
-          console.error('[FBX] assimp fallito:', e.message);
-        }
-      }
-
       fs.unlinkSync(tmpFile);
       if (!converted) return res.status(500).json({ error: 'Conversione FBX fallita. Esporta il modello in .glb o .gltf e caricalo direttamente.' });
     } else if (ext === 'glb') {
