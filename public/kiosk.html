@@ -918,17 +918,35 @@ class VAD {
     this._stream    = null;
     this._context   = null;
     this._analyser  = null;
+    this._filter    = null;
     this._buffer    = null;
     this._rafId     = null;
+
+    // Noise gate adattivo
+    this._noiseFloor      = null;  // stimato durante il silenzio
+    this._noiseHistory    = [];    // campioni RMS recenti in silenzio
+    this._adaptiveThresh  = null;  // soglia = noiseFloor * multiplier
+    this._NOISE_MULT      = 2.8;   // quanto sopra il rumore di fondo conta come voce
+    this._NOISE_SAMPLES   = 30;    // campioni per stimare il rumore
   }
 
   async start() {
     this._stream  = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
     this._context = new AudioContext();
     const source  = this._context.createMediaStreamSource(this._stream);
+
+    // Filtro passa-banda voce umana (300–3400 Hz)
+    this._filter = this._context.createBiquadFilter();
+    this._filter.type = 'bandpass';
+    this._filter.frequency.value = 1700;  // centro banda
+    this._filter.Q.value = 0.8;
+
     this._analyser = this._context.createAnalyser();
     this._analyser.fftSize = 512;
-    source.connect(this._analyser);
+
+    source.connect(this._filter);
+    this._filter.connect(this._analyser);
+
     this._buffer = new Float32Array(this._analyser.fftSize);
 
     this._recorder = new MediaRecorder(this._stream);
@@ -979,8 +997,21 @@ class VAD {
 
     const now = Date.now();
 
+    // Aggiorna stima rumore di fondo (solo in silenzio, non durante la registrazione)
+    if (!this._speaking && !this._speechStart) {
+      this._noiseHistory.push(rms);
+      if (this._noiseHistory.length > this._NOISE_SAMPLES) this._noiseHistory.shift();
+      if (this._noiseHistory.length >= 10) {
+        const sorted = [...this._noiseHistory].sort((a, b) => a - b);
+        // Usa il 75° percentile come stima rumore di fondo (ignora picchi casuali)
+        this._noiseFloor = sorted[Math.floor(sorted.length * 0.75)];
+        this._adaptiveThresh = Math.max(this.threshold, this._noiseFloor * this._NOISE_MULT);
+      }
+    }
+    const activeThresh = this._adaptiveThresh ?? this.threshold;
+
     if (!this._speaking) {
-      if (rms > this.threshold) {
+      if (rms > activeThresh) {
         if (!this._speechStart) {
           // Avvia la registrazione subito per non perdere la prima parola
           this._speechStart = now;
@@ -1006,7 +1037,7 @@ class VAD {
         if (!this._speechStart) { /* nessun reset necessario */ }
       }
     } else {
-      if (rms < this.threshold) {
+      if (rms < activeThresh) {
         if (!this._silenceStart) this._silenceStart = now;
         if (now - this._silenceStart >= this.silenceDuration) {
           this._speaking = false;
@@ -1575,7 +1606,7 @@ async function processUserInput(text) {
     document.getElementById('typing').classList.remove('visible');
     addToHistory('avatar', chatData.reply);
     setMode('speaking');
-    state.vad?.resume(); // riattiva il VAD durante il parlato per sentire interruzioni
+    state.vad?.resume();
 
     if (ttsRes.ok) {
       const ttsData = await ttsRes.json();
@@ -1871,6 +1902,7 @@ async function _startVad() {
       minSpeechDuration: CONFIG.vadMinSpeechDuration,
       onVolume:    rms => updateVadVisualizer(rms),
       onSpeechStart: () => {
+        console.log('[VAD] onSpeechStart, mode:', state.mode);
         if (state.mode === 'listening') {
           setMode('recording');
         } else if (state.mode === 'speaking') {
@@ -1879,6 +1911,7 @@ async function _startVad() {
         }
       },
       onSpeechEnd: async blob => {
+        console.log('[VAD] onSpeechEnd, mode:', state.mode, 'blobSize:', blob.size);
         if (state.mode === 'recording') {
           setMode('thinking');
           await transcribeAndProcess(blob);
