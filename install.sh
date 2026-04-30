@@ -121,10 +121,9 @@ install_pkg() {
 }
 
 # ── Node.js ≥18 ───────────────────────────────────────────────────────────
-if ! command -v node &>/dev/null; then
-  info "Node.js non trovato. Provo a installarlo..."
+install_node20() {
+  info "Installo Node.js 20 via NodeSource..."
   if command -v apt-get &>/dev/null; then
-    # NodeSource per distribuzioni Debian/Ubuntu
     curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash -
     sudo apt-get install -y nodejs
   elif command -v dnf &>/dev/null; then
@@ -139,10 +138,29 @@ if ! command -v node &>/dev/null; then
     err "Impossibile installare Node.js automaticamente. Scaricalo da https://nodejs.org (versione 18+)"
   fi
   command -v node &>/dev/null || err "Installazione Node.js fallita. Installalo manualmente."
+}
+
+if ! command -v node &>/dev/null; then
+  install_node20
+elif ! node -e "if(parseInt(process.version.slice(1)) < 18) process.exit(1)" 2>/dev/null; then
+  info "Node.js $(node --version) troppo vecchio (richiesta v18+). Aggiorno a v20..."
+  install_node20
 fi
 node -e "if(parseInt(process.version.slice(1)) < 18) process.exit(1)" \
-  || err "Node.js $(node --version) troppo vecchio. Richiesta versione 18+."
+  || err "Node.js $(node --version) ancora troppo vecchio. Installalo manualmente da https://nodejs.org"
 ok "Node.js $(node --version)"
+
+# ── npm (potrebbe mancare anche se node è presente) ───────────────────────
+if ! command -v npm &>/dev/null; then
+  info "npm non trovato. Installo..."
+  if command -v apt-get &>/dev/null; then
+    sudo apt-get install -y npm
+  else
+    install_pkg npm
+  fi
+  command -v npm &>/dev/null || err "npm non installabile. Installalo manualmente."
+fi
+ok "npm $(npm --version)"
 
 # ── curl (necessario per NodeSource se usato sopra) ───────────────────────
 if ! command -v curl &>/dev/null; then
