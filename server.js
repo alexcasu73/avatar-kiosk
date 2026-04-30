@@ -371,25 +371,24 @@ app.post('/api/admin/avatars/:id/upload-model', uploadFbx.single('model'), async
       // Fallback: Blender headless (ARM64 / FBX2glTF non disponibile)
       if (!converted) {
         const blenderScript = `
-import bpy, sys, os
-print("Blender script start, args:", sys.argv)
+import bpy, sys
 bpy.ops.wm.read_factory_settings(use_empty=True)
-try:
-    bpy.ops.preferences.addon_enable(module='io_scene_fbx')
-except Exception as e:
-    print("addon_enable fbx:", e)
-try:
-    bpy.ops.preferences.addon_enable(module='io_scene_gltf2')
-except Exception as e:
-    print("addon_enable gltf2:", e)
 fbx_path = sys.argv[-2]
 glb_path = sys.argv[-1]
 print("Importing FBX:", fbx_path)
-result = bpy.ops.import_scene.fbx(filepath=fbx_path)
-print("Import result:", result)
+bpy.ops.import_scene.fbx(filepath=fbx_path, automatic_bone_orientation=True)
+bpy.ops.object.select_all(action='SELECT')
+bpy.ops.object.transform_apply(location=False, rotation=True, scale=True)
+bpy.ops.object.select_all(action='DESELECT')
 print("Exporting GLB:", glb_path)
-result = bpy.ops.export_scene.gltf(filepath=glb_path, export_format='GLB', use_selection=False)
-print("Export result:", result)
+bpy.ops.export_scene.gltf(
+    filepath=glb_path,
+    export_format='GLB',
+    use_selection=False,
+    export_apply=True,
+    export_yup=True,
+)
+print("Done")
 `.trim();
         const scriptFile = tmpFile + '.py';
         fs.writeFileSync(scriptFile, blenderScript);
