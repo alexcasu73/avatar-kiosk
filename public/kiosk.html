@@ -2115,7 +2115,21 @@ async function wakeUp() {
   if (!CONFIG.micEnabled) return;
 
   if (!state.vad) await _startVad();
-  else state.vad.resume();
+  else {
+    state.vad.resume();
+    // Reset stato VAD: evita che catturi residui audio della wake word idle
+    state.vad._speaking = false;
+    state.vad._speechStart = null;
+    state.vad._silenceStart = null;
+    if (state.vad._recorder?.state === 'recording') {
+      state.vad._recorder.ondataavailable = () => {};
+      state.vad._recorder.stop();
+      state.vad._chunks = [];
+      setTimeout(() => {
+        if (state.vad) state.vad._recorder.ondataavailable = e => { if (e.data.size > 0) state.vad._chunks.push(e.data); };
+      }, 100);
+    }
+  }
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
