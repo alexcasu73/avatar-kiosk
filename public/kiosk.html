@@ -2280,6 +2280,8 @@ function loadGLBAvatar(url) {
       const targetH  = visibleH * CONFIG.avatarScale;
       const scale    = targetH / size.y;
 
+      console.log('[Avatar load] size:', size, '| box.min.y:', box.min.y.toFixed(4), '| scale:', scale.toFixed(6), '| visibleH:', visibleH.toFixed(3), '| targetH:', targetH.toFixed(3));
+
       model.scale.setScalar(scale);
       model.position.x = -center.x * scale + CONFIG.avatarOffsetX;
       model.position.z = -center.z * scale + CONFIG.avatarOffsetZ;
