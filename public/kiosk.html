@@ -1783,9 +1783,17 @@ async function processUserInput(text) {
   } finally {
     stopProceduralLipSync();
     anim.lipTarget = 0;
-    if (state.mode === 'recording' && !state.wakeActivated) setMode('listening');
-    else if (state.mode !== 'recording' && state.mode !== 'thinking') setMode('listening');
-    state.vad?.resume();
+    if (CONFIG.wakeWordAlwaysRequired) {
+      // Wake word richiesta: resetta a listening se non stiamo aspettando una domanda post-wake
+      if (state.mode === 'recording' && !state.wakeActivated) setMode('listening');
+      else if (state.mode !== 'recording' && state.mode !== 'thinking') setMode('listening');
+      state.vad?.resume();
+    } else {
+      // Wake word disabilitata: mic sempre in ascolto
+      console.log('[finally] bargeIn:', state.bargeIn, 'mode:', state.mode);
+      if (!state.bargeIn) setMode('listening');
+      state.vad?.resume();
+    }
     if (state.mode !== 'recording') state.wakeActivated = false; // preserva se barge-in appena scattato
     state.bargeIn = false;
     if (CONFIG.wakeWordAlwaysRequired && state.vad) state.vad.recordingEnabled = false;
@@ -2063,7 +2071,7 @@ async function toggleMic() {
   console.log('[toggleMic] micEnabled:', CONFIG.micEnabled, 'mode:', state.mode, 'wakeAlways:', CONFIG.wakeWordAlwaysRequired, 'wakeRec:', !!state.wakeRecognition);
   updateMicBtn();
   if (CONFIG.micEnabled) {
-    if (state.mode !== 'idle') await _startVad();
+    if (state.mode !== 'idle' || !CONFIG.wakeWordAlwaysRequired) await _startVad();
     if (CONFIG.wakeWordAlwaysRequired && state.mode !== 'idle') startWakeWord();
     console.log('[toggleMic] dopo startWakeWord, wakeRec:', !!state.wakeRecognition);
   } else {
@@ -2091,8 +2099,13 @@ async function _startVad() {
       minSpeechDuration: CONFIG.vadMinSpeechDuration,
       onVolume:    rms => updateVadVisualizer(rms),
       onSpeechStart: () => {
+        console.log('[VAD] onSpeechStart mode:', state.mode, 'wakeActivated:', state.wakeActivated, 'recEnabled:', state.vad?.recordingEnabled);
         clearTimeout(state._wakeTimeout);
-        if (state.mode === 'listening') {
+        if (state.mode === 'idle' && !CONFIG.wakeWordAlwaysRequired) {
+          // Free-talk: entra in sessione automaticamente al primo parlato
+          wakeUp().then(() => setMode('recording'));
+          return;
+        } else if (state.mode === 'listening') {
           if (CONFIG.wakeWordAlwaysRequired && !state.wakeActivated) return;
           state.wakeActivated = false;
           setMode('recording');
@@ -2145,6 +2158,7 @@ async function wakeUp() {
   setControlsVisible(true);
   setMode('listening');
   if (CONFIG.wakeWordAlwaysRequired) startWakeWord();
+  console.log('[wakeUp] micEnabled:', CONFIG.micEnabled, 'vad:', !!state.vad, 'wakeAlways:', CONFIG.wakeWordAlwaysRequired);
   resetIdleTimer();
 
   // Sblocca AudioContext su iOS durante il gesto utente (obbligatorio per resume())
@@ -2162,8 +2176,8 @@ async function wakeUp() {
   // Prima visita: mostra benvenuto (piccolo delay per garantire repaint pannello)
   setTimeout(() => addToHistory('avatar', `Ciao! Sono ${CONFIG.avatarName}. Come posso aiutarti?`), 50);
 
-  // Se wake word attiva, forza il microfono abilitato
-  if (CONFIG.wakeWordEnabled && !CONFIG.micEnabled) {
+  // Forza mic abilitato se wake word attiva o se free-talk mode (nessuna wake word richiesta)
+  if ((CONFIG.wakeWordEnabled || !CONFIG.wakeWordAlwaysRequired) && !CONFIG.micEnabled) {
     CONFIG.micEnabled = true;
     updateMicBtn();
   }
