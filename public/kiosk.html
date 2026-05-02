@@ -1020,11 +1020,12 @@ class VAD {
       if (rms > activeThresh) {
         if (!this._speechStart && this.recordingEnabled) {
           // Avvia la registrazione subito per non perdere la prima parola
+          console.log('[VAD] start rec, recState:', this._recorder.state);
           this._speechStart = now;
           this._chunks = [];
           this._recorder.start();
         }
-        if (now - this._speechStart >= this.minSpeechDuration) {
+        if (this._speechStart && now - this._speechStart >= this.minSpeechDuration) {
           this._speaking = true;
           this._silenceStart = null;
           this.onSpeechStart();
@@ -1096,39 +1097,93 @@ function startWakeWord() {
 
   const wakeWords = _buildWakeWords();
 
+  // Parole che compongono le wake word (per filtrarle dalla domanda)
+  const _wwParts = new Set(wakeWords.flatMap(w => w.split(/\s+/)));
+  const _norm = s => s.normalize('NFD').replace(/[̀-ͯ]/g, '');
+
   rec.onresult = e => {
     for (let i = e.resultIndex; i < e.results.length; i++) {
-      for (let j = 0; j < e.results[i].length; j++) {
-        const text = e.results[i][j].transcript.toLowerCase().trim();
-        const textWords = text.split(/\s+/);
-        const wakeMatch = wakeWords.some(w => {
-          const ww = w.split(/\s+/);
-          return textWords.some((_, k) => ww.every((p, j) => textWords[k + j] === p));
-        });
-        if (wakeMatch) {
-          const wordCount = text.trim().split(/\s+/).length;
-          if (state.mode === 'idle') {
-            stopWakeWord();
-            const idleOverlay = document.getElementById('idle-overlay');
-            if (idleOverlay) idleOverlay.click();
-          } else if (state.mode === 'listening' && CONFIG.wakeWordAlwaysRequired) {
-            stopWakeWord();
-            state.wakeActivated = true;
-            setMode('recording');
-            // Piccolo delay: lascia che Chrome rilasci il microfono dalla Web Speech API
-            setTimeout(() => { if (state.vad) state.vad.recordingEnabled = true; }, 300);
-            clearTimeout(state._wakeTimeout);
-            state._wakeTimeout = setTimeout(() => {
-              if (state.mode === 'recording' && state.wakeActivated) {
-                state.wakeActivated = false;
-                if (state.vad) state.vad.recordingEnabled = false;
-                setMode('listening');
-                startWakeWord();
-              }
-            }, 3000);
+      const isFinal = e.results[i].isFinal;
+      const text = e.results[i][0].transcript.toLowerCase().trim();
+      if (!text) continue;
+
+      const textWords = text.split(/\s+/);
+      const wakeMatch = wakeWords.some(w => {
+        const ww = w.split(/\s+/);
+        return textWords.some((_, k) => ww.every((p, j) => textWords[k + j] === p));
+      });
+
+      // ── Attivazione da idle ──────────────────────────────────────────────
+      if (wakeMatch && state.mode === 'idle') {
+        stopWakeWord();
+        document.getElementById('idle-overlay')?.click();
+        return;
+      }
+
+      // ── Wake word durante speaking → interrompi e attiva registrazione ─────
+      if (wakeMatch && state.mode === 'speaking' && CONFIG.wakeWordAlwaysRequired) {
+        stopCurrentAudio();
+        state.wakeActivated = true;
+        setMode('recording');
+        clearTimeout(state._wakeTimeout);
+        state._wakeTimeout = setTimeout(() => {
+          if (state.mode === 'recording' && state.wakeActivated) {
+            state.wakeActivated = false;
+            setMode('listening');
           }
-          return;
+        }, 5000);
+        if (isFinal) {
+          const t = _norm(text.replace(/[.,!?']/g, ''));
+          const content = t.split(/\s+/).filter(w => w && !_wwParts.has(w));
+          if (content.length > 0) {
+            state.wakeActivated = false;
+            clearTimeout(state._wakeTimeout);
+            setMode('thinking');
+            processUserInput(content.join(' '));
+          }
         }
+        return;
+      }
+
+      // ── Wake word in ascolto → attiva registrazione ──────────────────────
+      if (wakeMatch && state.mode === 'listening' && CONFIG.wakeWordAlwaysRequired) {
+        if (!state.wakeActivated) {
+          state.wakeActivated = true;
+          setMode('recording');
+          clearTimeout(state._wakeTimeout);
+          state._wakeTimeout = setTimeout(() => {
+            if (state.mode === 'recording' && state.wakeActivated) {
+              state.wakeActivated = false;
+              setMode('listening');
+            }
+          }, 5000);
+        }
+        // Controlla se c'è già una domanda nella stessa utterance (final)
+        if (isFinal) {
+          const t = _norm(text.replace(/[.,!?']/g, ''));
+          const content = t.split(/\s+/).filter(w => w && !_wwParts.has(w));
+          if (content.length > 0) {
+            state.wakeActivated = false;
+            clearTimeout(state._wakeTimeout);
+            setMode('thinking');
+            processUserInput(content.join(' '));
+          }
+        }
+        return;
+      }
+
+      // ── Domanda dopo wake word (utterance successiva, final) ─────────────
+      if (state.mode === 'recording' && state.wakeActivated && CONFIG.wakeWordAlwaysRequired && isFinal) {
+        if (wakeMatch) return; // wake word ripetuta, non è una domanda
+        const t = _norm(text.replace(/[.,!?']/g, ''));
+        const content = t.split(/\s+/).filter(w => w && !_wwParts.has(w)).join(' ').trim();
+        if (content) {
+          state.wakeActivated = false;
+          clearTimeout(state._wakeTimeout);
+          setMode('thinking');
+          processUserInput(content);
+        }
+        return;
       }
     }
   };
@@ -1728,14 +1783,13 @@ async function processUserInput(text) {
   } finally {
     stopProceduralLipSync();
     anim.lipTarget = 0;
-    if (state.mode !== 'recording' && state.mode !== 'thinking') {
-      setMode('listening');
-    }
+    if (state.mode === 'recording' && !state.wakeActivated) setMode('listening');
+    else if (state.mode !== 'recording' && state.mode !== 'thinking') setMode('listening');
     state.vad?.resume();
-    state.wakeActivated = false;
+    if (state.mode !== 'recording') state.wakeActivated = false; // preserva se barge-in appena scattato
     state.bargeIn = false;
     if (CONFIG.wakeWordAlwaysRequired && state.vad) state.vad.recordingEnabled = false;
-    if (CONFIG.wakeWordAlwaysRequired) startWakeWord();
+    if (CONFIG.wakeWordAlwaysRequired) { stopWakeWord(); startWakeWord(); }
     resetIdleTimer();
   }
 }
@@ -2050,13 +2104,14 @@ async function _startVad() {
         }
       },
       onSpeechEnd: async blob => {
+        console.log('[VAD] onSpeechEnd blob.size:', blob.size, 'mode:', state.mode, 'wakeActivated:', state.wakeActivated);
         if (state.mode === 'recording') {
           if (CONFIG.wakeWordAlwaysRequired && !state.wakeActivated && !state.bargeIn) {
             setMode('listening');
             return;
           }
           if (blob.size < 3000) {
-            state.wakeActivated = false;
+            if (state.wakeActivated) return; // rumore residuo dopo wake word: resta in recording
             state.bargeIn = false;
             setMode('listening');
             if (CONFIG.wakeWordAlwaysRequired) startWakeWord();
@@ -2071,7 +2126,8 @@ async function _startVad() {
     });
     await state.vad.start();
     // Se wakeWordAlwaysRequired: recorder disabilitato finché wake word non attiva
-    if (CONFIG.wakeWordAlwaysRequired) state.vad.recordingEnabled = false;
+    // (non sovrascrivere se la wake word è già scattata mentre il VAD stava caricando)
+    if (CONFIG.wakeWordAlwaysRequired && !state.wakeActivated) state.vad.recordingEnabled = false;
     // Se il mic è stato spento mentre getUserMedia era in attesa, ferma subito
     if (!CONFIG.micEnabled) { state.vad.stop(); state.vad = null; }
   } catch (err) {
