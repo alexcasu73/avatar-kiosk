@@ -1794,7 +1794,7 @@ async function processUserInput(text) {
     if (state.mode !== 'recording') state.wakeActivated = false; // preserva se barge-in appena scattato
     state.bargeIn = false;
     if (CONFIG.wakeWordAlwaysRequired && state.vad) state.vad.recordingEnabled = false;
-    if (CONFIG.wakeWordAlwaysRequired && !state.wakeActivated) { stopWakeWord(); startWakeWord(); }
+    if (CONFIG.wakeWordAlwaysRequired) { stopWakeWord(); startWakeWord(); }
     resetIdleTimer();
   }
 }
