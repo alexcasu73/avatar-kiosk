@@ -1790,7 +1790,6 @@ async function processUserInput(text) {
       state.vad?.resume();
     } else {
       // Wake word disabilitata: mic sempre in ascolto
-      console.log('[finally] bargeIn:', state.bargeIn, 'mode:', state.mode);
       if (!state.bargeIn) setMode('listening');
       state.vad?.resume();
     }
@@ -2071,7 +2070,7 @@ async function toggleMic() {
   console.log('[toggleMic] micEnabled:', CONFIG.micEnabled, 'mode:', state.mode, 'wakeAlways:', CONFIG.wakeWordAlwaysRequired, 'wakeRec:', !!state.wakeRecognition);
   updateMicBtn();
   if (CONFIG.micEnabled) {
-    if (state.mode !== 'idle' || !CONFIG.wakeWordAlwaysRequired) await _startVad();
+    if (state.mode !== 'idle' || (!CONFIG.wakeWordAlwaysRequired && !CONFIG.wakeWordEnabled)) await _startVad();
     if (CONFIG.wakeWordAlwaysRequired && state.mode !== 'idle') startWakeWord();
     console.log('[toggleMic] dopo startWakeWord, wakeRec:', !!state.wakeRecognition);
   } else {
@@ -2099,10 +2098,9 @@ async function _startVad() {
       minSpeechDuration: CONFIG.vadMinSpeechDuration,
       onVolume:    rms => updateVadVisualizer(rms),
       onSpeechStart: () => {
-        console.log('[VAD] onSpeechStart mode:', state.mode, 'wakeActivated:', state.wakeActivated, 'recEnabled:', state.vad?.recordingEnabled);
         clearTimeout(state._wakeTimeout);
-        if (state.mode === 'idle' && !CONFIG.wakeWordAlwaysRequired) {
-          // Free-talk: entra in sessione automaticamente al primo parlato
+        if (state.mode === 'idle' && !CONFIG.wakeWordAlwaysRequired && !CONFIG.wakeWordEnabled) {
+          // Free-talk puro: entra in sessione automaticamente al primo parlato
           wakeUp().then(() => setMode('recording'));
           return;
         } else if (state.mode === 'listening') {
@@ -2667,14 +2665,32 @@ window.addEventListener('message', e => {
       return;
     }
     if (msg.key === 'wake_word_enabled') {
+      const wasEnabled = CONFIG.wakeWordEnabled;
       CONFIG.wakeWordEnabled = !!parseInt(msg.value);
-      if (!CONFIG.wakeWordEnabled) stopWakeWord();
+      if (CONFIG.wakeWordEnabled) {
+        // Attiva: avvia Web Speech per rilevare wake word
+        if (!wasEnabled) startWakeWord();
+      } else {
+        // Disattiva: ferma Web Speech, in free-talk avvia VAD se mancante
+        stopWakeWord();
+        if (!CONFIG.wakeWordAlwaysRequired && CONFIG.micEnabled && !state.vad) _startVad();
+      }
       return;
     }
     if (msg.key === 'wake_word_always') {
       CONFIG.wakeWordAlwaysRequired = !!parseInt(msg.value);
-      if (!CONFIG.wakeWordAlwaysRequired) { stopWakeWord(); state.wakeActivated = false; }
-      else if (state.mode === 'listening') startWakeWord();
+      if (CONFIG.wakeWordAlwaysRequired) {
+        // Attiva: disabilita VAD recording finché non scatta wake word, avvia Web Speech
+        if (state.vad) state.vad.recordingEnabled = false;
+        state.wakeActivated = false;
+        if (state.mode !== 'idle') startWakeWord();
+      } else {
+        // Disattiva: torna a free-talk, abilita VAD recording subito
+        stopWakeWord();
+        state.wakeActivated = false;
+        if (state.vad) state.vad.recordingEnabled = true;
+        else if (CONFIG.micEnabled) _startVad();
+      }
       return;
     }
     if (msg.key === 'idle_disabled') {
