@@ -1070,15 +1070,11 @@ function updateVadVisualizer(rms) {
 // ═══════════════════════════════════════════════════════════════════════════
 function _buildWakeWords() {
   const name = (CONFIG.avatarName || '').toLowerCase().trim();
-  const variants = [name, name.replace(/[aeiou]$/i, '')];  // es. "sofia" e "sofi"
+  if (!name) return [];
   const prefixes = ['ciao', 'hey', 'ok'];
-  const words = new Set();
-  for (const p of prefixes) {
-    words.add(p);
-    for (const v of variants) if (v) words.add(`${p} ${v}`);
-  }
-  if (name) words.add(name);
-  return [...words];
+  const words = [name];
+  for (const p of prefixes) words.push(`${p} ${name}`);
+  return words;
 }
 
 function startWakeWord() {
