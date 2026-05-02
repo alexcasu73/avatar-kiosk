@@ -1194,11 +1194,13 @@ function startWakeWord() {
   };
 
   rec.onend = () => {
-    const shouldRestart = state.wakeRecognition &&
+    if (rec !== state.wakeRecognition) return; // istanza stale, non riavviare
+    const shouldRestart =
       (state.mode === 'idle' ||
-       (CONFIG.wakeWordAlwaysRequired && (state.mode === 'listening' || state.mode === 'speaking')));
+       (CONFIG.wakeWordAlwaysRequired && (state.mode === 'listening' || state.mode === 'speaking' || state.mode === 'recording')));
     if (shouldRestart) {
-      setTimeout(() => { try { rec.start(); } catch(e) {} }, 300);
+      const delay = state.mode === 'recording' ? 50 : 300;
+      setTimeout(() => { try { rec.start(); } catch(e) {} }, delay);
     }
   };
 
@@ -1796,7 +1798,7 @@ async function processUserInput(text) {
     if (state.mode !== 'recording') state.wakeActivated = false; // preserva se barge-in appena scattato
     state.bargeIn = false;
     if (CONFIG.wakeWordAlwaysRequired && state.vad) state.vad.recordingEnabled = false;
-    if (CONFIG.wakeWordAlwaysRequired) { stopWakeWord(); startWakeWord(); }
+    if (CONFIG.wakeWordAlwaysRequired && !state.wakeActivated) { stopWakeWord(); startWakeWord(); }
     resetIdleTimer();
   }
 }
