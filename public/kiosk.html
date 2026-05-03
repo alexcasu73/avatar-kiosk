@@ -1018,12 +1018,12 @@ class VAD {
 
     if (!this._speaking) {
       if (rms > activeThresh) {
-        if (!this._speechStart && this.recordingEnabled) {
-          // Avvia la registrazione subito per non perdere la prima parola
-          console.log('[VAD] start rec, recState:', this._recorder.state);
+        if (!this._speechStart) {
           this._speechStart = now;
-          this._chunks = [];
-          this._recorder.start();
+          if (this.recordingEnabled) {
+            this._chunks = [];
+            if (this._recorder.state === 'inactive') this._recorder.start();
+          }
         }
         if (this._speechStart && now - this._speechStart >= this.minSpeechDuration) {
           this._speaking = true;
@@ -1193,7 +1193,7 @@ function startWakeWord() {
     if (rec !== state.wakeRecognition) return; // istanza stale, non riavviare
     const shouldRestart =
       (state.mode === 'idle' ||
-       (CONFIG.wakeWordAlwaysRequired && (state.mode === 'listening' || state.mode === 'speaking' || state.mode === 'recording')));
+       (CONFIG.wakeWordAlwaysRequired && (state.mode === 'listening' || state.mode === 'speaking' || state.mode === 'recording' || state.mode === 'thinking')));
     if (shouldRestart) {
       const delay = state.mode === 'recording' ? 50 : 300;
       setTimeout(() => { try { rec.start(); } catch(e) {} }, delay);
@@ -1781,20 +1781,23 @@ async function processUserInput(text) {
   } finally {
     stopProceduralLipSync();
     anim.lipTarget = 0;
-    if (CONFIG.wakeWordAlwaysRequired) {
-      // Wake word richiesta: resetta a listening se non stiamo aspettando una domanda post-wake
-      if (state.mode === 'recording' && !state.wakeActivated) setMode('listening');
-      else if (state.mode !== 'recording' && state.mode !== 'thinking') setMode('listening');
-      state.vad?.resume();
-    } else {
-      // Wake word disabilitata: mic sempre in ascolto
-      if (!state.bargeIn) setMode('listening');
-      state.vad?.resume();
-    }
-    if (state.mode !== 'recording') state.wakeActivated = false; // preserva se barge-in appena scattato
+
+    const wasBargeIn = state.bargeIn;
     state.bargeIn = false;
-    if (CONFIG.wakeWordAlwaysRequired && state.vad) state.vad.recordingEnabled = false;
-    if (CONFIG.wakeWordAlwaysRequired) { stopWakeWord(); startWakeWord(); }
+    state.vad?.resume();
+
+    if (wasBargeIn && !CONFIG.wakeWordAlwaysRequired) {
+      // Casi 1,2,5,6: barge-in VAD free-talk — recorder sta catturando, non toccare nulla
+    } else if (state.wakeActivated) {
+      // Casi 3,4: barge-in wake word — in attesa della domanda (setTimeout già pianificato)
+    } else {
+      // Fine turno normale: torna in ascolto
+      if (state.mode !== 'thinking') setMode('listening');
+      state.wakeActivated = false;
+      if (CONFIG.wakeWordAlwaysRequired && state.vad) state.vad.recordingEnabled = false;
+      if (CONFIG.wakeWordAlwaysRequired) { stopWakeWord(); startWakeWord(); }
+    }
+
     resetIdleTimer();
   }
 }
@@ -2106,10 +2109,36 @@ async function _startVad() {
           state.wakeActivated = false;
           setMode('recording');
         } else if (state.mode === 'speaking') {
-          // Barge-in: interrompe sempre, senza richiedere wake word
-          state.bargeIn = true;
-          stopCurrentAudio();
-          setMode('recording');
+          if (CONFIG.wakeWordAlwaysRequired) {
+            // Ferma TTS; il recorder NON è partito (recordingEnabled=false)
+            // Dopo 300ms abilita la registrazione per catturare la domanda successiva
+            state.wakeActivated = true;
+            stopCurrentAudio();
+            setMode('recording');
+            clearTimeout(state._wakeTimeout);
+            setTimeout(() => {
+              if (state.vad && state.wakeActivated) {
+                state.vad.recordingEnabled = true;
+                // Se VAD sta già rilevando voce ma recorder non è partito, avvialo ora
+                if (state.vad._speaking && state.vad._recorder?.state === 'inactive') {
+                  state.vad._chunks = [];
+                  try { state.vad._recorder.start(); } catch(_) {}
+                }
+              }
+            }, 300);
+            state._wakeTimeout = setTimeout(() => {
+              if (state.mode === 'recording' && state.wakeActivated) {
+                state.wakeActivated = false;
+                if (state.vad) state.vad.recordingEnabled = false;
+                setMode('listening');
+              }
+            }, 5000);
+          } else {
+            // Free-talk: barge-in diretto
+            state.bargeIn = true;
+            stopCurrentAudio();
+            setMode('recording');
+          }
         }
       },
       onSpeechEnd: async blob => {
@@ -2149,40 +2178,64 @@ function setControlsVisible(visible) {
 }
 
 async function wakeUp() {
+  const comingFromIdle = !document.getElementById('idle-overlay').classList.contains('hidden');
+
   stopWakeWord();
   document.getElementById('idle-overlay').classList.add('hidden');
   setControlsVisible(true);
   setMode('listening');
-  if (CONFIG.wakeWordAlwaysRequired) startWakeWord();
-  console.log('[wakeUp] micEnabled:', CONFIG.micEnabled, 'vad:', !!state.vad, 'wakeAlways:', CONFIG.wakeWordAlwaysRequired);
   resetIdleTimer();
 
-  // Sblocca AudioContext su iOS durante il gesto utente (obbligatorio per resume())
+  // Sblocca AudioContext su iOS durante il gesto utente
   try {
     if (!_lipAudioCtx) _lipAudioCtx = new AudioContext();
     if (_lipAudioCtx.state === 'suspended') await _lipAudioCtx.resume();
-    // Buffer silenzioso per confermare sblocco
     const buf = _lipAudioCtx.createBuffer(1, 1, 22050);
     const src = _lipAudioCtx.createBufferSource();
-    src.buffer = buf;
-    src.connect(_lipAudioCtx.destination);
-    src.start(0);
+    src.buffer = buf; src.connect(_lipAudioCtx.destination); src.start(0);
   } catch (_) {}
 
-  // Prima visita: mostra benvenuto (piccolo delay per garantire repaint pannello)
-  setTimeout(() => addToHistory('avatar', `Ciao! Sono ${CONFIG.avatarName}. Come posso aiutarti?`), 50);
+  // Assicura mic abilitato
+  if (!CONFIG.micEnabled) { CONFIG.micEnabled = true; updateMicBtn(); }
 
-  // Forza mic abilitato se wake word attiva o se free-talk mode (nessuna wake word richiesta)
-  if ((CONFIG.wakeWordEnabled || !CONFIG.wakeWordAlwaysRequired) && !CONFIG.micEnabled) {
-    CONFIG.micEnabled = true;
-    updateMicBtn();
-  }
-
-  // Avvia VAD solo se microfono abilitato
-  if (!CONFIG.micEnabled) return;
-
+  // Avvia VAD
   if (!state.vad) await _startVad();
   else state.vad.resume();
+
+  if (comingFromIdle && CONFIG.audioEnabled) {
+    // Casi 4,5,6: presentazione TTS — mic spento durante la presentazione
+    const greetingText = `Ciao! Sono ${CONFIG.avatarName}. Come posso aiutarti?`;
+    addToHistory('avatar', greetingText);
+    setMode('speaking');
+    state.vad?.pause();
+    try {
+      const ttsRes = await fetch(`${CONFIG.serverUrl}/api/tts`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text: greetingText, avatarId: CONFIG.avatarId }),
+      });
+      if (ttsRes.ok) {
+        const ttsData = await ttsRes.json();
+        stopCurrentAudio(); startProceduralLipSync();
+        await playTTSAudio(ttsData);
+      }
+    } catch(_) {}
+    stopProceduralLipSync(); anim.lipTarget = 0;
+    state.vad?.resume();
+    setMode('listening');
+  } else if (comingFromIdle) {
+    // audioEnabled=false: solo testo
+    setTimeout(() => addToHistory('avatar', `Ciao! Sono ${CONFIG.avatarName}. Come posso aiutarti?`), 50);
+  }
+  // Casi 1,2,3 (idleDisabled=true, comingFromIdle=false): nessuna presentazione, chat subito attiva
+
+  state.wakeActivated = false;
+  state.bargeIn = false;
+  if (CONFIG.wakeWordAlwaysRequired) {
+    if (state.vad) state.vad.recordingEnabled = false;
+    startWakeWord();
+  }
+  console.log('[wakeUp] done — mode:', state.mode, 'micEnabled:', CONFIG.micEnabled, 'wakeAlways:', CONFIG.wakeWordAlwaysRequired);
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -3124,14 +3177,19 @@ async function initAvatar() {
     CONFIG.idleDisabled = !!(cfg.idle_disabled);
     CONFIG.wakeWordEnabled = !!(cfg.wake_word_enabled);
     CONFIG.wakeWordAlwaysRequired = !!(cfg.wake_word_always);
-    // startWakeWord richiede gesto utente: si avvia al primo click sulla pagina
-    if (CONFIG.wakeWordEnabled || CONFIG.wakeWordAlwaysRequired) {
-      document.addEventListener('click', startWakeWord, { once: true });
-    }
     if (CONFIG.idleDisabled) {
+      // Casi 1,2,3: mostra chat subito, avvia sessione al primo gesto o dopo 600ms
       document.getElementById('idle-overlay').classList.add('hidden');
       setControlsVisible(true);
+      let _wakeUpDone = false;
+      const _doWakeUp = () => { if (!_wakeUpDone) { _wakeUpDone = true; wakeUp(); } };
+      setTimeout(_doWakeUp, 600);
+      document.addEventListener('click', _doWakeUp, { once: true });
+    } else if (CONFIG.wakeWordEnabled || CONFIG.wakeWordAlwaysRequired) {
+      // Casi 4,5: primo click avvia recognition per wake word da idle
+      document.addEventListener('click', startWakeWord, { once: true });
     }
+    // Caso 6: nessuna recognition, solo click su overlay → wakeUp()
 
     // Aggiorna camera
     camera.position.set(0, CONFIG.cameraY, CONFIG.cameraZ);
