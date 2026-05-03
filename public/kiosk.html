@@ -1112,7 +1112,7 @@ function startWakeWord() {
       // ── Attivazione da idle ──────────────────────────────────────────────
       if (wakeMatch && state.mode === 'idle') {
         stopWakeWord();
-        document.getElementById('idle-overlay')?.click();
+        wakeUp();
         return;
       }
 
@@ -1168,9 +1168,8 @@ function startWakeWord() {
         return;
       }
 
-      // ── Domanda dopo wake word (utterance successiva, final) ─────────────
+      // ── Domanda dopo wake word (utterance successiva o finale con wake+domanda) ─
       if (state.mode === 'recording' && state.wakeActivated && CONFIG.wakeWordAlwaysRequired && isFinal) {
-        if (wakeMatch) return; // wake word ripetuta, non è una domanda
         const t = _norm(text.replace(/[.,!?']/g, ''));
         const content = t.split(/\s+/).filter(w => w && !_wwParts.has(w)).join(' ').trim();
         if (content) {
@@ -1179,6 +1178,7 @@ function startWakeWord() {
           setMode('thinking');
           processUserInput(content);
         }
+        // se content è vuoto: solo wake word ripetuta, resta in recording
         return;
       }
     }
@@ -2203,7 +2203,8 @@ async function wakeUp() {
   else state.vad.resume();
 
   if (comingFromIdle && CONFIG.audioEnabled) {
-    // Casi 4,5,6: presentazione TTS — mic spento durante la presentazione
+    // Casi 4,5,6: presentazione TTS — ferma recognition per evitare self-listening
+    stopWakeWord();
     const greetingText = `Ciao! Sono ${CONFIG.avatarName}. Come posso aiutarti?`;
     addToHistory('avatar', greetingText);
     setMode('speaking');
@@ -3186,8 +3187,8 @@ async function initAvatar() {
       setTimeout(_doWakeUp, 600);
       document.addEventListener('click', _doWakeUp, { once: true });
     } else if (CONFIG.wakeWordEnabled || CONFIG.wakeWordAlwaysRequired) {
-      // Casi 4,5: primo click avvia recognition per wake word da idle
-      document.addEventListener('click', startWakeWord, { once: true });
+      // Casi 4,5: avvia subito la recognition in idle così la wake word funziona senza toccare
+      setTimeout(() => { if (state.mode === 'idle') startWakeWord(); }, 500);
     }
     // Caso 6: nessuna recognition, solo click su overlay → wakeUp()
 
