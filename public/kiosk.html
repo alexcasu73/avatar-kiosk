@@ -1671,7 +1671,7 @@ function resetIdleTimer() {
     document.getElementById('chat-history').innerHTML = '';
     setMode('idle');
     state.vad?.pause();
-    startWakeWord();
+    if (CONFIG.wakeWordEnabled) startWakeWord();
   }, CONFIG.idleTimeout);
 }
 
@@ -3186,7 +3186,7 @@ async function initAvatar() {
       const _doWakeUp = () => { if (!_wakeUpDone) { _wakeUpDone = true; wakeUp(); } };
       setTimeout(_doWakeUp, 600);
       document.addEventListener('click', _doWakeUp, { once: true });
-    } else if (CONFIG.wakeWordEnabled || CONFIG.wakeWordAlwaysRequired) {
+    } else if (CONFIG.wakeWordEnabled) {
       // Casi 4,5: avvia subito la recognition in idle così la wake word funziona senza toccare
       setTimeout(() => { if (state.mode === 'idle') startWakeWord(); }, 500);
     }
