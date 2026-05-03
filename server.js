@@ -168,7 +168,7 @@ app.get('/api/avatar/:id', (req, res) => {
           show_controls,
           mic_icon, mic_icon_disabled, mic_icon_size, mic_icon_x, mic_icon_y, mic_visible, mic_bg_color, mic_disabled_color, mic_border_color, mic_border_disabled_color,
           audio_icon, audio_icon_disabled, audio_icon_size, audio_icon_x, audio_icon_y, audio_visible, audio_bg_color, audio_disabled_color, audio_border_color, audio_border_disabled_color,
-          mic_wave_color, audio_wave_color, theme, wake_word_enabled, wake_word_always } = avatar;
+          mic_wave_color, audio_wave_color, theme, wake_word_enabled, wake_word_always, greeting_text } = avatar;
   res.json({ id, name, background, bg_video, model_file, idle_start, idle_end,
              speech_start, speech_end, anim_pingpong, tts_text_normalization, tts_language_normalization, avatar_scale, avatar_offset_x,
              avatar_offset_y, avatar_rot_y, camera_z, camera_y, camera_look_at_y,
@@ -178,7 +178,7 @@ app.get('/api/avatar/:id', (req, res) => {
              show_controls,
              mic_icon, mic_icon_disabled, mic_icon_size, mic_icon_x, mic_icon_y, mic_visible, mic_bg_color, mic_disabled_color, mic_border_color, mic_border_disabled_color,
              audio_icon, audio_icon_disabled, audio_icon_size, audio_icon_x, audio_icon_y, audio_visible, audio_bg_color, audio_disabled_color, audio_border_color, audio_border_disabled_color,
-             mic_wave_color, audio_wave_color, theme, wake_word_enabled, wake_word_always });
+             mic_wave_color, audio_wave_color, theme, wake_word_enabled, wake_word_always, greeting_text });
 });
 
 // ─── Route: Kiosk page ────────────────────────────────────────────────────────
@@ -207,7 +207,7 @@ app.get('/api/preview/:id', (req, res) => {
           show_controls,
           mic_icon, mic_icon_disabled, mic_icon_size, mic_icon_x, mic_icon_y, mic_visible, mic_bg_color, mic_disabled_color, mic_border_color, mic_border_disabled_color,
           audio_icon, audio_icon_disabled, audio_icon_size, audio_icon_x, audio_icon_y, audio_visible, audio_bg_color, audio_disabled_color, audio_border_color, audio_border_disabled_color,
-          mic_wave_color, audio_wave_color, theme, wake_word_enabled, wake_word_always } = avatar;
+          mic_wave_color, audio_wave_color, theme, wake_word_enabled, wake_word_always, greeting_text } = avatar;
   res.json({ id, name, background, bg_video, model_file, idle_start, idle_end,
              speech_start, speech_end, anim_pingpong, tts_text_normalization, tts_language_normalization, avatar_scale, avatar_offset_x,
              avatar_offset_y, avatar_rot_y, camera_z, camera_y, camera_look_at_y,
@@ -217,7 +217,7 @@ app.get('/api/preview/:id', (req, res) => {
              show_controls,
              mic_icon, mic_icon_disabled, mic_icon_size, mic_icon_x, mic_icon_y, mic_visible, mic_bg_color, mic_disabled_color, mic_border_color, mic_border_disabled_color,
              audio_icon, audio_icon_disabled, audio_icon_size, audio_icon_x, audio_icon_y, audio_visible, audio_bg_color, audio_disabled_color, audio_border_color, audio_border_disabled_color,
-             mic_wave_color, audio_wave_color, theme, wake_word_enabled, wake_word_always });
+             mic_wave_color, audio_wave_color, theme, wake_word_enabled, wake_word_always, greeting_text });
 });
 
 // ─── Route: Admin login ───────────────────────────────────────────────────────
@@ -314,7 +314,7 @@ app.put('/api/admin/avatars/:id', (req, res) => {
                   'audio_icon_size','audio_icon_x','audio_icon_y','audio_wave_color',
                   'audio_visible','audio_bg_color','audio_disabled_color','audio_border_color','audio_border_disabled_color',
                   'mic_icon_disabled','audio_icon_disabled',
-                  'wake_word_enabled','wake_word_always'];
+                  'wake_word_enabled','wake_word_always','greeting_text'];
   const updates = [];
   const values  = [];
   for (const f of fields) {
@@ -907,7 +907,7 @@ app.post('/api/chat', async (req, res) => {
 
     // ── Modalità Embedded (Claude) ────────────────────────────────────────────
     const baseName   = avatar?.name || AVATAR_NAME;
-    const basePrompt = avatar?.system_prompt || DEFAULT_SYSTEM_PROMPT;
+    const basePrompt = (avatar?.system_prompt || DEFAULT_SYSTEM_PROMPT).replace(/\{\{nome\}\}/gi, baseName);
     const systemPrompt = `Il tuo nome è ${baseName}. Non presentarti ad ogni risposta.\n\n${basePrompt}`;
 
     const sid = sessionId || uuidv4();

@@ -864,6 +864,7 @@ const CONFIG = {
   audioIconX:   0,
   audioIconY:   0,
   avatarName:   'Sofia',
+  greetingText: '',
   wakeWordEnabled: false,
   wakeWordAlwaysRequired: false,
   avatarModelUrl: '/avatar.glb',
@@ -2205,7 +2206,7 @@ async function wakeUp() {
   if (comingFromIdle && CONFIG.audioEnabled) {
     // Casi 4,5,6: presentazione TTS — ferma recognition per evitare self-listening
     stopWakeWord();
-    const greetingText = `Ciao! Sono ${CONFIG.avatarName}. Come posso aiutarti?`;
+    const greetingText = (CONFIG.greetingText || `Ciao! Sono ${CONFIG.avatarName}. Come posso aiutarti?`).replace(/\{\{nome\}\}/gi, CONFIG.avatarName);
     addToHistory('avatar', greetingText);
     setMode('speaking');
     state.vad?.pause();
@@ -2226,7 +2227,8 @@ async function wakeUp() {
     setMode('listening');
   } else if (comingFromIdle) {
     // audioEnabled=false: solo testo
-    setTimeout(() => addToHistory('avatar', `Ciao! Sono ${CONFIG.avatarName}. Come posso aiutarti?`), 50);
+    const greetingText = (CONFIG.greetingText || `Ciao! Sono ${CONFIG.avatarName}. Come posso aiutarti?`).replace(/\{\{nome\}\}/gi, CONFIG.avatarName);
+    setTimeout(() => addToHistory('avatar', greetingText), 50);
   }
   // Casi 1,2,3 (idleDisabled=true, comingFromIdle=false): nessuna presentazione, chat subito attiva
 
@@ -2772,7 +2774,7 @@ window.addEventListener('message', e => {
       document.getElementById('avatar-panel').style.background =
         `radial-gradient(ellipse at 50% 60%, ${color}aa 0%, ${color} 70%)`;
     } else {
-      const stringKeys = ['chat_align', 'model_file', 'mic_icon', 'mic_icon_disabled', 'audio_icon', 'audio_icon_disabled', 'chat_font', 'mic_wave_color', 'audio_wave_color', 'idle_font', 'idle_icon_img', 'theme', 'mic_bg_color', 'mic_disabled_color', 'mic_border_color', 'mic_border_disabled_color', 'audio_bg_color', 'audio_disabled_color', 'audio_border_color', 'audio_border_disabled_color'];
+      const stringKeys = ['chat_align', 'model_file', 'mic_icon', 'mic_icon_disabled', 'audio_icon', 'audio_icon_disabled', 'chat_font', 'mic_wave_color', 'audio_wave_color', 'idle_font', 'idle_icon_img', 'theme', 'mic_bg_color', 'mic_disabled_color', 'mic_border_color', 'mic_border_disabled_color', 'audio_bg_color', 'audio_disabled_color', 'audio_border_color', 'audio_border_disabled_color', 'greeting_text'];
       const val = stringKeys.includes(msg.key) ? msg.value : parseFloat(msg.value);
       applyParamLive(msg.key, val);
     }
@@ -3027,6 +3029,7 @@ function applyParamLive(key, v) {
       const size = window.innerWidth <= 600 ? '1rem' : (v + 'rem');
       document.getElementById('interaction-panel')?.style.setProperty('--chat-font-size', size);
     },
+    greeting_text: () => { CONFIG.greetingText = v || ''; },
     model_file:   () => {
       const url = v ? `/${v}` : null;
       if (!url || url === CONFIG.avatarModelUrl) return;
@@ -3073,6 +3076,7 @@ async function initAvatar() {
     // Applica config
     CONFIG.avatarId      = AVATAR_ID;
     CONFIG.avatarName    = cfg.name;
+    CONFIG.greetingText  = cfg.greeting_text || '';
     CONFIG.avatarModelUrl = cfg.model_file ? `/${cfg.model_file}` : null;
     CONFIG.micIcon         = cfg.mic_icon          || '';
     CONFIG.micIconDisabled = cfg.mic_icon_disabled || '';

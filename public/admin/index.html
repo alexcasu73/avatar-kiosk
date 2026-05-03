@@ -824,6 +824,7 @@
           <h3>System Prompt</h3>
           <div class="field">
             <textarea id="f-prompt" placeholder="Sei Sofia, un'assistente virtuale..." style="min-height:120px"></textarea>
+            <div class="field-hint" style="margin-top:4px;font-size:11px;color:#888">Usa <code>{{nome}}</code> per inserire il nome dell'avatar nel prompt.</div>
           </div>
         </div>
 
@@ -1260,6 +1261,12 @@
                 onchange="sendToPreview({type:'avatarParam',key:'wake_word_always',value:this.checked?1:0})"/>
               Richiedi wake word anche durante la sessione (registra solo dopo "Ciao [nome]")
             </label>
+          </div>
+          <div class="field" style="margin-top:8px">
+            <label>Frase di benvenuto (all'uscita dallo standby)</label>
+            <input type="text" id="f-greeting-text" placeholder="Ciao! Sono [nome avatar]. Come posso aiutarti?"
+              oninput="sendToPreview({type:'avatarParam',key:'greeting_text',value:this.value})"/>
+            <div class="field-hint" style="margin-top:4px;font-size:11px;color:#888">Lascia vuoto per usare la frase predefinita.</div>
           </div>
           <!-- Sfondo -->
           <div class="subsection">
@@ -1754,6 +1761,7 @@ function selectAvatar(id) {
   document.getElementById('f-idle-disabled').checked     = (a.idle_disabled     ?? 0) !== 0;
   document.getElementById('f-wake-word-enabled').checked = (a.wake_word_enabled ?? 0) !== 0;
   document.getElementById('f-wake-word-always').checked  = (a.wake_word_always  ?? 0) !== 0;
+  document.getElementById('f-greeting-text').value       = a.greeting_text || '';
   document.getElementById('f-anim-pingpong').checked  = (a.anim_pingpong  ?? 0) !== 0;
   const idleTimeout = a.idle_timeout ?? 90;
   document.getElementById('s-idle-timeout').value        = idleTimeout;
@@ -2236,6 +2244,7 @@ async function saveAvatar() {
     idle_disabled:      document.getElementById('f-idle-disabled').checked     ? 1 : 0,
     wake_word_enabled:  document.getElementById('f-wake-word-enabled').checked ? 1 : 0,
     wake_word_always:   document.getElementById('f-wake-word-always').checked  ? 1 : 0,
+    greeting_text:      document.getElementById('f-greeting-text').value,
     idle_timeout:    parseInt(document.getElementById('s-idle-timeout').value),
     idle_icon:       document.getElementById('f-idle-icon').value,
     idle_title:      document.getElementById('f-idle-title').value,

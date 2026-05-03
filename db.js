@@ -95,6 +95,7 @@ db.exec(`
     mic_wave_color    TEXT DEFAULT '#ffffff',
     audio_wave_color  TEXT DEFAULT '#ffffff',
     theme             TEXT DEFAULT 'viola',
+    greeting_text     TEXT DEFAULT '',
     published         INTEGER DEFAULT 0,
     created_at        TEXT DEFAULT (datetime('now')),
     updated_at        TEXT DEFAULT (datetime('now'))
@@ -230,5 +231,7 @@ if (!existing.includes('wake_word_enabled'))
   db.exec("ALTER TABLE avatars ADD COLUMN wake_word_enabled INTEGER DEFAULT 0");
 if (!existing.includes('wake_word_always'))
   db.exec("ALTER TABLE avatars ADD COLUMN wake_word_always INTEGER DEFAULT 0");
+if (!existing.includes('greeting_text'))
+  db.exec("ALTER TABLE avatars ADD COLUMN greeting_text TEXT DEFAULT ''")
 
 export default db;
