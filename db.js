@@ -95,7 +95,12 @@ db.exec(`
     mic_wave_color    TEXT DEFAULT '#ffffff',
     audio_wave_color  TEXT DEFAULT '#ffffff',
     theme             TEXT DEFAULT 'viola',
-    greeting_text     TEXT DEFAULT '',
+    greeting_text           TEXT DEFAULT '',
+    vad_threshold           REAL    DEFAULT 0.012,
+    vad_silence_duration    INTEGER DEFAULT 1300,
+    vad_min_speech_duration INTEGER DEFAULT 150,
+    vad_min_blob_size       INTEGER DEFAULT 3000,
+    vad_wake_timeout        INTEGER DEFAULT 5000,
     published         INTEGER DEFAULT 0,
     created_at        TEXT DEFAULT (datetime('now')),
     updated_at        TEXT DEFAULT (datetime('now'))
@@ -233,5 +238,15 @@ if (!existing.includes('wake_word_always'))
   db.exec("ALTER TABLE avatars ADD COLUMN wake_word_always INTEGER DEFAULT 0");
 if (!existing.includes('greeting_text'))
   db.exec("ALTER TABLE avatars ADD COLUMN greeting_text TEXT DEFAULT ''")
+if (!existing.includes('vad_threshold'))
+  db.exec("ALTER TABLE avatars ADD COLUMN vad_threshold REAL DEFAULT 0.012")
+if (!existing.includes('vad_silence_duration'))
+  db.exec("ALTER TABLE avatars ADD COLUMN vad_silence_duration INTEGER DEFAULT 1300")
+if (!existing.includes('vad_min_speech_duration'))
+  db.exec("ALTER TABLE avatars ADD COLUMN vad_min_speech_duration INTEGER DEFAULT 150")
+if (!existing.includes('vad_min_blob_size'))
+  db.exec("ALTER TABLE avatars ADD COLUMN vad_min_blob_size INTEGER DEFAULT 3000")
+if (!existing.includes('vad_wake_timeout'))
+  db.exec("ALTER TABLE avatars ADD COLUMN vad_wake_timeout INTEGER DEFAULT 5000")
 
 export default db;

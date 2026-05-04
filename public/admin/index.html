@@ -755,6 +755,52 @@
           </div>
         </div>
 
+        <!-- ══ Audio / VAD ══════════════════════════════════════════════════════ -->
+        <div class="section">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+            <h3 style="margin:0">Audio (rilevamento voce)</h3>
+            <button class="btn btn-neutral btn-sm" onclick="resetVadDefaults()" title="Ripristina valori predefiniti">
+              <svg viewBox="0 0 24 24" style="width:14px;height:14px"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 .49-3.14"/></svg>
+              Default
+            </button>
+          </div>
+
+          <div class="field">
+            <label>Soglia volume — <span id="val-vad-threshold">0.012</span> <span style="font-size:.75rem;opacity:.5">(aumenta in ambienti rumorosi)</span></label>
+            <input type="range" id="s-vad-threshold" min="0.001" max="0.1" step="0.001" value="0.012"
+              oninput="document.getElementById('val-vad-threshold').textContent=parseFloat(this.value).toFixed(3);
+                       sendToPreview({type:'avatarParam',key:'vad_threshold',value:this.value})"/>
+          </div>
+
+          <div class="field">
+            <label>Pausa silenzio — <span id="val-vad-silence">1300</span> ms</label>
+            <input type="range" id="s-vad-silence" min="300" max="4000" step="50" value="1300"
+              oninput="document.getElementById('val-vad-silence').textContent=this.value;
+                       sendToPreview({type:'avatarParam',key:'vad_silence_duration',value:this.value})"/>
+          </div>
+
+          <div class="field">
+            <label>Durata minima parlato — <span id="val-vad-min-speech">150</span> ms</label>
+            <input type="range" id="s-vad-min-speech" min="50" max="500" step="10" value="150"
+              oninput="document.getElementById('val-vad-min-speech').textContent=this.value;
+                       sendToPreview({type:'avatarParam',key:'vad_min_speech_duration',value:this.value})"/>
+          </div>
+
+          <div class="field">
+            <label>Dimensione minima chunk — <span id="val-vad-min-blob">3000</span> byte</label>
+            <input type="range" id="s-vad-min-blob" min="500" max="15000" step="500" value="3000"
+              oninput="document.getElementById('val-vad-min-blob').textContent=this.value;
+                       sendToPreview({type:'avatarParam',key:'vad_min_blob_size',value:this.value})"/>
+          </div>
+
+          <div class="field">
+            <label>Attesa dopo wake word — <span id="val-vad-wake-timeout">5</span> s</label>
+            <input type="range" id="s-vad-wake-timeout" min="1" max="15" step="1" value="5"
+              oninput="document.getElementById('val-vad-wake-timeout').textContent=this.value;
+                       sendToPreview({type:'avatarParam',key:'vad_wake_timeout',value:this.value*1000})"/>
+          </div>
+        </div>
+
       </div><!-- /tab-generale -->
 
       <!-- ═══ TAB: AI ══════════════════════════════════════════════════════════ -->
@@ -1762,6 +1808,11 @@ function selectAvatar(id) {
   document.getElementById('f-wake-word-enabled').checked = (a.wake_word_enabled ?? 0) !== 0;
   document.getElementById('f-wake-word-always').checked  = (a.wake_word_always  ?? 0) !== 0;
   document.getElementById('f-greeting-text').value       = a.greeting_text || '';
+  setVadSlider('vad-threshold',  a.vad_threshold           ?? 0.012, v => parseFloat(v).toFixed(3));
+  setVadSlider('vad-silence',    a.vad_silence_duration    ?? 1300);
+  setVadSlider('vad-min-speech', a.vad_min_speech_duration ?? 150);
+  setVadSlider('vad-min-blob',   a.vad_min_blob_size       ?? 3000);
+  setVadSlider('vad-wake-timeout', Math.round((a.vad_wake_timeout ?? 5000) / 1000));
   document.getElementById('f-anim-pingpong').checked  = (a.anim_pingpong  ?? 0) !== 0;
   const idleTimeout = a.idle_timeout ?? 90;
   document.getElementById('s-idle-timeout').value        = idleTimeout;
@@ -2245,6 +2296,11 @@ async function saveAvatar() {
     wake_word_enabled:  document.getElementById('f-wake-word-enabled').checked ? 1 : 0,
     wake_word_always:   document.getElementById('f-wake-word-always').checked  ? 1 : 0,
     greeting_text:      document.getElementById('f-greeting-text').value,
+    vad_threshold:           parseFloat(document.getElementById('s-vad-threshold').value),
+    vad_silence_duration:    parseInt(document.getElementById('s-vad-silence').value),
+    vad_min_speech_duration: parseInt(document.getElementById('s-vad-min-speech').value),
+    vad_min_blob_size:       parseInt(document.getElementById('s-vad-min-blob').value),
+    vad_wake_timeout:        parseInt(document.getElementById('s-vad-wake-timeout').value) * 1000,
     idle_timeout:    parseInt(document.getElementById('s-idle-timeout').value),
     idle_icon:       document.getElementById('f-idle-icon').value,
     idle_title:      document.getElementById('f-idle-title').value,
@@ -2555,6 +2611,29 @@ function selectTheme(btn) {
   const theme = btn.dataset.theme;
   document.getElementById('f-theme').value = theme;
   sendToPreview({ type: 'avatarParam', key: 'theme', value: theme });
+}
+
+function setVadSlider(id, value, fmt) {
+  const s = document.getElementById('s-' + id);
+  const v = document.getElementById('val-' + id);
+  if (!s || !v) return;
+  s.value = value;
+  v.textContent = fmt ? fmt(value) : value;
+}
+
+const VAD_DEFAULTS = { threshold: 0.012, silence: 1300, minSpeech: 150, minBlob: 3000, wakeTimeout: 5 };
+
+function resetVadDefaults() {
+  setVadSlider('vad-threshold',    VAD_DEFAULTS.threshold,   v => parseFloat(v).toFixed(3));
+  setVadSlider('vad-silence',      VAD_DEFAULTS.silence);
+  setVadSlider('vad-min-speech',   VAD_DEFAULTS.minSpeech);
+  setVadSlider('vad-min-blob',     VAD_DEFAULTS.minBlob);
+  setVadSlider('vad-wake-timeout', VAD_DEFAULTS.wakeTimeout);
+  sendToPreview({type:'avatarParam',key:'vad_threshold',          value: VAD_DEFAULTS.threshold});
+  sendToPreview({type:'avatarParam',key:'vad_silence_duration',   value: VAD_DEFAULTS.silence});
+  sendToPreview({type:'avatarParam',key:'vad_min_speech_duration',value: VAD_DEFAULTS.minSpeech});
+  sendToPreview({type:'avatarParam',key:'vad_min_blob_size',      value: VAD_DEFAULTS.minBlob});
+  sendToPreview({type:'avatarParam',key:'vad_wake_timeout',       value: VAD_DEFAULTS.wakeTimeout * 1000});
 }
 
 function copyUrl() {

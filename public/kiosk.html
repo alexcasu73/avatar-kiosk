@@ -881,9 +881,11 @@ const CONFIG = {
   cameraY:        1.0,    // altezza camera
   cameraLookAtY:  1.0,    // punto di messa a fuoco verticale
   // VAD
-  vadThreshold:        0.012,   // RMS energy (0–1); aumenta in ambienti rumorosi
-  vadSilenceDuration:  1300,    // ms di silenzio per considerare la frase terminata
-  vadMinSpeechDuration: 150,    // ms minimi di parlato per inviare
+  vadThreshold:        0.012,
+  vadSilenceDuration:  1300,
+  vadMinSpeechDuration: 150,
+  vadMinBlobSize:      3000,
+  vadWakeTimeout:      5000,
 };
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -1128,7 +1130,7 @@ function startWakeWord() {
             state.wakeActivated = false;
             setMode('listening');
           }
-        }, 5000);
+        }, CONFIG.vadWakeTimeout);
         if (isFinal) {
           const t = _norm(text.replace(/[.,!?']/g, ''));
           const content = t.split(/\s+/).filter(w => w && !_wwParts.has(w));
@@ -1153,7 +1155,7 @@ function startWakeWord() {
               state.wakeActivated = false;
               setMode('listening');
             }
-          }, 5000);
+          }, CONFIG.vadWakeTimeout);
         }
         // Controlla se c'è già una domanda nella stessa utterance (final)
         if (isFinal) {
@@ -1903,7 +1905,7 @@ async function transcribeAndProcess(blob) {
             if (state.mode === 'listening' && state.wakeActivated) {
               state.wakeActivated = false;
             }
-          }, 4000);
+          }, CONFIG.vadWakeTimeout);
           return;
         }
       }
@@ -2133,7 +2135,7 @@ async function _startVad() {
                 if (state.vad) state.vad.recordingEnabled = false;
                 setMode('listening');
               }
-            }, 5000);
+            }, CONFIG.vadWakeTimeout);
           } else {
             // Free-talk: barge-in diretto
             state.bargeIn = true;
@@ -2149,7 +2151,7 @@ async function _startVad() {
             setMode('listening');
             return;
           }
-          if (blob.size < 3000) {
+          if (blob.size < CONFIG.vadMinBlobSize) {
             if (state.wakeActivated) return; // rumore residuo dopo wake word: resta in recording
             state.bargeIn = false;
             setMode('listening');
@@ -2956,6 +2958,12 @@ function applyIdleParam(key, value) {
         if (d.idle_bg_opacity !== undefined) applyIdleParam('idle_bg_opacity', d.idle_bg_opacity);
         if (d.idle_font       !== undefined) applyIdleParam('idle_font',       d.idle_font);
         if (d.idle_font_size  !== undefined) applyIdleParam('idle_font_size',  d.idle_font_size);
+        if (d.vad_threshold           !== undefined) applyParamLive('vad_threshold',           d.vad_threshold);
+        if (d.vad_silence_duration    !== undefined) applyParamLive('vad_silence_duration',    d.vad_silence_duration);
+        if (d.vad_min_speech_duration !== undefined) applyParamLive('vad_min_speech_duration', d.vad_min_speech_duration);
+        if (d.vad_min_blob_size       !== undefined) applyParamLive('vad_min_blob_size',       d.vad_min_blob_size);
+        if (d.vad_wake_timeout        !== undefined) applyParamLive('vad_wake_timeout',        d.vad_wake_timeout);
+        if (d.greeting_text           !== undefined) applyParamLive('greeting_text',           d.greeting_text);
       }
     } catch {}
   };
@@ -3029,7 +3037,12 @@ function applyParamLive(key, v) {
       const size = window.innerWidth <= 600 ? '1rem' : (v + 'rem');
       document.getElementById('interaction-panel')?.style.setProperty('--chat-font-size', size);
     },
-    greeting_text: () => { CONFIG.greetingText = v || ''; },
+    greeting_text:           () => { CONFIG.greetingText = v || ''; },
+    vad_threshold:           () => { CONFIG.vadThreshold = v; if (state.vad) state.vad.threshold = v; },
+    vad_silence_duration:    () => { CONFIG.vadSilenceDuration = v; if (state.vad) state.vad.silenceDuration = v; },
+    vad_min_speech_duration: () => { CONFIG.vadMinSpeechDuration = v; if (state.vad) state.vad.minSpeechDuration = v; },
+    vad_min_blob_size:       () => { CONFIG.vadMinBlobSize = v; },
+    vad_wake_timeout:        () => { CONFIG.vadWakeTimeout = v; },
     model_file:   () => {
       const url = v ? `/${v}` : null;
       if (!url || url === CONFIG.avatarModelUrl) return;
@@ -3076,7 +3089,12 @@ async function initAvatar() {
     // Applica config
     CONFIG.avatarId      = AVATAR_ID;
     CONFIG.avatarName    = cfg.name;
-    CONFIG.greetingText  = cfg.greeting_text || '';
+    CONFIG.greetingText         = cfg.greeting_text           || '';
+    CONFIG.vadThreshold         = cfg.vad_threshold           ?? 0.012;
+    CONFIG.vadSilenceDuration   = cfg.vad_silence_duration    ?? 1300;
+    CONFIG.vadMinSpeechDuration = cfg.vad_min_speech_duration ?? 150;
+    CONFIG.vadMinBlobSize       = cfg.vad_min_blob_size       ?? 3000;
+    CONFIG.vadWakeTimeout       = cfg.vad_wake_timeout        ?? 5000;
     CONFIG.avatarModelUrl = cfg.model_file ? `/${cfg.model_file}` : null;
     CONFIG.micIcon         = cfg.mic_icon          || '';
     CONFIG.micIconDisabled = cfg.mic_icon_disabled || '';
