@@ -1096,9 +1096,21 @@ function startWakeWord() {
 
   const wakeWords = _buildWakeWords();
 
-  // Parole che compongono le wake word (per filtrarle dalla domanda)
   const _wwParts = new Set(wakeWords.flatMap(w => w.split(/\s+/)));
   const _norm = s => s.normalize('NFD').replace(/[̀-ͯ]/g, '');
+
+  // Estrae solo le parole DOPO la wake word, scartando tutto ciò che precede
+  const _afterWake = text => {
+    const words = text.split(/\s+/);
+    let end = -1;
+    for (const w of wakeWords) {
+      const ww = w.split(/\s+/);
+      for (let k = 0; k <= words.length - ww.length; k++) {
+        if (ww.every((p, j) => words[k + j] === p)) end = Math.max(end, k + ww.length);
+      }
+    }
+    return (end >= 0 ? words.slice(end) : words).filter(w => w && !_wwParts.has(w)).join(' ').trim();
+  };
 
   rec.onresult = e => {
     for (let i = e.resultIndex; i < e.results.length; i++) {
@@ -1132,13 +1144,12 @@ function startWakeWord() {
           }
         }, CONFIG.vadWakeTimeout);
         if (isFinal) {
-          const t = _norm(text.replace(/[.,!?']/g, ''));
-          const content = t.split(/\s+/).filter(w => w && !_wwParts.has(w));
-          if (content.length > 0) {
+          const content = _afterWake(_norm(text.replace(/[.,!?']/g, '')));
+          if (content) {
             state.wakeActivated = false;
             clearTimeout(state._wakeTimeout);
             setMode('thinking');
-            processUserInput(content.join(' '));
+            processUserInput(content);
           }
         }
         return;
@@ -1159,13 +1170,12 @@ function startWakeWord() {
         }
         // Controlla se c'è già una domanda nella stessa utterance (final)
         if (isFinal) {
-          const t = _norm(text.replace(/[.,!?']/g, ''));
-          const content = t.split(/\s+/).filter(w => w && !_wwParts.has(w));
-          if (content.length > 0) {
+          const content = _afterWake(_norm(text.replace(/[.,!?']/g, '')));
+          if (content) {
             state.wakeActivated = false;
             clearTimeout(state._wakeTimeout);
             setMode('thinking');
-            processUserInput(content.join(' '));
+            processUserInput(content);
           }
         }
         return;
@@ -1173,8 +1183,7 @@ function startWakeWord() {
 
       // ── Domanda dopo wake word (utterance successiva o finale con wake+domanda) ─
       if (state.mode === 'recording' && state.wakeActivated && CONFIG.wakeWordAlwaysRequired && isFinal) {
-        const t = _norm(text.replace(/[.,!?']/g, ''));
-        const content = t.split(/\s+/).filter(w => w && !_wwParts.has(w)).join(' ').trim();
+        const content = _afterWake(_norm(text.replace(/[.,!?']/g, '')));
         if (content) {
           state.wakeActivated = false;
           clearTimeout(state._wakeTimeout);
