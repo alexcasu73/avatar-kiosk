@@ -454,6 +454,31 @@
       text-transform:none;
     }
     .btn-json-fmt:hover { background:var(--accent2); color:#000; }
+    /* Voice picker */
+    .voice-picker { display:flex; flex-direction:column; gap:6px; max-height:320px; overflow-y:auto; margin-top:4px; padding-right:10px; }
+    .voice-picker::-webkit-scrollbar { width:4px; }
+    .voice-picker::-webkit-scrollbar-track { background:transparent; }
+    .voice-picker::-webkit-scrollbar-thumb { background:var(--border); border-radius:2px; }
+    .voice-picker::-webkit-scrollbar-thumb:hover { background:var(--accent2); }
+    .voice-card {
+      display:flex; align-items:center; gap:10px;
+      background:var(--surface2); border:1px solid var(--border);
+      border-radius:8px; padding:8px 10px; cursor:pointer; transition:border-color .15s;
+    }
+    .voice-card:hover { border-color:var(--accent2); }
+    .voice-card.selected { border-color:var(--accent); background:var(--surface3); }
+    .voice-card-info { flex:1; min-width:0; }
+    .voice-card-name { font-size:.85rem; font-weight:600; color:var(--text); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+    .voice-card-meta { font-size:.7rem; color:var(--text-dim); margin-top:2px; }
+    .voice-card-meta span { margin-right:6px; }
+    .btn-voice-play {
+      flex-shrink:0; width:28px; height:28px; border-radius:50%;
+      background:var(--surface3); border:1px solid var(--border);
+      color:var(--accent2); cursor:pointer; display:flex; align-items:center; justify-content:center;
+      transition:background .15s;
+    }
+    .btn-voice-play:hover { background:var(--accent2); color:#000; }
+    .btn-voice-play svg { width:12px; height:12px; }
     .webhook-block-hint {
       font-size:.72rem; color:var(--text-dim); line-height:1.4;
     }
@@ -912,7 +937,8 @@
             <label>API Key</label>
             <input type="password" id="f-tts-api-key" placeholder="default da .env"/>
           </div>
-          <div class="fields" style="gap:12px;margin-bottom:12px">
+          <!-- Voice ID + Modello su due colonne -->
+          <div class="fields" style="gap:12px;margin-bottom:8px">
             <div class="field">
               <label>Voice ID</label>
               <input type="text" id="f-voice-id" placeholder="dNeMsqRAC759PyIQ40Vf"/>
@@ -922,14 +948,17 @@
               <input type="text" id="f-tts-model" placeholder="eleven_multilingual_v2"/>
             </div>
           </div>
-          <div class="fields" style="gap:12px;margin-bottom:12px">
+          <!-- Bottoni su due colonne -->
+          <div class="fields" style="gap:12px;margin-bottom:8px">
             <div class="model-row">
-              <button class="btn btn-neutral btn-load" style="width:100%" onclick="loadModels('elevenlabs-voices','f-tts-api-key','f-voice-id')"><svg viewBox="0 0 24 24"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg> Carica voci</button>
+              <button class="btn btn-neutral btn-load" style="width:100%" onclick="loadVoices()"><svg viewBox="0 0 24 24"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg> Carica voci</button>
             </div>
             <div class="model-row">
               <button class="btn btn-neutral btn-load" style="width:100%" onclick="loadModels('elevenlabs-models','f-tts-api-key','f-tts-model')"><svg viewBox="0 0 24 24"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg> Carica modelli</button>
             </div>
           </div>
+          <!-- Voice picker a larghezza piena -->
+          <div id="voice-picker-wrap" style="display:none;margin-bottom:8px"></div>
           <div class="fields" style="gap:12px;margin-top:12px">
             <div class="slider-field">
               <label>Stability <span id="v-tts-stability">—</span></label>
@@ -2691,6 +2720,88 @@ async function loadModels(provider, apiKeyFieldId, targetFieldId) {
     targetInput.placeholder = provider.includes('whisper') || provider === 'openai' ? 'whisper-1' : '';
     toast(e.message, 'error');
   }
+}
+
+let _voiceAudio = null;
+let _voiceList = [];
+
+async function loadVoices() {
+  const apiKey = document.getElementById('f-tts-api-key').value.trim();
+  if (!apiKey) { toast('Inserisci prima l\'API Key TTS', 'error'); return; }
+  const btn = event.currentTarget;
+  btn.disabled = true;
+  try {
+    const res = await api.post('/api/admin/fetch-models', { provider: 'elevenlabs-voices', apiKey });
+    if (res.error) throw new Error(res.error);
+    _voiceList = res.models;
+    const currentVal = document.getElementById('f-voice-id').value;
+    renderVoicePicker(_voiceList, currentVal);
+    toast(`${_voiceList.length} voci caricate`);
+  } catch (e) {
+    toast(e.message, 'error');
+  } finally {
+    btn.disabled = false;
+  }
+}
+
+function renderVoicePicker(voices, currentVal) {
+  const wrap = document.getElementById('voice-picker-wrap');
+  wrap.style.display = 'block';
+  wrap.innerHTML = '';
+
+  const picker = document.createElement('div');
+  picker.className = 'voice-picker';
+
+  voices.forEach((v, idx) => {
+    const card = document.createElement('div');
+    card.className = 'voice-card' + (v.id === currentVal ? ' selected' : '');
+    card.dataset.voiceId = v.id;
+
+    const metaParts = [v.language, v.accent, v.gender, v.age, v.use_case].filter(Boolean);
+    const meta = metaParts.join(' · ');
+
+    const info = document.createElement('div');
+    info.className = 'voice-card-info';
+    info.innerHTML = `<div class="voice-card-name">${v.name}</div>${meta ? `<div class="voice-card-meta">${meta}</div>` : ''}`;
+    card.appendChild(info);
+
+    if (v.preview_url) {
+      const playBtn = document.createElement('button');
+      playBtn.className = 'btn-voice-play';
+      playBtn.title = 'Ascolta anteprima';
+      playBtn.innerHTML = '<svg viewBox="0 0 24 24" fill="currentColor"><polygon points="5,3 19,12 5,21"/></svg>';
+      playBtn.addEventListener('click', e => { e.stopPropagation(); playVoicePreview(idx, playBtn); });
+      card.appendChild(playBtn);
+    }
+
+    card.addEventListener('click', () => {
+      picker.querySelectorAll('.voice-card').forEach(c => c.classList.remove('selected'));
+      card.classList.add('selected');
+      document.getElementById('f-voice-id').value = v.id;
+    });
+    picker.appendChild(card);
+  });
+
+  wrap.appendChild(picker);
+}
+
+function playVoicePreview(idx, btn) {
+  const url = _voiceList[idx]?.preview_url;
+  if (!url) return;
+  // Se già in riproduzione, stop
+  if (_voiceAudio) { _voiceAudio.pause(); _voiceAudio = null; }
+  // Ripristina tutte le icone play
+  document.querySelectorAll('.btn-voice-play svg').forEach(s => {
+    s.innerHTML = '<polygon points="5,3 19,12 5,21"/>';
+  });
+  const audio = new Audio(url);
+  _voiceAudio = audio;
+  btn.querySelector('svg').innerHTML = '<rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/>';
+  audio.play();
+  audio.onended = () => {
+    btn.querySelector('svg').innerHTML = '<polygon points="5,3 19,12 5,21"/>';
+    _voiceAudio = null;
+  };
 }
 
 // ── Sezioni collassabili ──────────────────────────────────────────────────────

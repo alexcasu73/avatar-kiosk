@@ -791,7 +791,16 @@ app.post('/api/admin/fetch-models', async (req, res) => {
       if (!r.ok) throw new Error(`ElevenLabs ${r.status}: ${raw.slice(0,200)}`);
       let data; try { data = JSON.parse(raw); } catch { throw new Error(`Risposta non JSON: ${raw.slice(0,200)}`); }
       if (!data.voices) throw new Error(`Campo 'voices' mancante: ${JSON.stringify(data).slice(0,200)}`);
-      const models = data.voices.map(v => ({ id: v.voice_id, name: v.name }));
+      const models = data.voices.map(v => ({
+        id: v.voice_id,
+        name: v.name,
+        preview_url: v.preview_url || '',
+        accent: v.labels?.accent || '',
+        language: v.labels?.language || v.fine_tuning?.language || '',
+        gender: v.labels?.gender || '',
+        age: v.labels?.age || '',
+        use_case: v.labels?.use_case || '',
+      }));
       return res.json({ models });
     }
 
