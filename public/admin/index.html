@@ -444,7 +444,16 @@
     .webhook-block-title {
       font-size:.7rem; font-weight:700; text-transform:uppercase;
       letter-spacing:.08em; color:var(--accent2);
+      display:flex; align-items:center; justify-content:space-between;
     }
+    .btn-json-fmt {
+      font-size:.65rem; font-weight:600; letter-spacing:.04em;
+      background:var(--surface3); border:1px solid var(--border);
+      color:var(--accent2); border-radius:5px; padding:2px 8px;
+      cursor:pointer; transition:background .15s, color .15s;
+      text-transform:none;
+    }
+    .btn-json-fmt:hover { background:var(--accent2); color:#000; }
     .webhook-block-hint {
       font-size:.72rem; color:var(--text-dim); line-height:1.4;
     }
@@ -825,7 +834,7 @@
 
           <!-- HEADERS -->
           <div class="webhook-block">
-            <div class="webhook-block-title">Headers</div>
+            <div class="webhook-block-title">Headers <button class="btn-json-fmt" onclick="autoFormatJSON(document.getElementById('f-webhook-headers'))">{ } Format</button></div>
             <textarea id="f-webhook-headers" rows="3" class="mono-area"
               placeholder='{"Authorization":"Bearer xxx"}'
               onblur="autoFormatJSON(this)"
@@ -837,7 +846,7 @@
 
           <!-- BODY -->
           <div class="webhook-block">
-            <div class="webhook-block-title">Body</div>
+            <div class="webhook-block-title">Body <button class="btn-json-fmt" onclick="autoFormatJSON(document.getElementById('f-webhook-input-template'))">{ } Format</button></div>
             <textarea id="f-webhook-input-template" rows="6" class="mono-area"
               placeholder='{"query":"{{query}}"}'
               onblur="autoFormatJSON(this)"
@@ -2263,9 +2272,9 @@ async function saveAvatar() {
     ai_max_tokens:      parseInt(document.getElementById('f-ai-max-tokens').value) || 0,
     avatar_mode:          setAvatarMode._current,
     webhook_url:             document.getElementById('f-webhook-url').value.trim(),
-    webhook_input_template:  document.getElementById('f-webhook-input-template').value.trim() || '{"query":"{{query}}"}',
+    webhook_input_template:  (() => { const v = document.getElementById('f-webhook-input-template').value.trim() || '{"query":"{{query}}"}'; try { const p = JSON.parse(v); const f = JSON.stringify(p, null, 2); document.getElementById('f-webhook-input-template').value = f; return f; } catch { return v; } })(),
     webhook_output_field:    document.getElementById('f-webhook-output-field').value.trim() || 'response',
-    webhook_headers:         document.getElementById('f-webhook-headers').value.trim() || '{}',
+    webhook_headers:         (() => { const v = document.getElementById('f-webhook-headers').value.trim() || '{}'; try { const p = JSON.parse(v); const f = JSON.stringify(p, null, 2); document.getElementById('f-webhook-headers').value = f; return f; } catch { return v; } })(),
     name:            document.getElementById('f-name').value,
     theme:           document.getElementById('f-theme').value,
     voice_id:        document.getElementById('f-voice-id').value,

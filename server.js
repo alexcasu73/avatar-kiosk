@@ -863,7 +863,7 @@ function getNestedField(obj, path) {
 // ─── Route: Chat (embedded o webhook) ────────────────────────────────────────
 app.post('/api/chat', async (req, res) => {
   try {
-    const { message, sessionId, avatarId } = req.body;
+    const { message, sessionId, avatarId, kioskSessionId } = req.body;
     if (!message) return res.status(400).json({ error: 'Messaggio mancante' });
 
     const avatar = getAvatarConfig(avatarId);
@@ -886,7 +886,8 @@ app.post('/api/chat', async (req, res) => {
         .replace(/\{\{session_id\}\}/g, esc(sid))
         .replace(/\{\{user_id\}\}/g,    esc(userId))
         .replace(/\{\{timestamp\}\}/g,  esc(timestamp))
-        .replace(/\{\{temp_id\}\}/g,    esc(tempId));
+        .replace(/\{\{temp_id\}\}/g,    esc(tempId))
+        .replace(/\{\{sessionID\}\}/gi, esc(kioskSessionId || sid));
 
       let body;
       try { body = JSON.parse(jsonStr); }
@@ -912,7 +913,9 @@ app.post('/api/chat', async (req, res) => {
 
     // ── Modalità Embedded (Claude) ────────────────────────────────────────────
     const baseName   = avatar?.name || AVATAR_NAME;
-    const basePrompt = (avatar?.system_prompt || DEFAULT_SYSTEM_PROMPT).replace(/\{\{nome\}\}/gi, baseName);
+    const basePrompt = (avatar?.system_prompt || DEFAULT_SYSTEM_PROMPT)
+      .replace(/\{\{nome\}\}/gi, baseName)
+      .replace(/\{\{sessionID\}\}/gi, kioskSessionId || sid);
     const systemPrompt = `Il tuo nome è ${baseName}. Non presentarti ad ogni risposta.\n\n${basePrompt}`;
 
     const sid = sessionId || uuidv4();

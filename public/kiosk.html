@@ -894,6 +894,7 @@ const CONFIG = {
 const state = window._dbgState = {
   mode: 'idle',      // idle | listening | recording | thinking | speaking
   sessionId: null,
+  kioskSessionId: (typeof crypto !== 'undefined' && crypto.randomUUID) ? crypto.randomUUID() : (Math.random().toString(36).slice(2) + Date.now().toString(36)),
   currentAudio: null,
   unlockedAudio: null,
   mixer: null,
@@ -1753,7 +1754,7 @@ async function processUserInput(text) {
     const chatRes = await fetch(`${CONFIG.serverUrl}/api/chat`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ message: text, sessionId: state.sessionId, avatarId: CONFIG.avatarId }),
+      body: JSON.stringify({ message: text, sessionId: state.sessionId, avatarId: CONFIG.avatarId, kioskSessionId: state.kioskSessionId }),
     });
     const chatData = await chatRes.json();
     if (!chatRes.ok) throw new Error(chatData.error);
@@ -2217,7 +2218,9 @@ async function wakeUp() {
   if (comingFromIdle && CONFIG.audioEnabled) {
     // Casi 4,5,6: presentazione TTS — ferma recognition per evitare self-listening
     stopWakeWord();
-    const greetingText = (CONFIG.greetingText || `Ciao! Sono ${CONFIG.avatarName}. Come posso aiutarti?`).replace(/\{\{nome\}\}/gi, CONFIG.avatarName);
+    const greetingText = (CONFIG.greetingText || `Ciao! Sono ${CONFIG.avatarName}. Come posso aiutarti?`)
+      .replace(/\{\{nome\}\}/gi, CONFIG.avatarName)
+      .replace(/\{\{sessionID\}\}/gi, state.kioskSessionId);
     addToHistory('avatar', greetingText);
     setMode('speaking');
     state.vad?.pause();
@@ -2238,7 +2241,9 @@ async function wakeUp() {
     setMode('listening');
   } else if (comingFromIdle) {
     // audioEnabled=false: solo testo
-    const greetingText = (CONFIG.greetingText || `Ciao! Sono ${CONFIG.avatarName}. Come posso aiutarti?`).replace(/\{\{nome\}\}/gi, CONFIG.avatarName);
+    const greetingText = (CONFIG.greetingText || `Ciao! Sono ${CONFIG.avatarName}. Come posso aiutarti?`)
+      .replace(/\{\{nome\}\}/gi, CONFIG.avatarName)
+      .replace(/\{\{sessionID\}\}/gi, state.kioskSessionId);
     setTimeout(() => addToHistory('avatar', greetingText), 50);
   }
   // Casi 1,2,3 (idleDisabled=true, comingFromIdle=false): nessuna presentazione, chat subito attiva
