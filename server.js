@@ -822,6 +822,52 @@ app.post('/api/admin/fetch-models', async (req, res) => {
   }
 });
 
+// ─── Route: TTS preview (admin) ──────────────────────────────────────────────
+app.post('/api/admin/tts-preview', async (req, res) => {
+  try {
+    const { text, voiceId, apiKey, model, stability, similarity, textNorm, langNorm, languageCode } = req.body;
+    if (!text)    return res.status(400).json({ error: 'Testo mancante' });
+    if (!voiceId) return res.status(400).json({ error: 'Voice ID mancante' });
+    const key = apiKey || process.env.ELEVENLABS_API_KEY;
+    if (!key)     return res.status(400).json({ error: 'API Key mancante' });
+
+    const buildBody = (withLangNorm) => JSON.stringify({
+      text,
+      model_id: model || DEFAULT_TTS_MODEL,
+      voice_settings: {
+        stability:        stability  >= 0 ? stability  : DEFAULT_TTS_STAB,
+        similarity_boost: similarity >= 0 ? similarity : DEFAULT_TTS_SIM,
+      },
+      apply_text_normalization: textNorm || 'auto',
+      ...(withLangNorm && languageCode ? { apply_language_text_normalization: true, language_code: languageCode } : {}),
+    });
+    let r = await fetch(`https://api.elevenlabs.io/v1/text-to-speech/${voiceId}`, {
+      method: 'POST', headers: { 'xi-api-key': key, 'Content-Type': 'application/json' },
+      body: buildBody(langNorm),
+    });
+    if (!r.ok && langNorm) {
+      const raw = await r.text();
+      const parsed = (() => { try { return JSON.parse(raw); } catch { return null; } })();
+      if (parsed?.detail?.status === 'language_text_normalization_not_supported') {
+        r = await fetch(`https://api.elevenlabs.io/v1/text-to-speech/${voiceId}`, {
+          method: 'POST', headers: { 'xi-api-key': key, 'Content-Type': 'application/json' },
+          body: buildBody(false),
+        });
+        res.set('x-lang-norm-warning', 'not_supported');
+        res.set('Access-Control-Expose-Headers', 'x-lang-norm-warning');
+      } else {
+        throw new Error(parsed?.detail?.message || raw.slice(0, 300));
+      }
+    }
+    if (!r.ok) { const t = await r.text(); throw new Error(JSON.parse(t)?.detail?.message || t.slice(0, 300)); }
+    const buf = await r.arrayBuffer();
+    res.set('Content-Type', 'audio/mpeg');
+    res.send(Buffer.from(buf));
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
 // ─── Route: Test webhook (admin) ─────────────────────────────────────────────
 app.post('/api/admin/webhook-test', async (req, res) => {
   try {
@@ -982,6 +1028,7 @@ app.post('/api/tts', async (req, res) => {
     const ttsSim     = (avatar?.tts_similarity >= 0) ? avatar.tts_similarity : DEFAULT_TTS_SIM;
     const ttsTextNorm = avatar?.tts_text_normalization || 'auto';
     const ttsLangNorm = !!avatar?.tts_language_normalization;
+    const ttsLangCode = avatar?.stt_language?.split('-')[0] || '';
     if (!voiceId) return res.status(400).json({ error: 'Voice ID non configurato' });
 
     const spokenText = text
@@ -997,17 +1044,30 @@ app.post('/api/tts', async (req, res) => {
       .replace(/\n+/g, ' ')
       .trim();
 
-    const response = await fetch(
+    const buildTtsBody = (withLangNorm) => JSON.stringify({
+      text: spokenText, model_id: ttsModel,
+      voice_settings: { stability: ttsStab, similarity_boost: ttsSim },
+      apply_text_normalization: ttsTextNorm,
+      ...(withLangNorm && ttsLangCode ? { apply_language_text_normalization: true, language_code: ttsLangCode } : {}),
+    });
+    let response = await fetch(
       `https://api.elevenlabs.io/v1/text-to-speech/${voiceId}/with-timestamps`,
-      {
-        method: 'POST',
-        headers: { 'xi-api-key': ttsKey, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ text: spokenText, model_id: ttsModel,
-          voice_settings: { stability: ttsStab, similarity_boost: ttsSim },
-          apply_text_normalization: ttsTextNorm,
-          ...(ttsLangNorm ? { apply_language_text_normalization: true } : {}) }),
-      }
+      { method: 'POST', headers: { 'xi-api-key': ttsKey, 'Content-Type': 'application/json' }, body: buildTtsBody(ttsLangNorm) }
     );
+    if (!response.ok && ttsLangNorm) {
+      const raw = await response.text();
+      let parsed; try { parsed = JSON.parse(raw); } catch(_) {}
+      if (parsed?.detail?.status === 'language_text_normalization_not_supported') {
+        response = await fetch(
+          `https://api.elevenlabs.io/v1/text-to-speech/${voiceId}/with-timestamps`,
+          { method: 'POST', headers: { 'xi-api-key': ttsKey, 'Content-Type': 'application/json' }, body: buildTtsBody(false) }
+        );
+      } else {
+        const status = parsed?.detail?.status;
+        if (status === 'quota_exceeded') throw new Error('quota_exceeded');
+        throw new Error(`ElevenLabs error: ${raw}`);
+      }
+    }
     if (!response.ok) {
       const raw = await response.text();
       let parsed; try { parsed = JSON.parse(raw); } catch(_) {}

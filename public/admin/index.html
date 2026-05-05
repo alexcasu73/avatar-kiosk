@@ -598,7 +598,7 @@
       <div id="ws1" style="display:none">
         <div class="field" style="margin-bottom:14px">
           <label>ElevenLabs API Key <span class="hint" style="margin:0">(lascia vuoto per usare default .env)</span></label>
-          <input id="wiz-tts-key" type="password" placeholder="default da .env"/>
+          <input id="wiz-tts-key" type="password" autocomplete="new-password" placeholder="default da .env"/>
         </div>
         <div class="field">
           <label>Voice ID</label>
@@ -623,7 +623,7 @@
         </div>
         <div class="field" style="margin-bottom:10px">
           <label>API Key <span class="hint" style="margin:0">(lascia vuoto per default .env)</span></label>
-          <input id="wiz-ai-key" type="password" placeholder="default da .env"/>
+          <input id="wiz-ai-key" type="password" autocomplete="new-password" placeholder="default da .env"/>
         </div>
         <div class="field">
           <label>Modello</label>
@@ -914,7 +914,7 @@
           <div class="fields" style="gap:12px;margin-bottom:12px">
             <div class="field">
               <label>API Key</label>
-              <input type="password" id="f-stt-api-key" placeholder="default da .env"/>
+              <input type="password" autocomplete="new-password" id="f-stt-api-key" placeholder="default da .env"/>
             </div>
             <div class="field">
               <label>Lingua</label>
@@ -935,7 +935,7 @@
           <h3>Text to Speech</h3>
           <div class="field" style="margin-bottom:12px">
             <label>API Key</label>
-            <input type="password" id="f-tts-api-key" placeholder="default da .env"/>
+            <input type="password" autocomplete="new-password" id="f-tts-api-key" placeholder="default da .env"/>
           </div>
           <!-- Voice ID + Modello su due colonne -->
           <div class="fields" style="gap:12px;margin-bottom:8px">
@@ -985,6 +985,19 @@
               Language Text Normalization <span class="hint" style="margin:0">(può aumentare latenza)</span>
             </label>
           </div>
+          <!-- TTS Preview -->
+          <div style="margin-top:14px;background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:12px 14px;display:flex;flex-direction:column;gap:8px">
+            <div style="font-size:.7rem;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--accent2)">Anteprima voce</div>
+            <div style="display:flex;gap:8px;align-items:center">
+              <input type="text" id="f-tts-preview-text" placeholder="Inserisci un testo da ascoltare…"
+                style="flex:1;font-size:.85rem;background:var(--surface);border:1px solid var(--border);border-radius:8px;color:var(--text);padding:8px 12px;outline:none"
+                onkeydown="if(event.key==='Enter') ttsPreview()"/>
+              <button id="btn-tts-preview" class="btn btn-neutral" style="white-space:nowrap;gap:6px" onclick="ttsPreview()">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><polygon points="5,3 19,12 5,21" fill="currentColor"/></svg>
+                Ascolta
+              </button>
+            </div>
+          </div>
         </div>
 
         <!-- AI Agent -->
@@ -1001,7 +1014,7 @@
               </div>
               <div class="field">
                 <label>API Key</label>
-                <input type="password" id="f-anthropic-api-key" placeholder="default da .env"/>
+                <input type="password" autocomplete="new-password" id="f-anthropic-api-key" placeholder="default da .env"/>
               </div>
               <div class="field">
                 <label>Modello</label>
@@ -1021,7 +1034,7 @@
               </div>
               <div class="field">
                 <label>API Key</label>
-                <input type="password" id="f-openai-api-key" placeholder="default da .env"/>
+                <input type="password" autocomplete="new-password" id="f-openai-api-key" placeholder="default da .env"/>
               </div>
               <div class="field">
                 <label>Modello</label>
@@ -2783,6 +2796,53 @@ function renderVoicePicker(voices, currentVal) {
   });
 
   wrap.appendChild(picker);
+}
+
+async function ttsPreview() {
+  const text = document.getElementById('f-tts-preview-text').value.trim();
+  if (!text) { toast('Inserisci un testo', 'error'); return; }
+  const voiceId = document.getElementById('f-voice-id').value.trim();
+  if (!voiceId) { toast('Imposta prima il Voice ID', 'error'); return; }
+  const btn = document.getElementById('btn-tts-preview');
+  btn.disabled = true;
+  btn.textContent = '⏳';
+  try {
+    const stability  = parseFloat(document.getElementById('s-tts-stability').value);
+    const similarity = parseFloat(document.getElementById('s-tts-similarity').value);
+    const langNorm = document.getElementById('f-tts-lang-norm').checked;
+    // Lingua della voce selezionata (da _voiceList) o fallback STT language
+    const selectedVoice = _voiceList.find(v => v.id === voiceId);
+    const languageCode  = selectedVoice?.language || document.getElementById('f-stt-language')?.value?.split('-')[0] || '';
+    const r = await fetch('/api/admin/tts-preview', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        text,
+        voiceId,
+        apiKey:    document.getElementById('f-tts-api-key').value.trim(),
+        model:     document.getElementById('f-tts-model').value.trim(),
+        stability,
+        similarity,
+        textNorm:  document.getElementById('f-tts-text-norm').value,
+        langNorm,
+        languageCode,
+      }),
+    });
+    if (!r.ok) { const e = await r.json(); throw new Error(e.error); }
+    if (r.headers.get('x-lang-norm-warning') === 'not_supported')
+      toast('Language Text Normalization non supportata dal piano attuale — audio riprodotto senza', 'error');
+    const blob = await r.blob();
+    const url  = URL.createObjectURL(blob);
+    if (_voiceAudio) _voiceAudio.pause();
+    _voiceAudio = new Audio(url);
+    _voiceAudio.play();
+    _voiceAudio.onended = () => { URL.revokeObjectURL(url); _voiceAudio = null; };
+  } catch(e) {
+    toast(e.message, 'error');
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><polygon points="5,3 19,12 5,21" fill="currentColor"/></svg> Ascolta';
+  }
 }
 
 function playVoicePreview(idx, btn) {
