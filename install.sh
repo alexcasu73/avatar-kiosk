@@ -70,6 +70,21 @@ if [[ "$INSTALL_MODE" == "2" ]]; then
   fi
   ok "Credenziali admin: utente=${INPUT_USER}"
 
+  # Porta
+  echo ""
+  echo "── Porta di ascolto ────────────────────────────────────────"
+  CURRENT_PORT=$(grep -E '^PORT=' .env | cut -d= -f2 || echo "3000")
+  read -r -p "  Porta [attuale: ${CURRENT_PORT}]: " INPUT_PORT
+  INPUT_PORT="${INPUT_PORT:-$CURRENT_PORT}"
+  if grep -q '^PORT=' .env; then
+    sed -i "s|^PORT=.*|PORT=${INPUT_PORT}|" .env
+  else
+    echo "PORT=${INPUT_PORT}" >> .env
+  fi
+  # Aggiorna docker-compose.yml con la porta scelta
+  sed -i "s|\"[0-9]*:3000\"|\"${INPUT_PORT}:3000\"|" docker-compose.yml
+  ok "Porta impostata: ${INPUT_PORT}"
+
   mkdir -p public/models public/backgrounds public/icons
   touch avatars.db
 
@@ -210,6 +225,19 @@ else
   echo "ADMIN_PASSWORD=${INPUT_PASS}" >> .env
 fi
 ok "Credenziali admin: utente=${INPUT_USER}"
+
+# ── Porta ─────────────────────────────────────────────────────────────────
+echo ""
+echo "── Porta di ascolto ────────────────────────────────────────"
+CURRENT_PORT=$(grep -E '^PORT=' .env | cut -d= -f2 || echo "3000")
+read -r -p "  Porta [attuale: ${CURRENT_PORT}]: " INPUT_PORT
+INPUT_PORT="${INPUT_PORT:-$CURRENT_PORT}"
+if grep -q '^PORT=' .env; then
+  sed -i "s|^PORT=.*|PORT=${INPUT_PORT}|" .env
+else
+  echo "PORT=${INPUT_PORT}" >> .env
+fi
+ok "Porta impostata: ${INPUT_PORT}"
 
 # ── assimp (conversione FBX → GLB) ───────────────────────────────────────
 if ! command -v assimp &>/dev/null; then
