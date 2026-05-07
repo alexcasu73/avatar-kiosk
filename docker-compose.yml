@@ -3,8 +3,8 @@ services:
     build: .
     container_name: avatar-kiosk
     restart: unless-stopped
-    expose:
-      - "3000"
+    ports:
+      - "3000:3000"
     volumes:
       - ./public/models:/app/public/models
       - ./public/backgrounds:/app/public/backgrounds
@@ -16,9 +16,3 @@ services:
       - ./.env:/app/.env
     env_file:
       - .env
-    networks:
-      - nutriai_default
-
-networks:
-  nutriai_default:
-    external: true
