@@ -82,7 +82,7 @@ if [[ "$INSTALL_MODE" == "2" ]]; then
     echo "PORT=${INPUT_PORT}" >> .env
   fi
   # Aggiorna docker-compose.yml con la porta scelta
-  sed -i "s|\"[0-9]*:3000\"|\"${INPUT_PORT}:3000\"|" docker-compose.yml
+  sed -i "s|\"[0-9]*:[0-9]*\"|\"${INPUT_PORT}:${INPUT_PORT}\"|" docker-compose.yml
   ok "Porta impostata: ${INPUT_PORT}"
 
   mkdir -p public/models public/backgrounds public/icons
