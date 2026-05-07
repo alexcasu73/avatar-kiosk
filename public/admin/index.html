@@ -634,8 +634,27 @@
         </div>
       </div>
 
-      <!-- Step 3: Avatar 3D -->
+      <!-- Step 3: Trascrizione (STT / Whisper) -->
       <div id="ws3" style="display:none">
+        <div class="field" style="margin-bottom:14px">
+          <label>OpenAI API Key <span class="hint" style="margin:0">(lascia vuoto per usare default .env)</span></label>
+          <input id="wiz-stt-key" type="password" autocomplete="new-password" placeholder="default da .env"/>
+        </div>
+        <div class="field" style="margin-bottom:14px">
+          <label>Modello Whisper</label>
+          <div class="model-row">
+            <input id="wiz-stt-model" type="text" placeholder="whisper-1"/>
+            <button class="btn btn-neutral btn-load" onclick="loadModels('openai','wiz-stt-key','wiz-stt-model')"><svg viewBox="0 0 24 24"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg> Carica</button>
+          </div>
+        </div>
+        <div class="field">
+          <label>Lingua trascrizione</label>
+          <input id="wiz-stt-language" type="text" placeholder="it"/>
+        </div>
+      </div>
+
+      <!-- Step 4: Avatar 3D -->
+      <div id="ws4" style="display:none">
         <p style="font-size:.82rem;color:var(--text-dim);margin-bottom:14px">Carica un modello 3D <code>.fbx</code> <code>.glb</code> <code>.gltf</code> — puoi farlo anche dopo dalla sezione Avatar 3D.</p>
         <div class="upload-zone" id="wiz-model-drop"
           ondragover="event.preventDefault()"
@@ -2132,7 +2151,7 @@ let _wizAiMode = 'embedded';
 let _wizAiProv = 'anthropic';
 let _wizAvatarId = null;
 
-const WIZ_TITLES = ['Nome', 'Voce', 'AI', 'Avatar 3D'];
+const WIZ_TITLES = ['Nome', 'Voce', 'AI', 'Trascrizione', 'Avatar 3D'];
 
 function createAvatar() {
   document.getElementById('wiz-name').value     = '';
@@ -2165,7 +2184,7 @@ function wizRender() {
   } else {
     wizNext.textContent = 'Avanti →';
   }
-  document.getElementById('wiz-box').style.width    = _wizStep === 3 ? '560px' : '480px';
+  document.getElementById('wiz-box').style.width    = _wizStep === 4 ? '560px' : '480px';
 }
 
 function wizAiMode(mode) {
@@ -2267,6 +2286,9 @@ async function wizCreate() {
   const updates = {
     tts_api_key:       document.getElementById('wiz-tts-key').value.trim(),
     voice_id:          document.getElementById('wiz-voice-id').value,
+    stt_api_key:       document.getElementById('wiz-stt-key').value.trim(),
+    stt_model:         document.getElementById('wiz-stt-model').value.trim(),
+    stt_language:      document.getElementById('wiz-stt-language').value.trim(),
     avatar_mode:       _wizAiMode,
     ai_provider:       _wizAiProv,
     webhook_url:       '',
