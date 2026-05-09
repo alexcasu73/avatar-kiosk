@@ -886,6 +886,8 @@ const CONFIG = {
   vadMinSpeechDuration: 150,
   vadMinBlobSize:      3000,
   vadWakeTimeout:      5000,
+  vadNoiseMult:        2.8,
+  sttPrompt:           '',
 };
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -936,12 +938,26 @@ class VAD {
     this._noiseFloor      = null;  // stimato durante il silenzio
     this._noiseHistory    = [];    // campioni RMS recenti in silenzio
     this._adaptiveThresh  = null;  // soglia = noiseFloor * multiplier
-    this._NOISE_MULT      = 2.8;   // quanto sopra il rumore di fondo conta come voce
+    this._NOISE_MULT      = CONFIG.vadNoiseMult ?? 2.8;
     this._NOISE_SAMPLES   = 30;    // campioni per stimare il rumore
+    this._MAX_RECORD_MS   = 12000; // taglia registrazione dopo 12s per evitare blob enormi
+    this._lastSoundTime   = null;  // ultimo istante con suono sopra soglia
   }
 
   async start() {
-    this._stream  = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
+    const audioConstraints = {
+      echoCancellation:   { ideal: true },
+      noiseSuppression:   { ideal: true },
+      autoGainControl:    { ideal: true },
+    };
+    this._stream = await navigator.mediaDevices.getUserMedia({ audio: audioConstraints, video: false });
+    // Verifica supporto effettivo e avvisa se non disponibile
+    const track = this._stream.getAudioTracks()[0];
+    if (track) {
+      const settings = track.getSettings();
+      if (settings.noiseSuppression === false) console.warn('[VAD] noiseSuppression non supportato da questo dispositivo/browser');
+      if (settings.echoCancellation === false) console.warn('[VAD] echoCancellation non supportato da questo dispositivo/browser');
+    }
     this._context = new AudioContext();
     const source  = this._context.createMediaStreamSource(this._stream);
 
@@ -1009,6 +1025,13 @@ class VAD {
 
     // Aggiorna stima rumore di fondo (solo in silenzio, non durante la registrazione)
     if (!this._speaking && !this._speechStart) {
+      // Dopo 30s senza suono sopra soglia, resetta la stima per ricalibrare
+      if (this._lastSoundTime && now - this._lastSoundTime > 30000) {
+        this._noiseHistory = [];
+        this._noiseFloor   = null;
+        this._adaptiveThresh = null;
+        this._lastSoundTime  = null;
+      }
       this._noiseHistory.push(rms);
       if (this._noiseHistory.length > this._NOISE_SAMPLES) this._noiseHistory.shift();
       if (this._noiseHistory.length >= 10) {
@@ -1017,6 +1040,8 @@ class VAD {
         this._noiseFloor = sorted[Math.floor(sorted.length * 0.75)];
         this._adaptiveThresh = Math.max(this.threshold, this._noiseFloor * this._NOISE_MULT);
       }
+    } else {
+      this._lastSoundTime = now;
     }
     const activeThresh = this._adaptiveThresh ?? this.threshold;
 
@@ -1048,6 +1073,14 @@ class VAD {
         if (!this._speechStart) { /* nessun reset necessario */ }
       }
     } else {
+      // Limite massimo durata registrazione
+      if (this._speechStart && now - this._speechStart >= this._MAX_RECORD_MS) {
+        this._speaking = false;
+        this._silenceStart = null;
+        this._speechStart  = null;
+        if (this._recorder.state === 'recording') this._recorder.stop();
+        return;
+      }
       if (rms < activeThresh) {
         if (!this._silenceStart) this._silenceStart = now;
         if (now - this._silenceStart >= this.silenceDuration) {
@@ -1886,17 +1919,43 @@ function stopCurrentAudio() {
 // ═══════════════════════════════════════════════════════════════════════════
 //  TRASCRIZIONE AUDIO (STT)
 // ═══════════════════════════════════════════════════════════════════════════
+const _WHISPER_HALLUCINATIONS = [
+  'amara.org', 'sottotitoli creati da', 'sottotitoli di', 'sub ita',
+  'transcribed by', 'subtitles by', 'translated by', 'www.', '.com', '.org',
+  'grazie per aver guardato', 'iscriviti al canale',
+];
+
+function _isHallucination(text) {
+  const lower = text.toLowerCase();
+  // Frasi note di allucinazione Whisper
+  if (_WHISPER_HALLUCINATIONS.some(h => lower.includes(h))) return true;
+  const words = lower.replace(/[.,!?]/g, '').split(/\s+/).filter(Boolean);
+  if (words.length < 4) return false;
+  // Parola singola ripetuta più del 40%
+  const freq = {};
+  for (const w of words) freq[w] = (freq[w] || 0) + 1;
+  const maxFreq = Math.max(...Object.values(freq));
+  if (maxFreq / words.length > 0.4) return true;
+  // Sequenza di 3 parole ripetuta
+  for (let i = 0; i < words.length - 5; i++) {
+    const tri = words.slice(i, i + 3).join(' ');
+    if (words.slice(i + 3).join(' ').includes(tri)) return true;
+  }
+  return false;
+}
+
 async function transcribeAndProcess(blob) {
   const formData = new FormData();
   formData.append('audio', blob, 'recording.webm');
   if (CONFIG.avatarId) formData.append('avatarId', CONFIG.avatarId);
+  if (CONFIG.sttPrompt) formData.append('sttPrompt', CONFIG.sttPrompt);
 
   try {
     const res  = await fetch(`${CONFIG.serverUrl}/api/stt`, { method: 'POST', body: formData });
     const data = await res.json();
     if (!res.ok) throw new Error(data.error);
     const transcript = data.transcript?.trim();
-    if (transcript) {
+    if (transcript && !_isHallucination(transcript)) {
       // Scarta trascrizioni composte solo da parole della wake word
       if (CONFIG.wakeWordEnabled || CONFIG.wakeWordAlwaysRequired) {
         const norm = s => s.normalize('NFD').replace(/[̀-ͯ]/g, '');
@@ -1921,15 +1980,21 @@ async function transcribeAndProcess(blob) {
       }
       await processUserInput(transcript);
     } else {
+      // Trascrizione vuota o allucinazione: pausa prima di riascoltare
+      state._hallucCount = (state._hallucCount || 0) + 1;
+      clearTimeout(state._hallucReset);
+      state._hallucReset = setTimeout(() => { state._hallucCount = 0; }, 10000);
+      // Più allucinazioni consecutive → pausa più lunga (max 5s)
+      const cooldown = Math.min(1500 * state._hallucCount, 5000);
       setMode('listening');
-      state.vad?.resume();
+      setTimeout(() => { state.vad?.resume(); }, cooldown);
       resetIdleTimer();
     }
   } catch (err) {
     document.getElementById('response-text').textContent = `⚠️ Errore trascrizione: ${err.message}`;
     document.getElementById('response-bubble').style.display = 'block';
     setMode('listening');
-    state.vad?.resume();
+    setTimeout(() => { state.vad?.resume(); }, 1500);
     resetIdleTimer();
   }
 }
@@ -2741,9 +2806,20 @@ window.addEventListener('message', e => {
         // Attiva: avvia Web Speech per rilevare wake word
         if (!wasEnabled) startWakeWord();
       } else {
-        // Disattiva: ferma Web Speech, in free-talk avvia VAD se mancante
+        // Disattiva: ferma Web Speech
         stopWakeWord();
-        if (!CONFIG.wakeWordAlwaysRequired && CONFIG.micEnabled && !state.vad) _startVad();
+        if (!CONFIG.wakeWordAlwaysRequired && CONFIG.micEnabled) {
+          if (!state.vad) {
+            _startVad();
+          } else if (state.mode === 'idle') {
+            // VAD già attivo ma in idle: lo fermo e riavvio così il suo onSpeechStart
+            // può ora entrare in free-talk senza aspettare la wake word
+            const old = state.vad;
+            state.vad = null;
+            old.stop();
+            _startVad();
+          }
+        }
       }
       return;
     }
@@ -2757,7 +2833,8 @@ window.addEventListener('message', e => {
       } else {
         // Disattiva: torna a free-talk, abilita VAD recording subito
         stopWakeWord();
-        state.wakeActivated = false;
+        // Se in sessione attiva, sblocca subito l'ascolto
+        state.wakeActivated = ACTIVE_MODES.has(state.mode);
         if (state.vad) state.vad.recordingEnabled = true;
         else if (CONFIG.micEnabled) _startVad();
       }
@@ -2790,7 +2867,7 @@ window.addEventListener('message', e => {
       document.getElementById('avatar-panel').style.background =
         `radial-gradient(ellipse at 50% 60%, ${color}aa 0%, ${color} 70%)`;
     } else {
-      const stringKeys = ['chat_align', 'model_file', 'mic_icon', 'mic_icon_disabled', 'audio_icon', 'audio_icon_disabled', 'chat_font', 'mic_wave_color', 'audio_wave_color', 'idle_font', 'idle_icon_img', 'theme', 'mic_bg_color', 'mic_disabled_color', 'mic_border_color', 'mic_border_disabled_color', 'audio_bg_color', 'audio_disabled_color', 'audio_border_color', 'audio_border_disabled_color', 'greeting_text'];
+      const stringKeys = ['chat_align', 'model_file', 'mic_icon', 'mic_icon_disabled', 'audio_icon', 'audio_icon_disabled', 'chat_font', 'mic_wave_color', 'audio_wave_color', 'idle_font', 'idle_icon_img', 'theme', 'mic_bg_color', 'mic_disabled_color', 'mic_border_color', 'mic_border_disabled_color', 'audio_bg_color', 'audio_disabled_color', 'audio_border_color', 'audio_border_disabled_color', 'greeting_text', 'stt_prompt'];
       const val = stringKeys.includes(msg.key) ? msg.value : parseFloat(msg.value);
       applyParamLive(msg.key, val);
     }
@@ -2977,6 +3054,8 @@ function applyIdleParam(key, value) {
         if (d.vad_min_speech_duration !== undefined) applyParamLive('vad_min_speech_duration', d.vad_min_speech_duration);
         if (d.vad_min_blob_size       !== undefined) applyParamLive('vad_min_blob_size',       d.vad_min_blob_size);
         if (d.vad_wake_timeout        !== undefined) applyParamLive('vad_wake_timeout',        d.vad_wake_timeout);
+        if (d.vad_noise_mult          !== undefined) applyParamLive('vad_noise_mult',          d.vad_noise_mult);
+        if (d.stt_prompt              !== undefined) applyParamLive('stt_prompt',              d.stt_prompt);
         if (d.greeting_text           !== undefined) applyParamLive('greeting_text',           d.greeting_text);
       }
     } catch {}
@@ -3057,6 +3136,8 @@ function applyParamLive(key, v) {
     vad_min_speech_duration: () => { CONFIG.vadMinSpeechDuration = v; if (state.vad) state.vad.minSpeechDuration = v; },
     vad_min_blob_size:       () => { CONFIG.vadMinBlobSize = v; },
     vad_wake_timeout:        () => { CONFIG.vadWakeTimeout = v; },
+    vad_noise_mult:          () => { CONFIG.vadNoiseMult = parseFloat(v); if (state.vad) state.vad._NOISE_MULT = CONFIG.vadNoiseMult; },
+    stt_prompt:              () => { CONFIG.sttPrompt = v; },
     model_file:   () => {
       const url = v ? `/${v}` : null;
       if (!url || url === CONFIG.avatarModelUrl) return;
@@ -3109,6 +3190,9 @@ async function initAvatar() {
     CONFIG.vadMinSpeechDuration = cfg.vad_min_speech_duration ?? 150;
     CONFIG.vadMinBlobSize       = cfg.vad_min_blob_size       ?? 3000;
     CONFIG.vadWakeTimeout       = cfg.vad_wake_timeout        ?? 5000;
+    CONFIG.vadNoiseMult         = cfg.vad_noise_mult          ?? 2.8;
+    // Se non c'è un prompt custom, usa il nome avatar come hint minimo per Whisper
+    CONFIG.sttPrompt            = cfg.stt_prompt || cfg.name || '';
     CONFIG.avatarModelUrl = cfg.model_file ? `/${cfg.model_file}` : null;
     CONFIG.micIcon         = cfg.mic_icon          || '';
     CONFIG.micIconDisabled = cfg.mic_icon_disabled || '';

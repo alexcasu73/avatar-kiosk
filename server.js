@@ -319,7 +319,8 @@ app.put('/api/admin/avatars/:id', (req, res) => {
                   'audio_visible','audio_bg_color','audio_disabled_color','audio_border_color','audio_border_disabled_color',
                   'mic_icon_disabled','audio_icon_disabled',
                   'wake_word_enabled','wake_word_always','greeting_text',
-                  'vad_threshold','vad_silence_duration','vad_min_speech_duration','vad_min_blob_size','vad_wake_timeout'];
+                  'vad_threshold','vad_silence_duration','vad_min_speech_duration','vad_min_blob_size','vad_wake_timeout',
+                  'vad_noise_mult','stt_prompt'];
   const updates = [];
   const values  = [];
   for (const f of fields) {
@@ -718,13 +719,16 @@ app.post('/api/stt', multer({ storage: multer.memoryStorage() }).single('audio')
   try {
     if (!req.file) return res.status(400).json({ error: 'Nessun file audio ricevuto' });
     const avatar   = getAvatarConfig(req.body?.avatarId);
-    const sttKey   = avatar?.stt_api_key  || process.env.OPENAI_API_KEY;
-    const sttModel = avatar?.stt_model    || DEFAULT_STT_MODEL;
-    const sttLang  = avatar?.stt_language || DEFAULT_STT_LANG;
+    const sttKey    = avatar?.stt_api_key  || process.env.OPENAI_API_KEY;
+    const sttModel  = avatar?.stt_model    || DEFAULT_STT_MODEL;
+    const sttLang   = avatar?.stt_language || DEFAULT_STT_LANG;
+    const sttPrompt = avatar?.stt_prompt   || '';
     const formData = new FormData();
     formData.append('file', new Blob([req.file.buffer], { type: req.file.mimetype || 'audio/webm' }), 'audio.webm');
     formData.append('model', sttModel);
     formData.append('language', sttLang);
+    formData.append('temperature', '0');
+    if (sttPrompt) formData.append('prompt', sttPrompt);
     const response = await fetch('https://api.openai.com/v1/audio/transcriptions', {
       method: 'POST',
       headers: { Authorization: `Bearer ${sttKey}` },

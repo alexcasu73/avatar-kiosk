@@ -248,5 +248,9 @@ if (!existing.includes('vad_min_blob_size'))
   db.exec("ALTER TABLE avatars ADD COLUMN vad_min_blob_size INTEGER DEFAULT 3000")
 if (!existing.includes('vad_wake_timeout'))
   db.exec("ALTER TABLE avatars ADD COLUMN vad_wake_timeout INTEGER DEFAULT 5000")
+if (!existing.includes('vad_noise_mult'))
+  db.exec("ALTER TABLE avatars ADD COLUMN vad_noise_mult REAL DEFAULT 2.8")
+if (!existing.includes('stt_prompt'))
+  db.exec("ALTER TABLE avatars ADD COLUMN stt_prompt TEXT DEFAULT ''")
 
 export default db;
