@@ -919,7 +919,7 @@ app.post('/api/admin/mcp-test', requireAdmin, async (req, res) => {
     // Prova JSON-RPC
     const r = await fetch(url, {
       method:  'POST',
-      headers: { 'Content-Type': 'application/json', ...extraHeaders },
+      headers: { 'Content-Type': 'application/json', 'Accept': 'application/json, text/event-stream', ...extraHeaders },
       body:    JSON.stringify({ jsonrpc: '2.0', method: 'tools/list', params: {}, id: 1 }),
     });
     if (r.ok) {
@@ -1031,13 +1031,13 @@ app.post('/api/chat', async (req, res) => {
     const mcpFilter = (avatar?.mcp_tool_filter || '').split(',').map(s => s.trim()).filter(Boolean);
 
     if (mcpUrl && avatar?.avatar_mode === 'mcp') {
-      // Prova prima il protocollo JSON-RPC standard, poi fallback REST
       const baseUrl = mcpUrl.replace(/\/$/, '');
+      const mcpPostHeaders = { 'Content-Type': 'application/json', 'Accept': 'application/json, text/event-stream', ...mcpHeaders };
       let usedRest = false;
       try {
         const listRes = await fetch(mcpUrl, {
           method:  'POST',
-          headers: { 'Content-Type': 'application/json', ...mcpHeaders },
+          headers: mcpPostHeaders,
           body:    JSON.stringify({ jsonrpc: '2.0', method: 'tools/list', params: {}, id: 1 }),
         });
         if (listRes.ok) {
@@ -1046,7 +1046,6 @@ app.post('/api/chat', async (req, res) => {
             mcpTools = listData.result.tools
               .filter(t => mcpFilter.length === 0 || mcpFilter.includes(t.name));
           } else {
-            // Risposta non JSON-RPC — prova REST
             usedRest = true;
           }
         } else {
@@ -1057,9 +1056,7 @@ app.post('/api/chat', async (req, res) => {
       if (usedRest || mcpTools.length === 0) {
         // Fallback: REST (GET /tools)
         try {
-          const listRes = await fetch(`${baseUrl}/tools`, {
-            headers: { ...mcpHeaders },
-          });
+          const listRes = await fetch(`${baseUrl}/tools`, { headers: { ...mcpHeaders } });
           if (listRes.ok) {
             const tools = await listRes.json();
             mcpTools = (Array.isArray(tools) ? tools : (tools.tools || []))
@@ -1078,7 +1075,7 @@ app.post('/api/chat', async (req, res) => {
       try {
         const r = await fetch(mcpUrl, {
           method:  'POST',
-          headers: { 'Content-Type': 'application/json', ...mcpHeaders },
+          headers: { 'Content-Type': 'application/json', 'Accept': 'application/json, text/event-stream', ...mcpHeaders },
           body:    JSON.stringify({ jsonrpc: '2.0', method: 'tools/call', params: { name, arguments: args }, id: 2 }),
         });
         if (r.ok) {

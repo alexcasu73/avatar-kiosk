@@ -3069,8 +3069,10 @@ function applyIdleParam(key, value) {
         if (d.greeting_text           !== undefined) applyParamLive('greeting_text',           d.greeting_text);
         if (d.wake_words              !== undefined) applyParamLive('wake_words',              d.wake_words);
         if (d.wake_word_enabled !== undefined) {
+          const was = CONFIG.wakeWordEnabled;
           CONFIG.wakeWordEnabled = !!d.wake_word_enabled;
-          if (CONFIG.wakeWordEnabled) startWakeWord(); else stopWakeWord();
+          if (CONFIG.wakeWordEnabled && !was) startWakeWord();
+          else if (!CONFIG.wakeWordEnabled && was) stopWakeWord();
         }
         if (d.wake_word_always !== undefined) {
           CONFIG.wakeWordAlwaysRequired = !!d.wake_word_always;
@@ -3151,7 +3153,10 @@ function applyParamLive(key, v) {
     greeting_text:           () => { CONFIG.greetingText = v || ''; },
     wake_words:              () => {
       CONFIG.wakeWords = v || '';
-      if (state.wakeRecognition) { stopWakeWord(); startWakeWord(); }
+      if (state.wakeRecognition) {
+        clearTimeout(CONFIG._wakeWordsRestartTimer);
+        CONFIG._wakeWordsRestartTimer = setTimeout(() => { stopWakeWord(); startWakeWord(); }, 300);
+      }
     },
     vad_threshold:           () => { CONFIG.vadThreshold = v; if (state.vad) state.vad.threshold = v; },
     vad_silence_duration:    () => { CONFIG.vadSilenceDuration = v; if (state.vad) state.vad.silenceDuration = v; },
