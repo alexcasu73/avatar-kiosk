@@ -867,6 +867,7 @@ const CONFIG = {
   greetingText: '',
   wakeWordEnabled: false,
   wakeWordAlwaysRequired: false,
+  wakeWords: '',
   avatarModelUrl: '/avatar.glb',
 
   // ── Posizione e scala avatar ──────────────────────
@@ -1106,6 +1107,15 @@ function updateVadVisualizer(rms) {
 //  WAKE WORD DETECTION (Web Speech API)
 // ═══════════════════════════════════════════════════════════════════════════
 function _buildWakeWords() {
+  // Se l'utente ha configurato wake word custom, usale
+  if (CONFIG.wakeWords) {
+    const name = (CONFIG.avatarName || '').toLowerCase().trim();
+    const custom = CONFIG.wakeWords.split(',')
+      .map(w => w.trim().toLowerCase().replace(/\{\{nome\}\}/g, name))
+      .filter(Boolean);
+    if (custom.length) return custom;
+  }
+  // Fallback: genera automaticamente dal nome avatar
   const name = (CONFIG.avatarName || '').toLowerCase().trim();
   if (!name) return [];
   const prefixes = ['ciao', 'hey', 'ok'];
@@ -2867,7 +2877,7 @@ window.addEventListener('message', e => {
       document.getElementById('avatar-panel').style.background =
         `radial-gradient(ellipse at 50% 60%, ${color}aa 0%, ${color} 70%)`;
     } else {
-      const stringKeys = ['chat_align', 'model_file', 'mic_icon', 'mic_icon_disabled', 'audio_icon', 'audio_icon_disabled', 'chat_font', 'mic_wave_color', 'audio_wave_color', 'idle_font', 'idle_icon_img', 'theme', 'mic_bg_color', 'mic_disabled_color', 'mic_border_color', 'mic_border_disabled_color', 'audio_bg_color', 'audio_disabled_color', 'audio_border_color', 'audio_border_disabled_color', 'greeting_text', 'stt_prompt'];
+      const stringKeys = ['chat_align', 'model_file', 'mic_icon', 'mic_icon_disabled', 'audio_icon', 'audio_icon_disabled', 'chat_font', 'mic_wave_color', 'audio_wave_color', 'idle_font', 'idle_icon_img', 'theme', 'mic_bg_color', 'mic_disabled_color', 'mic_border_color', 'mic_border_disabled_color', 'audio_bg_color', 'audio_disabled_color', 'audio_border_color', 'audio_border_disabled_color', 'greeting_text', 'stt_prompt', 'wake_words'];
       const val = stringKeys.includes(msg.key) ? msg.value : parseFloat(msg.value);
       applyParamLive(msg.key, val);
     }
@@ -3057,6 +3067,14 @@ function applyIdleParam(key, value) {
         if (d.vad_noise_mult          !== undefined) applyParamLive('vad_noise_mult',          d.vad_noise_mult);
         if (d.stt_prompt              !== undefined) applyParamLive('stt_prompt',              d.stt_prompt);
         if (d.greeting_text           !== undefined) applyParamLive('greeting_text',           d.greeting_text);
+        if (d.wake_words              !== undefined) applyParamLive('wake_words',              d.wake_words);
+        if (d.wake_word_enabled !== undefined) {
+          CONFIG.wakeWordEnabled = !!d.wake_word_enabled;
+          if (CONFIG.wakeWordEnabled) startWakeWord(); else stopWakeWord();
+        }
+        if (d.wake_word_always !== undefined) {
+          CONFIG.wakeWordAlwaysRequired = !!d.wake_word_always;
+        }
       }
     } catch {}
   };
@@ -3131,6 +3149,10 @@ function applyParamLive(key, v) {
       document.getElementById('interaction-panel')?.style.setProperty('--chat-font-size', size);
     },
     greeting_text:           () => { CONFIG.greetingText = v || ''; },
+    wake_words:              () => {
+      CONFIG.wakeWords = v || '';
+      if (state.wakeRecognition) { stopWakeWord(); startWakeWord(); }
+    },
     vad_threshold:           () => { CONFIG.vadThreshold = v; if (state.vad) state.vad.threshold = v; },
     vad_silence_duration:    () => { CONFIG.vadSilenceDuration = v; if (state.vad) state.vad.silenceDuration = v; },
     vad_min_speech_duration: () => { CONFIG.vadMinSpeechDuration = v; if (state.vad) state.vad.minSpeechDuration = v; },
@@ -3298,6 +3320,7 @@ async function initAvatar() {
     CONFIG.idleDisabled = !!(cfg.idle_disabled);
     CONFIG.wakeWordEnabled = !!(cfg.wake_word_enabled);
     CONFIG.wakeWordAlwaysRequired = !!(cfg.wake_word_always);
+    CONFIG.wakeWords = cfg.wake_words || '';
     if (CONFIG.idleDisabled) {
       // Casi 1,2,3: mostra chat subito, avvia sessione al primo gesto o dopo 600ms
       document.getElementById('idle-overlay').classList.add('hidden');

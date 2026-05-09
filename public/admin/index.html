@@ -1426,6 +1426,12 @@
             </label>
           </div>
           <div class="field" style="margin-top:8px">
+            <label>Wake word personalizzate <span style="font-size:.75rem;opacity:.5">— separate da virgola (lascia vuoto per usare "ciao [nome]", "hey [nome]", ecc.)</span></label>
+            <input type="text" id="f-wake-words" placeholder="Es: assistente, ehi {{nome}}, ciao {{nome}}"
+              oninput="sendToPreview({type:'avatarParam',key:'wake_words',value:this.value})"/>
+            <div class="field-hint" style="margin-top:4px;font-size:11px;color:#888">Puoi inserire più frasi separate da virgola. Ogni frase viene riconosciuta come trigger.</div>
+          </div>
+          <div class="field" style="margin-top:8px">
             <label>Frase di benvenuto (all'uscita dallo standby)</label>
             <input type="text" id="f-greeting-text" placeholder="Ciao! Sono [nome avatar]. Come posso aiutarti?"
               oninput="sendToPreview({type:'avatarParam',key:'greeting_text',value:this.value})"/>
@@ -1929,6 +1935,8 @@ function selectAvatar(id) {
   document.getElementById('f-idle-disabled').checked     = (a.idle_disabled     ?? 0) !== 0;
   document.getElementById('f-wake-word-enabled').checked = (a.wake_word_enabled ?? 0) !== 0;
   document.getElementById('f-wake-word-always').checked  = (a.wake_word_always  ?? 0) !== 0;
+  document.getElementById('f-wake-words').value          = a.wake_words || '';
+  sendToPreview({type:'avatarParam', key:'wake_words', value: a.wake_words || ''});
   document.getElementById('f-greeting-text').value       = a.greeting_text || '';
   setVadSlider('vad-threshold',  a.vad_threshold           ?? 0.012, v => parseFloat(v).toFixed(3));
   setVadSlider('vad-silence',    a.vad_silence_duration    ?? 1300);
@@ -2428,6 +2436,7 @@ async function saveAvatar() {
     idle_disabled:      document.getElementById('f-idle-disabled').checked     ? 1 : 0,
     wake_word_enabled:  document.getElementById('f-wake-word-enabled').checked ? 1 : 0,
     wake_word_always:   document.getElementById('f-wake-word-always').checked  ? 1 : 0,
+    wake_words:         document.getElementById('f-wake-words').value.trim(),
     greeting_text:      document.getElementById('f-greeting-text').value,
     vad_threshold:           parseFloat(document.getElementById('s-vad-threshold').value),
     vad_silence_duration:    parseInt(document.getElementById('s-vad-silence').value),
