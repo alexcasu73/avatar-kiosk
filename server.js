@@ -66,7 +66,7 @@ async function glbRemoveFlatMeshes(glbPath) {
 }
 
 // ─── Config globale (fallback se nessun avatar specifico) ─────────────────────
-const PORT         = process.env.PORT         || 3000;
+const PORT         = process.env.PORT         || 3333;
 const CLAUDE_MODEL = process.env.CLAUDE_MODEL || 'claude-sonnet-4-6';
 const AVATAR_NAME  = process.env.AVATAR_NAME  || 'Sofia';
 const DEFAULT_SYSTEM_PROMPT = process.env.AVATAR_SYSTEM_PROMPT ||
@@ -320,7 +320,8 @@ app.put('/api/admin/avatars/:id', (req, res) => {
                   'mic_icon_disabled','audio_icon_disabled',
                   'wake_word_enabled','wake_word_always','greeting_text',
                   'vad_threshold','vad_silence_duration','vad_min_speech_duration','vad_min_blob_size','vad_wake_timeout',
-                  'vad_noise_mult','stt_prompt'];
+                  'vad_noise_mult','stt_prompt',
+                  'mcp_url','mcp_headers','mcp_tool_filter'];
   const updates = [];
   const values  = [];
   for (const f of fields) {
@@ -906,6 +907,42 @@ app.post('/api/admin/webhook-test', async (req, res) => {
   }
 });
 
+// ─── Route: Test connessione MCP ──────────────────────────────────────────────
+app.post('/api/admin/mcp-test', requireAdmin, async (req, res) => {
+  try {
+    const { url, headers: extraHdrs } = req.body;
+    if (!url) return res.status(400).json({ error: 'URL mancante' });
+    let extraHeaders = {};
+    try { extraHeaders = typeof extraHdrs === 'string' ? JSON.parse(extraHdrs) : (extraHdrs || {}); } catch {}
+    const baseUrl = url.replace(/\/$/, '');
+    let tools = [];
+    // Prova JSON-RPC
+    const r = await fetch(url, {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json', ...extraHeaders },
+      body:    JSON.stringify({ jsonrpc: '2.0', method: 'tools/list', params: {}, id: 1 }),
+    });
+    if (r.ok) {
+      const data = await r.json();
+      if (data.result?.tools) {
+        tools = data.result.tools;
+      } else {
+        // Fallback REST
+        const r2 = await fetch(`${baseUrl}/tools`, { headers: extraHeaders });
+        if (r2.ok) { const d = await r2.json(); tools = Array.isArray(d) ? d : (d.tools || []); }
+      }
+    } else {
+      // Fallback REST
+      const r2 = await fetch(`${baseUrl}/tools`, { headers: extraHeaders });
+      if (!r2.ok) throw new Error(`HTTP ${r2.status}: ${await r2.text()}`);
+      const d = await r2.json(); tools = Array.isArray(d) ? d : (d.tools || []);
+    }
+    res.json({ tools });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
 // ─── Helper: estrae valore da oggetto con dot-notation (es. "output.text") ─────
 function getNestedField(obj, path) {
   return path.split('.').reduce((cur, k) => {
@@ -985,30 +1022,159 @@ app.post('/api/chat', async (req, res) => {
 
     const aiProvider = avatar?.ai_provider || 'anthropic';
     const aiTokens   = avatar?.ai_max_tokens > 0 ? avatar.ai_max_tokens : DEFAULT_AI_TOKENS;
+
+    // ── Recupera tool MCP se configurato ─────────────────────────────────────
+    const mcpUrl    = avatar?.mcp_url?.trim();
+    let mcpTools    = [];
+    let mcpHeaders  = {};
+    try { mcpHeaders = JSON.parse(avatar?.mcp_headers || '{}'); } catch {}
+    const mcpFilter = (avatar?.mcp_tool_filter || '').split(',').map(s => s.trim()).filter(Boolean);
+
+    if (mcpUrl && avatar?.avatar_mode === 'mcp') {
+      // Prova prima il protocollo JSON-RPC standard, poi fallback REST
+      const baseUrl = mcpUrl.replace(/\/$/, '');
+      let usedRest = false;
+      try {
+        const listRes = await fetch(mcpUrl, {
+          method:  'POST',
+          headers: { 'Content-Type': 'application/json', ...mcpHeaders },
+          body:    JSON.stringify({ jsonrpc: '2.0', method: 'tools/list', params: {}, id: 1 }),
+        });
+        if (listRes.ok) {
+          const listData = await listRes.json();
+          if (listData.result?.tools) {
+            mcpTools = listData.result.tools
+              .filter(t => mcpFilter.length === 0 || mcpFilter.includes(t.name));
+          } else {
+            // Risposta non JSON-RPC — prova REST
+            usedRest = true;
+          }
+        } else {
+          usedRest = true;
+        }
+      } catch { usedRest = true; }
+
+      if (usedRest || mcpTools.length === 0) {
+        // Fallback: REST (GET /tools)
+        try {
+          const listRes = await fetch(`${baseUrl}/tools`, {
+            headers: { ...mcpHeaders },
+          });
+          if (listRes.ok) {
+            const tools = await listRes.json();
+            mcpTools = (Array.isArray(tools) ? tools : (tools.tools || []))
+              .filter(t => mcpFilter.length === 0 || mcpFilter.includes(t.name));
+          }
+        } catch {}
+      }
+    }
+
+    console.log('[CHAT] avatar_mode:', avatar?.avatar_mode, '| mcp_url:', avatar?.mcp_url, '| mcpTools:', mcpTools.length);
+
+    // ── Helper: esegui tool call MCP ─────────────────────────────────────────
+    async function callMcpTool(name, args) {
+      const baseUrl = mcpUrl.replace(/\/$/, '');
+      // Prova JSON-RPC prima
+      try {
+        const r = await fetch(mcpUrl, {
+          method:  'POST',
+          headers: { 'Content-Type': 'application/json', ...mcpHeaders },
+          body:    JSON.stringify({ jsonrpc: '2.0', method: 'tools/call', params: { name, arguments: args }, id: 2 }),
+        });
+        if (r.ok) {
+          const d = await r.json();
+          if (!d.error && (d.result !== undefined)) {
+            const content = d.result?.content;
+            if (Array.isArray(content)) return content.map(c => c.text ?? JSON.stringify(c)).join('\n');
+            return JSON.stringify(d.result);
+          }
+        }
+      } catch {}
+      // Fallback REST: POST /call
+      const r = await fetch(`${baseUrl}/call`, {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json', ...mcpHeaders },
+        body:    JSON.stringify({ name, arguments: args }),
+      });
+      if (!r.ok) throw new Error(`MCP tool error ${r.status}: ${await r.text()}`);
+      const d = await r.json();
+      if (d.error) throw new Error(`MCP: ${d.error}`);
+      if (typeof d === 'string') return d;
+      const content = d.content ?? d.result ?? d;
+      if (Array.isArray(content)) return content.map(c => c.text ?? JSON.stringify(c)).join('\n');
+      return typeof content === 'string' ? content : JSON.stringify(content);
+    }
+
     let reply;
 
     if (aiProvider === 'openai') {
       const aiKey   = avatar?.openai_api_key || process.env.OPENAI_API_KEY;
       const aiModel = avatar?.openai_model   || 'gpt-4o';
-      const msgs = [{ role: 'system', content: systemPrompt }, ...history];
-      const r = await fetch('https://api.openai.com/v1/chat/completions', {
-        method: 'POST',
-        headers: { Authorization: `Bearer ${aiKey}`, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ model: aiModel, max_tokens: aiTokens, messages: msgs }),
-      });
-      if (!r.ok) throw new Error(`OpenAI: ${await r.text()}`);
-      const data = await r.json();
-      reply = data.choices[0].message.content;
+      const msgs    = [{ role: 'system', content: systemPrompt }, ...history];
+      const oaiTools = mcpTools.map(t => ({
+        type: 'function',
+        function: { name: t.name, description: t.description || '', parameters: t.inputSchema || { type: 'object', properties: {} } },
+      }));
+      let iterMsgs = [...msgs];
+      for (let i = 0; i < 5; i++) {
+        const body = { model: aiModel, max_tokens: aiTokens, messages: iterMsgs };
+        if (oaiTools.length) body.tools = oaiTools;
+        const r = await fetch('https://api.openai.com/v1/chat/completions', {
+          method: 'POST',
+          headers: { Authorization: `Bearer ${aiKey}`, 'Content-Type': 'application/json' },
+          body: JSON.stringify(body),
+        });
+        if (!r.ok) throw new Error(`OpenAI: ${await r.text()}`);
+        const data    = await r.json();
+        const choice  = data.choices[0];
+        const msg     = choice.message;
+        iterMsgs.push(msg);
+        if (choice.finish_reason !== 'tool_calls' || !msg.tool_calls?.length) {
+          reply = msg.content;
+          break;
+        }
+        const toolResults = [];
+        for (const tc of msg.tool_calls) {
+          let result;
+          try { result = await callMcpTool(tc.function.name, JSON.parse(tc.function.arguments || '{}')); }
+          catch (e) { result = `Errore: ${e.message}`; }
+          toolResults.push({ role: 'tool', tool_call_id: tc.id, content: result });
+        }
+        iterMsgs.push(...toolResults);
+      }
+      if (!reply) reply = 'Non sono riuscito a elaborare una risposta.';
     } else {
       const aiKey   = avatar?.anthropic_api_key || process.env.ANTHROPIC_API_KEY;
       const aiModel = avatar?.anthropic_model   || CLAUDE_MODEL;
       const aiClient = aiKey !== process.env.ANTHROPIC_API_KEY
         ? new Anthropic({ apiKey: aiKey }) : anthropic;
-      const response = await aiClient.messages.create({
-        model: aiModel, max_tokens: aiTokens,
-        system: systemPrompt, messages: history,
-      });
-      reply = response.content[0].text;
+      const claudeTools = mcpTools.map(t => ({
+        name: t.name,
+        description: t.description || '',
+        input_schema: t.inputSchema || { type: 'object', properties: {} },
+      }));
+      let iterMsgs = [...history];
+      for (let i = 0; i < 5; i++) {
+        const params = { model: aiModel, max_tokens: aiTokens, system: systemPrompt, messages: iterMsgs };
+        if (claudeTools.length) params.tools = claudeTools;
+        const response = await aiClient.messages.create(params);
+        if (response.stop_reason !== 'tool_use') {
+          reply = response.content.find(b => b.type === 'text')?.text || '';
+          break;
+        }
+        // Aggiungi risposta assistente con tool_use blocks
+        iterMsgs.push({ role: 'assistant', content: response.content });
+        const toolResults = [];
+        for (const block of response.content) {
+          if (block.type !== 'tool_use') continue;
+          let result;
+          try { result = await callMcpTool(block.name, block.input); }
+          catch (e) { result = `Errore: ${e.message}`; }
+          toolResults.push({ type: 'tool_result', tool_use_id: block.id, content: result });
+        }
+        iterMsgs.push({ role: 'user', content: toolResults });
+      }
+      if (!reply) reply = 'Non sono riuscito a elaborare una risposta.';
     }
     history.push({ role: 'assistant', content: reply });
     res.json({ reply, sessionId: sid });

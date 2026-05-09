@@ -252,5 +252,11 @@ if (!existing.includes('vad_noise_mult'))
   db.exec("ALTER TABLE avatars ADD COLUMN vad_noise_mult REAL DEFAULT 2.8")
 if (!existing.includes('stt_prompt'))
   db.exec("ALTER TABLE avatars ADD COLUMN stt_prompt TEXT DEFAULT ''")
+if (!existing.includes('mcp_url'))
+  db.exec("ALTER TABLE avatars ADD COLUMN mcp_url TEXT DEFAULT ''")
+if (!existing.includes('mcp_headers'))
+  db.exec("ALTER TABLE avatars ADD COLUMN mcp_headers TEXT DEFAULT '{}'")
+if (!existing.includes('mcp_tool_filter'))
+  db.exec("ALTER TABLE avatars ADD COLUMN mcp_tool_filter TEXT DEFAULT ''")
 
 export default db;

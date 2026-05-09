@@ -880,6 +880,7 @@
           <div style="display:flex;gap:6px;align-items:center">
             <button id="mode-embedded-btn" class="btn btn-neutral" onclick="setAvatarMode('embedded')" style="flex:1"><svg viewBox="0 0 24 24"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg> Embedded</button>
             <button id="mode-webhook-btn"  class="btn btn-neutral" onclick="setAvatarMode('webhook')"  style="flex:1"><svg viewBox="0 0 24 24"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg> Webhook</button>
+            <button id="mode-mcp-btn"     class="btn btn-neutral" onclick="setAvatarMode('mcp')"     style="flex:1"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12 1v4M12 19v4M4.22 4.22l2.83 2.83M16.95 16.95l2.83 2.83M1 12h4M19 12h4M4.22 19.78l2.83-2.83M16.95 7.05l2.83-2.83"/></svg> MCP</button>
             <button id="mode-apply-btn" class="btn btn-primary" onclick="applyAvatarMode()" style="display:none"><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg> Applica</button>
           </div>
         </div>
@@ -930,6 +931,37 @@
 
           <button class="btn btn-neutral" onclick="testWebhook()"><svg viewBox="0 0 24 24"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg> Testa webhook</button>
           <div id="webhook-test-result" style="font-size:.78rem;color:var(--text-dim)"></div>
+        </div>
+
+        <div id="mcp-fields" style="display:none;flex-direction:column;gap:12px;margin-top:4px">
+
+          <div class="field">
+            <label>MCP Server URL</label>
+            <input type="text" id="f-mcp-url" placeholder="http://localhost:3001/mcp"/>
+            <div class="field-hint" style="margin-top:4px;font-size:11px;color:#888">Endpoint HTTP del MCP server (Streamable HTTP transport). I tool disponibili vengono passati automaticamente al modello AI.</div>
+          </div>
+
+          <div class="webhook-block">
+            <div class="webhook-block-title">Headers <button class="btn-json-fmt" onclick="autoFormatJSON(document.getElementById('f-mcp-headers'))">{ } Format</button></div>
+            <textarea id="f-mcp-headers" rows="3" class="mono-area"
+              placeholder='{"Authorization":"Bearer xxx"}'
+              onblur="autoFormatJSON(this)"
+            >{}</textarea>
+            <div class="webhook-block-hint">Header di autenticazione per il MCP server.<br>
+              Esempio: <code>{"Authorization":"Bearer il-tuo-token"}</code>
+            </div>
+          </div>
+
+          <div class="webhook-block">
+            <div class="webhook-block-title">Filtro tool</div>
+            <input type="text" id="f-mcp-tool-filter" class="mono-input" placeholder="tool_a, tool_b"/>
+            <div class="webhook-block-hint">
+              Nomi dei tool da esporre al modello, separati da virgola. Lascia vuoto per esporre tutti i tool del MCP server.
+            </div>
+          </div>
+
+          <button class="btn btn-neutral" onclick="testMcp()"><svg viewBox="0 0 24 24"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg> Testa connessione MCP</button>
+          <div id="mcp-test-result" style="font-size:.78rem;color:var(--text-dim)"></div>
         </div>
 
         </div><!-- /.section Modalità AI -->
@@ -1734,6 +1766,11 @@ function selectAvatar(id) {
   document.getElementById('f-webhook-output-field').value     = a.webhook_output_field     || 'response';
   document.getElementById('f-webhook-headers').value          = a.webhook_headers          || '{}';
   document.getElementById('webhook-test-result').textContent = '';
+  document.getElementById('f-mcp-url').value          = a.mcp_url          || '';
+  document.getElementById('f-mcp-headers').value      = a.mcp_headers      || '{}';
+  document.getElementById('f-mcp-tool-filter').value  = a.mcp_tool_filter  || '';
+  document.getElementById('mcp-test-result').textContent = '';
+  setTimeout(() => { autoFormatJSON(document.getElementById('f-mcp-headers')); }, 0);
   document.getElementById('f-name').value         = a.name;
   const currentTheme = a.theme || 'viola';
   document.getElementById('f-theme').value = currentTheme;
@@ -2359,6 +2396,9 @@ async function saveAvatar() {
     webhook_input_template:  (() => { const v = document.getElementById('f-webhook-input-template').value.trim() || '{"query":"{{query}}"}'; try { const p = JSON.parse(v); const f = JSON.stringify(p, null, 2); document.getElementById('f-webhook-input-template').value = f; return f; } catch { return v; } })(),
     webhook_output_field:    document.getElementById('f-webhook-output-field').value.trim() || 'response',
     webhook_headers:         (() => { const v = document.getElementById('f-webhook-headers').value.trim() || '{}'; try { const p = JSON.parse(v); const f = JSON.stringify(p, null, 2); document.getElementById('f-webhook-headers').value = f; return f; } catch { return v; } })(),
+    mcp_url:             document.getElementById('f-mcp-url').value.trim(),
+    mcp_headers:         (() => { const v = document.getElementById('f-mcp-headers').value.trim() || '{}'; try { const p = JSON.parse(v); const f = JSON.stringify(p, null, 2); document.getElementById('f-mcp-headers').value = f; return f; } catch { return v; } })(),
+    mcp_tool_filter:     document.getElementById('f-mcp-tool-filter').value.trim(),
     name:            document.getElementById('f-name').value,
     theme:           document.getElementById('f-theme').value,
     voice_id:        document.getElementById('f-voice-id').value,
@@ -2980,6 +3020,7 @@ setAiProvider._current = 'anthropic';
 function setAvatarMode(mode) {
   setAvatarMode._current = mode;
   document.getElementById('webhook-fields').style.display = mode === 'webhook' ? 'flex' : 'none';
+  document.getElementById('mcp-fields').style.display     = mode === 'mcp'     ? 'flex' : 'none';
   _refreshModeBtns();
 }
 setAvatarMode._current  = 'embedded';
@@ -2988,8 +3029,7 @@ setAvatarMode._applied  = 'embedded';
 function _refreshModeBtns() {
   const sel = setAvatarMode._current;
   const app = setAvatarMode._applied;
-  const labels = { embedded: 'Embedded', webhook: 'Webhook' };
-  ['embedded','webhook'].forEach(m => {
+  ['embedded','webhook','mcp'].forEach(m => {
     const btn = document.getElementById(`mode-${m}-btn`);
     btn.className = 'btn btn-neutral';
     if (m === app) btn.classList.add('btn-mode-applied');
@@ -3031,6 +3071,24 @@ async function testWebhook() {
     result.textContent = res.reply !== 'undefined'
       ? `Risposta: "${res.reply}"`
       : `Campo output non trovato — risposta grezza: ${JSON.stringify(res)}`;
+  } catch (e) {
+    result.style.color = 'var(--error)';
+    result.textContent = e.message;
+  }
+}
+
+async function testMcp() {
+  const url     = document.getElementById('f-mcp-url').value.trim();
+  const headers = document.getElementById('f-mcp-headers').value.trim();
+  const result  = document.getElementById('mcp-test-result');
+  if (!url) { result.textContent = 'Inserisci un URL'; return; }
+  result.textContent = 'Connessione in corso...';
+  try {
+    const res = await api.post('/api/admin/mcp-test', { url, headers });
+    result.style.color = 'var(--success)';
+    const tools = Array.isArray(res.tools) ? res.tools : [];
+    const names = tools.map(t => t.name).join(', ') || '(nessun tool)';
+    result.textContent = `✓ Connesso — ${tools.length} tool disponibili: ${names}`;
   } catch (e) {
     result.style.color = 'var(--error)';
     result.textContent = e.message;
