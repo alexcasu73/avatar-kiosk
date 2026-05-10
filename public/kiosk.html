@@ -1624,6 +1624,7 @@ async function playTTSAudio(ttsData) {
   }
   // Desktop: HTMLAudioElement
   const audio = new Audio(`data:audio/mpeg;base64,${ttsData.audio}`);
+  audio.volume = CONFIG.ttsVolume ?? 1.0;
   state.currentAudio = audio;
   if (_lipAudioCtx?.state === 'suspended') await _lipAudioCtx.resume().catch(() => {});
   await new Promise(resolve => {
@@ -1816,8 +1817,6 @@ async function processUserInput(text) {
     addToHistory('avatar', chatData.reply);
     setMode('speaking');
     state.vad?.resume();
-    // Durante il speaking alza la soglia VAD per ignorare l'audio dell'avatar
-    if (state.vad) state.vad._NOISE_MULT = Math.max(CONFIG.vadNoiseMult * 3, 8);
 
     if (ttsRes.ok) {
       const ttsData = await ttsRes.json();
@@ -1842,8 +1841,6 @@ async function processUserInput(text) {
 
     const wasBargeIn = state.bargeIn;
     state.bargeIn = false;
-    // Ripristina soglia VAD normale dopo il speaking
-    if (state.vad) state.vad._NOISE_MULT = CONFIG.vadNoiseMult ?? 2.8;
     state.vad?.resume();
 
     if (wasBargeIn && !CONFIG.wakeWordAlwaysRequired) {
@@ -1934,7 +1931,7 @@ function stopCurrentAudio() {
 //  TRASCRIZIONE AUDIO (STT)
 // ═══════════════════════════════════════════════════════════════════════════
 const _WHISPER_HALLUCINATIONS = [
-  'amara.org', 'sottotitoli creati da', 'sottotitoli di', 'sub ita',
+  'amara.org', 'sottotitoli creati da', 'sottotitoli di', 'sottotitoli a cura di', 'sub ita',
   'transcribed by', 'subtitles by', 'translated by', 'www.', '.com', '.org',
   'grazie per aver guardato', 'iscriviti al canale',
 ];
