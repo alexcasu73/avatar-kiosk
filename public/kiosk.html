@@ -1161,6 +1161,7 @@ function startWakeWord() {
       const isFinal = e.results[i].isFinal;
       const text = e.results[i][0].transcript.toLowerCase().trim();
       if (!text) continue;
+      console.log('[WakeWord] testo:', text, '| isFinal:', isFinal, '| mode:', state.mode);
 
       const textWords = text.split(/\s+/);
       const wakeMatch = wakeWords.some(w => {
@@ -1241,7 +1242,6 @@ function startWakeWord() {
   };
 
   rec.onerror = e => {
-    if (e.error === 'no-speech' || e.error === 'aborted') return;
     console.warn('[WakeWord] errore:', e.error);
   };
 
