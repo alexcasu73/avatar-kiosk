@@ -1816,6 +1816,8 @@ async function processUserInput(text) {
     addToHistory('avatar', chatData.reply);
     setMode('speaking');
     state.vad?.resume();
+    // Durante il speaking alza la soglia VAD per ignorare l'audio dell'avatar
+    if (state.vad) state.vad._NOISE_MULT = Math.max(CONFIG.vadNoiseMult * 3, 8);
 
     if (ttsRes.ok) {
       const ttsData = await ttsRes.json();
@@ -1840,6 +1842,8 @@ async function processUserInput(text) {
 
     const wasBargeIn = state.bargeIn;
     state.bargeIn = false;
+    // Ripristina soglia VAD normale dopo il speaking
+    if (state.vad) state.vad._NOISE_MULT = CONFIG.vadNoiseMult ?? 2.8;
     state.vad?.resume();
 
     if (wasBargeIn && !CONFIG.wakeWordAlwaysRequired) {
