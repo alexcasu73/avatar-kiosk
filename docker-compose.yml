@@ -4,7 +4,7 @@ services:
     container_name: avatar-kiosk
     restart: unless-stopped
     ports:
-      - "3000:3000"
+      - "${PORT:-3000}:${PORT:-3000}"
     volumes:
       - ./public/models:/app/public/models
       - ./public/backgrounds:/app/public/backgrounds
@@ -16,3 +16,10 @@ services:
       - ./.env:/app/.env
     env_file:
       - .env
+    networks:
+      - default
+      - nutriai_default
+
+networks:
+  nutriai_default:
+    external: true
