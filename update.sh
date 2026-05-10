@@ -21,8 +21,9 @@ mkdir -p public/models public/backgrounds public/icons \
          public/bg-videos public/idle-videos public/idle-bgs
 ok "Directory verificate"
 
-info "Build e riavvio container..."
-docker compose up -d --build
+info "Build e riavvio container (no cache per aggiornare dipendenze)..."
+docker compose build --no-cache
+docker compose up -d
 ok "Container aggiornato e riavviato"
 
 echo ""
