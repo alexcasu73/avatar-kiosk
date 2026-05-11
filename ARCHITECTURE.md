@@ -2,20 +2,96 @@
 
 ## Indice
 
-1. [Panoramica](#panoramica)
-2. [Stack tecnologico](#stack-tecnologico)
-3. [Architettura](#architettura)
-4. [Struttura file](#struttura-file)
-5. [Database](#database)
-6. [API REST](#api-rest)
-7. [WebSocket](#websocket)
-8. [Modalità AI](#modalità-ai)
-9. [Installazione](#installazione)
-10. [Aggiornamento](#aggiornamento)
-11. [Variabili d'ambiente](#variabili-dambiente)
-12. [Webhook Say](#webhook-say)
-13. [Monitoraggio](#monitoraggio)
-14. [Sicurezza](#sicurezza)
+1. [Funzionalità](#funzionalità)
+2. [Panoramica](#panoramica)
+3. [Stack tecnologico](#stack-tecnologico)
+4. [Architettura](#architettura)
+5. [Struttura file](#struttura-file)
+6. [Database](#database)
+7. [API REST](#api-rest)
+8. [WebSocket](#websocket)
+9. [Modalità AI](#modalità-ai)
+10. [Installazione](#installazione)
+11. [Aggiornamento](#aggiornamento)
+12. [Variabili d'ambiente](#variabili-dambiente)
+13. [Webhook Say](#webhook-say)
+14. [Monitoraggio](#monitoraggio)
+15. [Sicurezza](#sicurezza)
+
+---
+
+## Funzionalità
+
+### Avatar 3D
+- Rendering real-time in WebGL con Three.js (modelli FBX / GLB / GLTF)
+- Lip sync procedurale basato sull'audio ElevenLabs (alignment timestamp)
+- Animazioni idle e speaking configurabili con range frame e ping-pong
+- Scala, offset, rotazione e posizione camera configurabili per avatar
+- Qualità texture regolabile (compressione WebP lato server)
+- Video di sfondo e immagini di sfondo per il kiosk
+
+### Voce e audio
+- **TTS**: ElevenLabs con scelta voce, modello, stabilità, similarity e text normalization
+- **STT**: OpenAI Whisper con lingua, modello e prompt personalizzabili
+- **VAD** (Voice Activity Detection): Silero ONNX con parametri configurabili (threshold, silence duration, min speech duration, min blob size, noise multiplier)
+- Supporto wake word tramite Web Speech API con parole chiave personalizzabili
+- Wake word always-on o solo come attivazione iniziale
+- Interruzione avatar durante il parlato (barge-in)
+
+### Intelligenza artificiale
+- **Embedded**: Claude (Anthropic) o GPT (OpenAI) con cronologia conversazionale per sessione
+- **Webhook**: forward della domanda a endpoint HTTP esterno con template JSON configurabile e lettura campo risposta via dot-notation
+- **MCP** (Model Context Protocol): tool use agente con loop fino a 5 round, supporto JSON-RPC e REST fallback, filtro tool configurabile
+- System prompt personalizzabile per avatar con variabili `{{nome}}` e `{{sessionID}}`
+- Max token configurabile per avatar
+- API key configurabile per avatar (override del default `.env`)
+
+### Schermata idle
+- Schermata di attesa con icona (emoji o immagine), titolo, sottotitolo e hint
+- Video idle in loop, immagine di sfondo, colore di sfondo con opacità
+- Font e dimensione font personalizzabili
+- Timeout configurabile (secondi di inattività prima di entrare in idle)
+- Possibilità di disabilitare completamente la schermata idle
+
+### Interfaccia kiosk
+- Overlay chat con altezza, larghezza massima, allineamento e margine dal basso configurabili
+- Input testo nascondibile (solo voce)
+- Font e dimensione font del chat configurabili
+- Pulsanti mic e audio personalizzabili: icona custom, dimensione, posizione, colori, visibilità
+- Colori dell'onda sonora mic/audio configurabili
+- Temi colore predefiniti (viola, rosso, arancio, verde, giallo, blu)
+- Testo di benvenuto configurabile (messaggio iniziale dell'avatar)
+- Controlli mostrabili/nascondibili
+
+### Backoffice admin
+- Gestione multi-avatar con lista nella sidebar
+- Label separata dal nome per la visualizzazione in lista
+- Editor con tab (Generale, AI, Aspetto, Avatar 3D) e preview live iframe
+- Anteprima TTS direttamente dall'admin con scelta voce e caricamento modelli disponibili
+- Test connessione MCP con elenco tool disponibili
+- Duplicazione avatar (nome invariato, label con suffisso "(copia)")
+- Esportazione / importazione configurazione avatar in JSON
+- Pubblicazione/bozza per ogni avatar
+- Supporto drag-and-drop upload modelli 3D, sfondi, icone, video
+
+### Webhook Say
+- Endpoint HTTP per far pronunciare una frase all'avatar da sistemi esterni
+- Token di autenticazione per avatar, generabile dall'admin
+- Consegna real-time via WebSocket a tutti i client kiosk connessi
+
+### Monitoraggio e sicurezza
+- Rate limiting sliding window per IP per avatar (rpm configurabile)
+- Log di tutte le richieste (chat, STT, TTS) con token usage e IP
+- Pannello monitoraggio in admin: richieste oggi, bloccate, token AI, caratteri TTS, secondi STT
+- Stima costi giornaliera basata sul modello configurato per ogni avatar
+- Ultimi 20 IP bloccati con timestamp e tipo di richiesta
+
+### Deployment
+- Script di installazione interattivo (`install.sh`) per Docker e Node.js diretto
+- Script di aggiornamento (`update.sh`) con rebuild no-cache
+- Volumi Docker per persistenza dati indipendente dal container
+- Supporto rete Docker esterna per integrazione con altri servizi
+- Compatibile con reverse proxy nginx (HTTPS + WebSocket)
 
 ---
 
