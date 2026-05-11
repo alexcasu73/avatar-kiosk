@@ -1949,7 +1949,10 @@ function renderList() {
         <span class="badge ${a.published?'published':'unpublished'}">${a.published?'LIVE':'BOZZA'}</span>
         <span class="card-id">${a.id}</span>
       </div>`;
-    card.onclick = () => selectAvatar(a.id);
+    card.onclick = () => {
+      if (document.getElementById('monitoring-panel').style.display !== 'none') return;
+      selectAvatar(a.id);
+    };
     list.appendChild(card);
   });
 }
