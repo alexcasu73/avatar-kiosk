@@ -691,7 +691,13 @@
     </div>
     <button id="new-btn" class="btn btn-primary" onclick="createAvatar()"><svg viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg> Nuovo Avatar</button>
     <div id="avatar-list"></div>
-    <form method="POST" action="/admin/logout" style="padding:12px">
+    <div style="padding:12px;display:flex;flex-direction:column;gap:8px">
+      <button class="btn btn-neutral" onclick="openMonitoring()" style="width:100%;font-size:.8rem">
+        <svg viewBox="0 0 24 24" style="width:14px;height:14px"><path d="M2 12h2M6 6l1.5 1.5M12 2v2M17.5 6 16 7.5M22 12h-2M17.5 18 16 16.5M12 22v-2M6.5 18 8 16.5"/><circle cx="12" cy="12" r="4"/></svg>
+        Monitoraggio
+      </button>
+    </div>
+    <form method="POST" action="/admin/logout" style="padding:0 12px 12px">
       <button type="submit" class="btn btn-danger" style="width:100%">Logout</button>
     </form>
   </div>
@@ -751,10 +757,16 @@
 
         <div class="section">
           <h3>Identità</h3>
-          <div class="fields single" style="gap:12px">
+          <div class="fields" style="gap:12px">
             <div class="field">
               <label>Nome avatar</label>
-              <input type="text" id="f-name" placeholder="Es. Sofia"/>
+              <input type="text" id="f-name" placeholder="Es. Sofia" oninput="syncLabelFromName()"/>
+              <div style="font-size:.72rem;color:var(--text-dim);margin-top:3px">Usato nei prompt e nel saluto</div>
+            </div>
+            <div class="field">
+              <label>Label</label>
+              <input type="text" id="f-label" placeholder="Es. Sofia — Reception" oninput="_labelManuallyEdited = true"/>
+              <div style="font-size:.72rem;color:var(--text-dim);margin-top:3px">Mostrata nella lista a sinistra</div>
             </div>
           </div>
         </div>
@@ -1117,6 +1129,11 @@
           <div class="field" style="margin-top:12px">
             <label>Max tokens <span class="hint" style="margin:0">(0 = default .env)</span></label>
             <input type="number" id="f-ai-max-tokens" placeholder="512" min="0" max="4096"/>
+          </div>
+
+          <div class="field" style="margin-top:12px">
+            <label>Rate limit <span class="hint" style="margin:0">(richieste/min per IP — 0 = nessun limite)</span></label>
+            <input type="number" id="f-rate-limit-rpm" placeholder="0" min="0" max="1000"/>
           </div>
         </div>
 
@@ -1679,6 +1696,146 @@
     </div><!-- /editor -->
     </div><!-- /form-panel -->
 
+    <!-- Monitoraggio -->
+    <div id="monitoring-panel" style="display:none;flex:1;overflow-y:auto;padding:28px 32px;gap:0;flex-direction:column;background:var(--bg)">
+
+      <!-- Header -->
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:24px">
+        <div>
+          <div style="font-size:1.15rem;font-weight:700;color:var(--text);letter-spacing:.02em">Monitoraggio</div>
+          <div id="mon-date" style="font-size:.75rem;color:var(--text-dim);margin-top:2px"></div>
+        </div>
+        <div style="display:flex;gap:8px">
+          <button class="btn btn-neutral" style="font-size:.78rem;padding:6px 14px" onclick="loadMonitoring()">
+            <svg viewBox="0 0 24 24" style="width:13px;height:13px"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg> Aggiorna
+          </button>
+          <button class="btn btn-neutral" style="font-size:.78rem;padding:6px 14px" onclick="closeMonitoring()">
+            <svg viewBox="0 0 24 24" style="width:13px;height:13px"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg> Chiudi
+          </button>
+        </div>
+      </div>
+
+      <!-- KPI cards — riga 1: traffico -->
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:12px">
+        <div style="background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:18px 20px 14px;display:flex;flex-direction:column;gap:5px">
+          <div style="font-size:.68rem;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--text-dim)">Richieste oggi</div>
+          <div id="mon-total" style="font-size:2.2rem;font-weight:700;color:var(--accent2);line-height:1">—</div>
+          <div style="font-size:.72rem;color:var(--text-dim)">chat + STT + TTS</div>
+        </div>
+        <div style="background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:18px 20px 14px;display:flex;flex-direction:column;gap:5px">
+          <div style="font-size:.68rem;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--text-dim)">Bloccate oggi</div>
+          <div id="mon-blocked" style="font-size:2.2rem;font-weight:700;color:#f87171;line-height:1">—</div>
+          <div style="font-size:.72rem;color:var(--text-dim)">rate limit superato</div>
+        </div>
+        <div style="background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:18px 20px 14px;display:flex;flex-direction:column;gap:5px">
+          <div style="font-size:.68rem;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--text-dim)">% Bloccate</div>
+          <div id="mon-block-pct" style="font-size:2.2rem;font-weight:700;color:#fbbf24;line-height:1">—</div>
+          <div style="font-size:.72rem;color:var(--text-dim)">sul totale odierno</div>
+        </div>
+      </div>
+
+      <!-- KPI cards — riga 2: token/usage -->
+      <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:20px">
+        <div style="background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:14px 20px;display:flex;flex-direction:column;gap:4px">
+          <div style="font-size:.68rem;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--text-dim)">Token AI (input)</div>
+          <div id="mon-tokens-in" style="font-size:1.5rem;font-weight:700;color:#a78bfa;line-height:1.1">—</div>
+          <div style="font-size:.72rem;color:var(--text-dim)">prompt inviati al modello</div>
+        </div>
+        <div style="background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:14px 20px;display:flex;flex-direction:column;gap:4px">
+          <div style="font-size:.68rem;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--text-dim)">Token AI (output)</div>
+          <div id="mon-tokens-out" style="font-size:1.5rem;font-weight:700;color:#34d399;line-height:1.1">—</div>
+          <div style="font-size:.72rem;color:var(--text-dim)">risposte generate</div>
+        </div>
+        <div style="background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:14px 20px;display:flex;flex-direction:column;gap:4px">
+          <div style="font-size:.68rem;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--text-dim)">Caratteri TTS</div>
+          <div id="mon-tts-chars" style="font-size:1.5rem;font-weight:700;color:#fb923c;line-height:1.1">—</div>
+          <div style="font-size:.72rem;color:var(--text-dim)">inviati a ElevenLabs</div>
+        </div>
+        <div style="background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:14px 20px;display:flex;flex-direction:column;gap:4px">
+          <div style="font-size:.68rem;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--text-dim)">Secondi STT</div>
+          <div id="mon-stt-seconds" style="font-size:1.5rem;font-weight:700;color:#38bdf8;line-height:1.1">—</div>
+          <div style="font-size:.72rem;color:var(--text-dim)">audio trascritto da Whisper</div>
+        </div>
+      </div>
+
+      <!-- Stima costi -->
+      <div style="background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:16px 20px;margin-bottom:12px">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+          <div style="display:flex;align-items:center;gap:8px">
+            <svg viewBox="0 0 24 24" style="width:13px;height:13px;stroke:#fbbf24;fill:none;stroke-width:2;flex-shrink:0"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+            <span style="font-size:.75rem;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--text)">Stima costi oggi</span>
+          </div>
+          <div id="mon-cost-total" style="font-size:1.2rem;font-weight:700;color:#fbbf24">—</div>
+        </div>
+        <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px">
+          <div style="background:var(--surface3);border-radius:8px;padding:10px 14px">
+            <div style="font-size:.68rem;color:var(--text-dim);margin-bottom:4px">AI input <span style="opacity:.6">$3/MTok</span></div>
+            <div id="mon-cost-ai-in" style="font-size:.95rem;font-weight:600;color:#a78bfa">—</div>
+          </div>
+          <div style="background:var(--surface3);border-radius:8px;padding:10px 14px">
+            <div style="font-size:.68rem;color:var(--text-dim);margin-bottom:4px">AI output <span style="opacity:.6">$15/MTok</span></div>
+            <div id="mon-cost-ai-out" style="font-size:.95rem;font-weight:600;color:#34d399">—</div>
+          </div>
+          <div style="background:var(--surface3);border-radius:8px;padding:10px 14px">
+            <div style="font-size:.68rem;color:var(--text-dim);margin-bottom:4px">TTS <span style="opacity:.6">$0.30/1k ch.</span></div>
+            <div id="mon-cost-tts" style="font-size:.95rem;font-weight:600;color:#fb923c">—</div>
+          </div>
+          <div style="background:var(--surface3);border-radius:8px;padding:10px 14px">
+            <div style="font-size:.68rem;color:var(--text-dim);margin-bottom:4px">STT <span style="opacity:.6">$0.006/min</span></div>
+            <div id="mon-cost-stt" style="font-size:.95rem;font-weight:600;color:#38bdf8">—</div>
+          </div>
+        </div>
+        <div style="font-size:.68rem;color:var(--text-dim);margin-top:10px;opacity:.7">
+          ⚠ Stima indicativa basata sul modello configurato per ciascun avatar. TTS: ElevenLabs $0.30/1k ch. · STT: Whisper $0.006/min.
+        </div>
+      </div>
+
+      <!-- Due colonne -->
+      <div style="display:grid;grid-template-columns:1fr 1.6fr;gap:12px">
+
+        <!-- Per avatar -->
+        <div style="background:var(--surface2);border:1px solid var(--border);border-radius:10px;overflow:hidden">
+          <div style="padding:14px 16px 10px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:8px">
+            <svg viewBox="0 0 24 24" style="width:13px;height:13px;stroke:var(--accent2);fill:none;stroke-width:2;flex-shrink:0"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg>
+            <span style="font-size:.75rem;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--text)">Per avatar (oggi)</span>
+          </div>
+          <table style="width:100%;border-collapse:collapse;font-size:.81rem">
+            <thead>
+              <tr style="color:var(--text-dim)">
+                <th style="padding:8px 16px;font-weight:500;text-align:left">Avatar</th>
+                <th style="padding:8px 16px;font-weight:500;text-align:right">Req.</th>
+                <th style="padding:8px 16px;font-weight:500;text-align:right">Tok. in</th>
+                <th style="padding:8px 16px;font-weight:500;text-align:right">Tok. out</th>
+                <th style="padding:8px 16px;font-weight:500;text-align:right">TTS ch.</th>
+                <th style="padding:8px 16px;font-weight:500;text-align:right">STT sec.</th>
+              </tr>
+            </thead>
+            <tbody id="mon-per-avatar"></tbody>
+          </table>
+        </div>
+
+        <!-- IP bloccati -->
+        <div style="background:var(--surface2);border:1px solid var(--border);border-radius:10px;overflow:hidden">
+          <div style="padding:14px 16px 10px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:8px">
+            <svg viewBox="0 0 24 24" style="width:13px;height:13px;stroke:#f87171;fill:none;stroke-width:2;flex-shrink:0"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+            <span style="font-size:.75rem;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--text)">Ultimi IP bloccati</span>
+          </div>
+          <table style="width:100%;border-collapse:collapse;font-size:.81rem">
+            <thead>
+              <tr style="color:var(--text-dim)">
+                <th style="padding:8px 16px;font-weight:500;text-align:left">IP</th>
+                <th style="padding:8px 16px;font-weight:500;text-align:left">Avatar</th>
+                <th style="padding:8px 16px;font-weight:500;text-align:center">Tipo</th>
+                <th style="padding:8px 16px;font-weight:500;text-align:right">Ora</th>
+              </tr>
+            </thead>
+            <tbody id="mon-blocked-list"></tbody>
+          </table>
+        </div>
+
+      </div>
+    </div>
+
     <!-- Preview 3D -->
     <div id="preview-panel">
       <div id="preview-mode-bar" style="display:none">
@@ -1707,6 +1864,13 @@
 <script>
 let avatars   = [];
 let currentId  = null;
+let _labelManuallyEdited = false;
+
+function syncLabelFromName() {
+  if (_labelManuallyEdited) return;
+  const name = document.getElementById('f-name').value;
+  document.getElementById('f-label').value = name;
+}
 let currentBg  = '#0a0a0f';
 
 // ── API helpers ───────────────────────────────────────────────────────────────
@@ -1727,6 +1891,7 @@ function toast(msg, type='ok') {
 // ── Carica lista avatar ───────────────────────────────────────────────────────
 async function loadAvatars() {
   avatars = await api.get('/api/admin/avatars');
+  window._avatarCache = avatars;
   renderList();
 }
 
@@ -1737,7 +1902,7 @@ function renderList() {
     const card = document.createElement('div');
     card.className = `avatar-card${currentId===a.id?' active':''}`;
     card.innerHTML = `
-      <div class="card-name">${a.name}</div>
+      <div class="card-name">${a.label || a.name}</div>
       <div class="card-meta">
         <span class="badge ${a.published?'published':'unpublished'}">${a.published?'LIVE':'BOZZA'}</span>
         <span class="card-id">${a.id}</span>
@@ -1758,7 +1923,7 @@ function selectAvatar(id) {
   editor.classList.add('visible');
   loadPreview(id);
 
-  document.getElementById('editor-title').textContent = a.name;
+  document.getElementById('editor-title').textContent = a.label || a.name;
 
   // Campi testo
   setAvatarMode._applied = a.avatar_mode || 'embedded';
@@ -1778,6 +1943,8 @@ function selectAvatar(id) {
   document.getElementById('mcp-test-result').textContent = '';
   setTimeout(() => { autoFormatJSON(document.getElementById('f-mcp-headers')); }, 0);
   document.getElementById('f-name').value         = a.name;
+  document.getElementById('f-label').value        = a.label || '';
+  _labelManuallyEdited = !!(a.label && a.label !== a.name);
   const currentTheme = a.theme || 'viola';
   document.getElementById('f-theme').value = currentTheme;
   document.querySelectorAll('.theme-swatch').forEach(b => b.classList.toggle('active', b.dataset.theme === currentTheme));
@@ -1807,6 +1974,7 @@ function selectAvatar(id) {
   document.getElementById('f-openai-api-key').value    = a.openai_api_key    || '';
   document.getElementById('f-openai-model').value      = a.openai_model      || '';
   document.getElementById('f-ai-max-tokens').value     = a.ai_max_tokens > 0 ? a.ai_max_tokens : '';
+  document.getElementById('f-rate-limit-rpm').value    = a.rate_limit_rpm > 0 ? a.rate_limit_rpm : '';
   document.getElementById('f-prompt').value  = a.system_prompt || '';
 
   // Sfondo
@@ -2399,6 +2567,7 @@ async function saveAvatar() {
     openai_api_key:     document.getElementById('f-openai-api-key').value.trim(),
     openai_model:       document.getElementById('f-openai-model').value.trim(),
     ai_max_tokens:      parseInt(document.getElementById('f-ai-max-tokens').value) || 0,
+    rate_limit_rpm:     parseInt(document.getElementById('f-rate-limit-rpm').value) || 0,
     avatar_mode:          setAvatarMode._current,
     webhook_url:             document.getElementById('f-webhook-url').value.trim(),
     webhook_input_template:  (() => { const v = document.getElementById('f-webhook-input-template').value.trim() || '{"query":"{{query}}"}'; try { const p = JSON.parse(v); const f = JSON.stringify(p, null, 2); document.getElementById('f-webhook-input-template').value = f; return f; } catch { return v; } })(),
@@ -2408,6 +2577,7 @@ async function saveAvatar() {
     mcp_headers:         (() => { const v = document.getElementById('f-mcp-headers').value.trim() || '{}'; try { const p = JSON.parse(v); const f = JSON.stringify(p, null, 2); document.getElementById('f-mcp-headers').value = f; return f; } catch { return v; } })(),
     mcp_tool_filter:     document.getElementById('f-mcp-tool-filter').value.trim(),
     name:            document.getElementById('f-name').value,
+    label:           document.getElementById('f-label').value.trim() || document.getElementById('f-name').value,
     theme:           document.getElementById('f-theme').value,
     voice_id:        document.getElementById('f-voice-id').value,
     system_prompt:   document.getElementById('f-prompt').value,
@@ -2477,7 +2647,7 @@ async function saveAvatar() {
   };
   const updated = await api.put(`/api/admin/avatars/${currentId}`, body);
   avatars = avatars.map(a => a.id===currentId ? updated : a);
-  document.getElementById('editor-title').textContent = updated.name;
+  document.getElementById('editor-title').textContent = updated.label || updated.name;
   renderList();
   setAvatarMode._applied = setAvatarMode._current;
   _refreshModeBtns();
@@ -3101,6 +3271,135 @@ async function testMcp() {
   } catch (e) {
     result.style.color = 'var(--error)';
     result.textContent = e.message;
+  }
+}
+
+// ─── Monitoraggio ────────────────────────────────────────────────────────────
+function openMonitoring() {
+  document.getElementById('form-panel').style.display    = 'none';
+  document.getElementById('preview-panel').style.display = 'none';
+  document.getElementById('monitoring-panel').style.display = 'flex';
+  loadMonitoring();
+}
+
+function closeMonitoring() {
+  document.getElementById('monitoring-panel').style.display = 'none';
+  document.getElementById('form-panel').style.display    = '';
+  document.getElementById('preview-panel').style.display = '';
+}
+
+function fmtNum(n) {
+  if (!n) return '0';
+  if (n >= 1_000_000) return (n / 1_000_000).toFixed(1) + 'M';
+  if (n >= 1_000)     return (n / 1_000).toFixed(1) + 'k';
+  return String(n);
+}
+
+async function loadMonitoring() {
+  const now = new Date();
+  document.getElementById('mon-date').textContent =
+    now.toLocaleDateString('it-IT', { weekday:'long', day:'2-digit', month:'long', year:'numeric' }) +
+    ' · aggiornato alle ' + now.toLocaleTimeString('it-IT', { hour:'2-digit', minute:'2-digit' });
+
+  const ROW = 'padding:9px 16px;border-bottom:1px solid var(--border)';
+  try {
+    const d = await api.get('/api/admin/stats');
+    document.getElementById('mon-total').textContent   = d.today.total;
+    document.getElementById('mon-blocked').textContent = d.today.blocked;
+    const pct = d.today.total > 0 ? Math.round(d.today.blocked / d.today.total * 100) : 0;
+    document.getElementById('mon-block-pct').textContent = pct + '%';
+
+    document.getElementById('mon-tokens-in').textContent  = fmtNum(d.today.tokens_in);
+    document.getElementById('mon-tokens-out').textContent = fmtNum(d.today.tokens_out);
+    document.getElementById('mon-tts-chars').textContent   = fmtNum(d.today.tts_chars);
+    document.getElementById('mon-stt-seconds').textContent = fmtNum(d.today.stt_seconds) + 's';
+
+    // Stima costi per modello
+    const MODEL_PRICES = {
+      // Anthropic
+      'claude-opus-4-7':          { in: 15.00, out: 75.00 },
+      'claude-sonnet-4-6':        { in:  3.00, out: 15.00 },
+      'claude-haiku-4-5':         { in:  0.80, out:  4.00 },
+      'claude-haiku-4-5-20251001':{ in:  0.80, out:  4.00 },
+      'claude-3-5-sonnet-20241022':{ in: 3.00, out: 15.00 },
+      'claude-3-5-haiku-20241022': { in: 0.80, out:  4.00 },
+      'claude-3-opus-20240229':   { in: 15.00, out: 75.00 },
+      'claude-3-sonnet-20240229':  { in: 3.00, out: 15.00 },
+      'claude-3-haiku-20240307':   { in: 0.25, out:  1.25 },
+      // OpenAI
+      'gpt-4o':                   { in:  2.50, out: 10.00 },
+      'gpt-4o-mini':              { in:  0.15, out:  0.60 },
+      'gpt-4-turbo':              { in: 10.00, out: 30.00 },
+      'gpt-4':                    { in: 30.00, out: 60.00 },
+      'gpt-3.5-turbo':            { in:  0.50, out:  1.50 },
+    };
+    const DEFAULT_PRICES = { in: 3.00, out: 15.00 }; // Claude Sonnet fallback
+
+    function modelPrice(row) {
+      const model = row.ai_provider === 'openai' ? row.openai_model : row.anthropic_model;
+      if (!model) return DEFAULT_PRICES;
+      // match esatto o prefisso
+      if (MODEL_PRICES[model]) return MODEL_PRICES[model];
+      const key = Object.keys(MODEL_PRICES).find(k => model.startsWith(k) || k.startsWith(model.split('-').slice(0,3).join('-')));
+      return MODEL_PRICES[key] || DEFAULT_PRICES;
+    }
+
+    let costAiIn = 0, costAiOut = 0;
+    for (const r of d.perAvatar) {
+      const p = modelPrice(r);
+      costAiIn  += (((r.ai_tokens_in  || 0)) / 1_000_000) * p.in;
+      costAiOut += (((r.ai_tokens_out || 0)) / 1_000_000) * p.out;
+    }
+    const costTts   = ((d.today.tts_chars   || 0) / 1_000) * 0.30;
+    const costStt   = ((d.today.stt_seconds || 0) / 60)   * 0.006;
+    const costTotal = costAiIn + costAiOut + costTts + costStt;
+    const fmtUsd = v => v < 0.0001 ? '$0.00' : v < 0.01 ? `$${v.toFixed(4)}` : `$${v.toFixed(3)}`;
+    document.getElementById('mon-cost-ai-in').textContent  = fmtUsd(costAiIn);
+    document.getElementById('mon-cost-ai-out').textContent = fmtUsd(costAiOut);
+    document.getElementById('mon-cost-tts').textContent    = fmtUsd(costTts);
+    document.getElementById('mon-cost-stt').textContent    = fmtUsd(costStt);
+    document.getElementById('mon-cost-total').textContent  = fmtUsd(costTotal);
+
+    const cache = window._avatarCache || [];
+    const avatarName = id => cache.find(a => a.id === id)?.name || id || '—';
+
+    // Per avatar
+    const avatarRows = d.perAvatar.map((r, i) => {
+      const stripe = i % 2 === 1 ? 'background:rgba(255,255,255,.02)' : '';
+      const dim = 'color:var(--text-dim)';
+      return `<tr style="${stripe}">
+        <td style="${ROW}">${avatarName(r.avatar_id)}</td>
+        <td style="${ROW};text-align:right">${r.total}</td>
+        <td style="${ROW};text-align:right;${r.ai_tokens_in  ? 'color:#a78bfa' : dim}">${fmtNum(r.ai_tokens_in  || 0)}</td>
+        <td style="${ROW};text-align:right;${r.ai_tokens_out ? 'color:#34d399' : dim}">${fmtNum(r.ai_tokens_out || 0)}</td>
+        <td style="${ROW};text-align:right;${r.tts_chars     ? 'color:#fb923c' : dim}">${fmtNum(r.tts_chars     || 0)}</td>
+        <td style="${ROW};text-align:right;${r.stt_seconds   ? 'color:#38bdf8' : dim}">${r.stt_seconds ? fmtNum(r.stt_seconds) + 's' : '0s'}</td>
+      </tr>`;
+    }).join('') || `<tr><td colspan="6" style="${ROW};text-align:center;color:var(--text-dim);font-style:italic">Nessun dato per oggi</td></tr>`;
+    document.getElementById('mon-per-avatar').innerHTML = avatarRows;
+
+    // IP bloccati
+    const typeLabel = t => t === 'chat'
+      ? `<span style="background:rgba(139,92,246,.18);color:#a78bfa;padding:2px 7px;border-radius:4px;font-size:.72rem;font-weight:600">CHAT</span>`
+      : `<span style="background:rgba(34,211,160,.12);color:#34d399;padding:2px 7px;border-radius:4px;font-size:.72rem;font-weight:600">STT</span>`;
+    const blockedRows = d.recentBlocked.map((r, i) => {
+      const stripe = i % 2 === 1 ? 'background:rgba(255,255,255,.02)' : '';
+      const time   = r.created_at ? r.created_at.split(' ')[1]?.slice(0,5) : '—';
+      const day    = r.created_at ? r.created_at.split(' ')[0] : '';
+      return `<tr style="${stripe}">
+        <td style="${ROW};font-family:monospace;font-size:.8rem;color:var(--accent2)">${r.ip}</td>
+        <td style="${ROW};color:var(--text-dim)">${avatarName(r.avatar_id)}</td>
+        <td style="${ROW};text-align:center">${typeLabel(r.type)}</td>
+        <td style="${ROW};text-align:right;color:var(--text-dim);font-size:.76rem">
+          <span style="color:var(--text)">${time}</span> <span style="opacity:.5">${day}</span>
+        </td>
+      </tr>`;
+    }).join('') || `<tr><td colspan="4" style="${ROW};text-align:center;color:var(--text-dim);font-style:italic">Nessun IP bloccato</td></tr>`;
+    document.getElementById('mon-blocked-list').innerHTML = blockedRows;
+  } catch (e) {
+    document.getElementById('mon-total').textContent   = '!';
+    document.getElementById('mon-blocked').textContent = '!';
+    document.getElementById('mon-block-pct').textContent = 'Errore';
   }
 }
 

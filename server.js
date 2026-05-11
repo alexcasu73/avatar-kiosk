@@ -302,7 +302,7 @@ app.post('/api/admin/avatars', (req, res) => {
 });
 
 app.put('/api/admin/avatars/:id', (req, res) => {
-  const fields = ['name','voice_id','system_prompt','background','idle_start','idle_end',
+  const fields = ['name','label','voice_id','system_prompt','background','idle_start','idle_end',
                   'speech_start','speech_end','avatar_scale','avatar_offset_x','avatar_offset_y',
                   'avatar_rot_y','camera_z','camera_y','camera_look_at_y',
                   'overlay_color','overlay_opacity','overlay_height','chat_height','chat_bottom','chat_max_width','chat_align','chat_hide_input',
@@ -321,7 +321,8 @@ app.put('/api/admin/avatars/:id', (req, res) => {
                   'wake_word_enabled','wake_word_always','wake_words','greeting_text',
                   'vad_threshold','vad_silence_duration','vad_min_speech_duration','vad_min_blob_size','vad_wake_timeout',
                   'vad_noise_mult','stt_prompt',
-                  'mcp_url','mcp_headers','mcp_tool_filter'];
+                  'mcp_url','mcp_headers','mcp_tool_filter',
+                  'rate_limit_rpm'];
   const updates = [];
   const values  = [];
   for (const f of fields) {
@@ -354,10 +355,11 @@ app.post('/api/admin/avatars/:id/duplicate', (req, res) => {
   const src = db.prepare('SELECT * FROM avatars WHERE id = ?').get(req.params.id);
   if (!src) return res.status(404).json({ error: 'Non trovato' });
   const newId = Math.random().toString(36).slice(2, 10);
-  const { id, created_at, updated_at, published, name, ...rest } = src;
-  db.prepare(`INSERT INTO avatars (id, name, published, ${Object.keys(rest).join(',')})
-              VALUES (?, ?, 0, ${Object.keys(rest).map(() => '?').join(',')})`)
-    .run(newId, `${name} (copia)`, ...Object.values(rest));
+  const { id, created_at, updated_at, published, name, label, ...rest } = src;
+  const newLabel = `${label || name} (copia)`;
+  db.prepare(`INSERT INTO avatars (id, name, label, published, ${Object.keys(rest).join(',')})
+              VALUES (?, ?, ?, 0, ${Object.keys(rest).map(() => '?').join(',')})`)
+    .run(newId, name, newLabel, ...Object.values(rest));
   const newAvatar = db.prepare('SELECT * FROM avatars WHERE id = ?').get(newId);
   res.json(newAvatar);
 });
@@ -719,6 +721,11 @@ app.post('/api/admin/avatars/:id/upload-icon/:type', uploadIcon.single('icon'), 
 app.post('/api/stt', multer({ storage: multer.memoryStorage() }).single('audio'), async (req, res) => {
   try {
     if (!req.file) return res.status(400).json({ error: 'Nessun file audio ricevuto' });
+    const rl = checkRateLimit(req, req.body?.avatarId);
+    if (!rl.allowed) {
+      logRequest(req.body?.avatarId, 'stt', rl.ip || getClientIp(req), true, 0, 0);
+      return res.status(429).json({ error: 'Troppe richieste. Riprova tra poco.' });
+    }
     const avatar   = getAvatarConfig(req.body?.avatarId);
     const sttKey    = avatar?.stt_api_key  || process.env.OPENAI_API_KEY;
     const sttModel  = avatar?.stt_model    || DEFAULT_STT_MODEL;
@@ -729,6 +736,7 @@ app.post('/api/stt', multer({ storage: multer.memoryStorage() }).single('audio')
     formData.append('model', sttModel);
     formData.append('language', sttLang);
     formData.append('temperature', '0');
+    formData.append('response_format', 'verbose_json');
     if (sttPrompt) formData.append('prompt', sttPrompt);
     const response = await fetch('https://api.openai.com/v1/audio/transcriptions', {
       method: 'POST',
@@ -737,6 +745,8 @@ app.post('/api/stt', multer({ storage: multer.memoryStorage() }).single('audio')
     });
     if (!response.ok) throw new Error(`Whisper error: ${await response.text()}`);
     const data = await response.json();
+    const sttSeconds = Math.ceil(data.duration || 0);
+    logRequest(req.body?.avatarId, 'stt', rl.ip || getClientIp(req), false, sttSeconds, 0);
     res.json({ transcript: data.text });
   } catch (error) {
     console.error('STT error:', error);
@@ -943,6 +953,64 @@ app.post('/api/admin/mcp-test', requireAdmin, async (req, res) => {
   }
 });
 
+// ─── Route: Statistiche monitoraggio ─────────────────────────────────────────
+app.get('/api/admin/stats', requireAdmin, (req, res) => {
+  try {
+    const today = new Date().toISOString().slice(0, 10);
+    const todayStart = today + ' 00:00:00';
+
+    const totalsRow = db.prepare(`
+      SELECT
+        COUNT(*)            AS total,
+        SUM(blocked)        AS blocked,
+        SUM(tokens_in)      AS tokens_in,
+        SUM(tokens_out)     AS tokens_out,
+        SUM(CASE WHEN type='tts' THEN tokens_in ELSE 0 END) AS tts_chars,
+        SUM(CASE WHEN type='stt' THEN tokens_in ELSE 0 END) AS stt_seconds
+      FROM request_logs WHERE created_at >= ?
+    `).get(todayStart);
+
+    const perAvatar = db.prepare(`
+      SELECT
+        rl.avatar_id,
+        COUNT(*)        AS total,
+        SUM(rl.blocked) AS blocked,
+        SUM(CASE WHEN rl.type='chat' THEN rl.tokens_in  ELSE 0 END) AS ai_tokens_in,
+        SUM(CASE WHEN rl.type='chat' THEN rl.tokens_out ELSE 0 END) AS ai_tokens_out,
+        SUM(CASE WHEN rl.type='tts'  THEN rl.tokens_in  ELSE 0 END) AS tts_chars,
+        SUM(CASE WHEN rl.type='stt'  THEN rl.tokens_in  ELSE 0 END) AS stt_seconds,
+        a.ai_provider,
+        a.anthropic_model,
+        a.openai_model
+      FROM request_logs rl
+      LEFT JOIN avatars a ON a.id = rl.avatar_id
+      WHERE rl.created_at >= ?
+      GROUP BY rl.avatar_id
+    `).all(todayStart);
+
+    const recentBlocked = db.prepare(`
+      SELECT ip, avatar_id, type, created_at
+      FROM request_logs WHERE blocked = 1
+      ORDER BY created_at DESC LIMIT 20
+    `).all();
+
+    res.json({
+      today: {
+        total:      totalsRow.total      || 0,
+        blocked:    totalsRow.blocked    || 0,
+        tokens_in:  totalsRow.tokens_in  || 0,
+        tokens_out: totalsRow.tokens_out || 0,
+        tts_chars:   totalsRow.tts_chars   || 0,
+        stt_seconds: totalsRow.stt_seconds || 0,
+      },
+      perAvatar,
+      recentBlocked,
+    });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
 // ─── Helper: estrae valore da oggetto con dot-notation (es. "output.text") ─────
 function getNestedField(obj, path) {
   return path.split('.').reduce((cur, k) => {
@@ -956,11 +1024,57 @@ function getNestedField(obj, path) {
   }, obj);
 }
 
+// ─── Rate limiting ────────────────────────────────────────────────────────────
+const _rateBuckets = new Map(); // key: `${ip}:${avatarId}` → [timestamp, ...]
+
+function getClientIp(req) {
+  return (req.headers['x-forwarded-for'] || req.socket.remoteAddress || '').split(',')[0].trim();
+}
+
+function checkRateLimit(req, avatarId) {
+  const avatar  = getAvatarConfig(avatarId);
+  const rpm     = avatar?.rate_limit_rpm ?? 0;
+  if (!rpm) return { allowed: true };
+  const ip      = getClientIp(req);
+  const key     = `${ip}:${avatarId}`;
+  const now     = Date.now();
+  const window  = 60_000;
+  const bucket  = (_rateBuckets.get(key) || []).filter(t => now - t < window);
+  if (bucket.length >= rpm) {
+    _rateBuckets.set(key, bucket);
+    return { allowed: false, ip };
+  }
+  bucket.push(now);
+  _rateBuckets.set(key, bucket);
+  return { allowed: true, ip };
+}
+
+// Pulisce bucket vecchi ogni 5 minuti
+setInterval(() => {
+  const now = Date.now();
+  for (const [k, v] of _rateBuckets) {
+    if (!v.some(t => now - t < 60_000)) _rateBuckets.delete(k);
+  }
+}, 300_000);
+
+// Log richiesta su DB
+const _logRequest = db.prepare(`INSERT INTO request_logs (avatar_id, type, ip, blocked, tokens_in, tokens_out) VALUES (?, ?, ?, ?, ?, ?)`);
+function logRequest(avatarId, type, ip, blocked, tokensIn = 0, tokensOut = 0) {
+  try { _logRequest.run(avatarId || null, type, ip, blocked ? 1 : 0, tokensIn || 0, tokensOut || 0); } catch {}
+}
+
 // ─── Route: Chat (embedded o webhook) ────────────────────────────────────────
 app.post('/api/chat', async (req, res) => {
   try {
     const { message, sessionId, avatarId, kioskSessionId } = req.body;
     if (!message) return res.status(400).json({ error: 'Messaggio mancante' });
+
+    const rl = checkRateLimit(req, avatarId);
+    const chatIp = rl.ip || getClientIp(req);
+    if (!rl.allowed) {
+      logRequest(avatarId, 'chat', chatIp, true, 0, 0);
+      return res.status(429).json({ error: 'Troppe richieste. Riprova tra poco.' });
+    }
 
     const avatar = getAvatarConfig(avatarId);
 
@@ -1103,6 +1217,7 @@ app.post('/api/chat', async (req, res) => {
     }
 
     let reply;
+    let chatTokensIn = 0, chatTokensOut = 0;
 
     if (aiProvider === 'openai') {
       const aiKey   = avatar?.openai_api_key || process.env.OPENAI_API_KEY;
@@ -1123,6 +1238,8 @@ app.post('/api/chat', async (req, res) => {
         });
         if (!r.ok) throw new Error(`OpenAI: ${await r.text()}`);
         const data    = await r.json();
+        chatTokensIn  += data.usage?.prompt_tokens     || 0;
+        chatTokensOut += data.usage?.completion_tokens || 0;
         const choice  = data.choices[0];
         const msg     = choice.message;
         iterMsgs.push(msg);
@@ -1155,6 +1272,8 @@ app.post('/api/chat', async (req, res) => {
         const params = { model: aiModel, max_tokens: aiTokens, system: systemPrompt, messages: iterMsgs };
         if (claudeTools.length) params.tools = claudeTools;
         const response = await aiClient.messages.create(params);
+        chatTokensIn  += response.usage?.input_tokens  || 0;
+        chatTokensOut += response.usage?.output_tokens || 0;
         if (response.stop_reason !== 'tool_use') {
           reply = response.content.find(b => b.type === 'text')?.text || '';
           break;
@@ -1173,6 +1292,7 @@ app.post('/api/chat', async (req, res) => {
       }
       if (!reply) reply = 'Non sono riuscito a elaborare una risposta.';
     }
+    logRequest(avatarId, 'chat', chatIp, false, chatTokensIn, chatTokensOut);
     history.push({ role: 'assistant', content: reply });
     res.json({ reply, sessionId: sid });
   } catch (error) {
@@ -1243,6 +1363,7 @@ app.post('/api/tts', async (req, res) => {
       throw new Error(`ElevenLabs error: ${raw}`);
     }
     const data = await response.json();
+    logRequest(avatarId, 'tts', getClientIp(req), false, spokenText.length, 0);
     res.json({ audio: data.audio_base64, alignment: data.alignment });
   } catch (error) {
     console.error('TTS error:', error);

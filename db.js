@@ -9,6 +9,7 @@ db.exec(`
   CREATE TABLE IF NOT EXISTS avatars (
     id                TEXT PRIMARY KEY,
     name              TEXT NOT NULL,
+    label             TEXT DEFAULT '',
     voice_id          TEXT DEFAULT '',
     system_prompt     TEXT DEFAULT '',
     background        TEXT DEFAULT '#0a0a0f',
@@ -260,5 +261,30 @@ if (!existing.includes('mcp_headers'))
   db.exec("ALTER TABLE avatars ADD COLUMN mcp_headers TEXT DEFAULT '{}'")
 if (!existing.includes('mcp_tool_filter'))
   db.exec("ALTER TABLE avatars ADD COLUMN mcp_tool_filter TEXT DEFAULT ''")
+if (!existing.includes('rate_limit_rpm'))
+  db.exec("ALTER TABLE avatars ADD COLUMN rate_limit_rpm INTEGER DEFAULT 0")
+if (!existing.includes('label'))
+  db.exec("ALTER TABLE avatars ADD COLUMN label TEXT DEFAULT ''")
+
+// Tabella log richieste
+db.exec(`
+  CREATE TABLE IF NOT EXISTS request_logs (
+    id         INTEGER PRIMARY KEY AUTOINCREMENT,
+    avatar_id  TEXT,
+    type       TEXT,
+    ip         TEXT,
+    blocked    INTEGER DEFAULT 0,
+    tokens_in  INTEGER DEFAULT 0,
+    tokens_out INTEGER DEFAULT 0,
+    created_at TEXT DEFAULT (datetime('now'))
+  )
+`);
+// Migrazione colonne token su DB esistenti
+const existingLogs = db.prepare("PRAGMA table_info(request_logs)").all().map(c => c.name);
+if (!existingLogs.includes('tokens_in'))  db.exec("ALTER TABLE request_logs ADD COLUMN tokens_in  INTEGER DEFAULT 0");
+if (!existingLogs.includes('tokens_out')) db.exec("ALTER TABLE request_logs ADD COLUMN tokens_out INTEGER DEFAULT 0");
+// Indice per query veloci
+db.exec(`CREATE INDEX IF NOT EXISTS idx_request_logs_created ON request_logs(created_at)`);
+db.exec(`CREATE INDEX IF NOT EXISTS idx_request_logs_avatar  ON request_logs(avatar_id, created_at)`);
 
 export default db;
