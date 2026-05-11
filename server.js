@@ -128,13 +128,25 @@ app.use('/admin', (req, res, next) => {
 app.use(express.static(join(__dirname, 'public')));
 
 // ─── WebSocket ────────────────────────────────────────────────────────────────
-const clients = new Map();
+const clients = new Map(); // clientId → ws
+
 wss.on('connection', ws => {
   const id = uuidv4();
-  clients.set(id, ws);
+  clients.set(id, { ws });
+  console.log(`[ws] connected id=${id} size=${clients.size}`);
   ws.send(JSON.stringify({ type: 'connected', clientId: id }));
-  ws.on('close', () => clients.delete(id));
+  ws.on('close', () => { clients.delete(id); console.log(`[ws] closed id=${id} size=${clients.size}`); });
 });
+
+
+function broadcastToAvatar(avatarId, payload) {
+  const data = JSON.stringify(payload);
+  let sent = 0;
+  for (const { ws } of clients.values()) {
+    try { ws.send(data); sent++; } catch {}
+  }
+  console.log(`[say] broadcast avatarId=${avatarId} → ${sent} client(s)`);
+}
 
 // ─── Helper: carica config avatar dal DB ──────────────────────────────────────
 function getAvatarConfig(avatarId) {
@@ -302,7 +314,7 @@ app.post('/api/admin/avatars', (req, res) => {
 });
 
 app.put('/api/admin/avatars/:id', (req, res) => {
-  const fields = ['name','label','voice_id','system_prompt','background','idle_start','idle_end',
+  const fields = ['name','label','webhook_say_token','voice_id','system_prompt','background','idle_start','idle_end',
                   'speech_start','speech_end','avatar_scale','avatar_offset_x','avatar_offset_y',
                   'avatar_rot_y','camera_z','camera_y','camera_look_at_y',
                   'overlay_color','overlay_opacity','overlay_height','chat_height','chat_bottom','chat_max_width','chat_align','chat_hide_input',
@@ -335,7 +347,7 @@ app.put('/api/admin/avatars/:id', (req, res) => {
   const updated = db.prepare('SELECT * FROM avatars WHERE id = ?').get(req.params.id);
   // Broadcast ai kiosk connessi
   const broadcast = JSON.stringify({ type: 'config_update', avatarId: String(req.params.id), data: updated });
-  for (const ws of clients.values()) { try { ws.send(broadcast); } catch {} }
+  for (const { ws } of clients.values()) { try { ws.send(broadcast); } catch {} }
   res.json(updated);
 });
 
@@ -951,6 +963,21 @@ app.post('/api/admin/mcp-test', requireAdmin, async (req, res) => {
   } catch (e) {
     res.status(500).json({ error: e.message });
   }
+});
+
+// ─── Route: Webhook "say" — inietta frase nell'avatar ────────────────────────
+app.post('/api/avatar/:id/say', (req, res) => {
+  const { text, token } = req.body;
+  if (!text?.trim()) return res.status(400).json({ error: 'Campo "text" mancante' });
+  if (!token)        return res.status(401).json({ error: 'Campo "token" mancante' });
+
+  const avatar = db.prepare('SELECT webhook_say_token FROM avatars WHERE id = ?').get(req.params.id);
+  if (!avatar)                           return res.status(404).json({ error: 'Avatar non trovato' });
+  if (!avatar.webhook_say_token)         return res.status(403).json({ error: 'Webhook say non configurato per questo avatar' });
+  if (avatar.webhook_say_token !== token) return res.status(403).json({ error: 'Token non valido' });
+
+  broadcastToAvatar(req.params.id, { type: 'say', avatarId: req.params.id, text: text.trim() });
+  res.json({ ok: true });
 });
 
 // ─── Route: Statistiche monitoraggio ─────────────────────────────────────────

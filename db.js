@@ -265,6 +265,8 @@ if (!existing.includes('rate_limit_rpm'))
   db.exec("ALTER TABLE avatars ADD COLUMN rate_limit_rpm INTEGER DEFAULT 0")
 if (!existing.includes('label'))
   db.exec("ALTER TABLE avatars ADD COLUMN label TEXT DEFAULT ''")
+if (!existing.includes('webhook_say_token'))
+  db.exec("ALTER TABLE avatars ADD COLUMN webhook_say_token TEXT DEFAULT ''")
 
 // Tabella log richieste
 db.exec(`

@@ -756,6 +756,27 @@
         </div>
 
         <div class="section">
+          <h3>Webhook Say</h3>
+          <div class="field" style="margin-bottom:10px">
+            <label>Token di autenticazione</label>
+            <div style="display:flex;gap:8px;align-items:center">
+              <input type="text" id="f-webhook-say-token" placeholder="Lascia vuoto per disabilitare" class="mono-input" style="flex:1;font-size:.82rem" oninput="updateSayWebhookInfo(currentId, this.value.trim())"/>
+              <button class="btn btn-neutral" style="flex-shrink:0;font-size:.78rem;padding:7px 12px" onclick="genSayToken()">Genera</button>
+            </div>
+            <div style="font-size:.72rem;color:var(--text-dim);margin-top:4px">Se vuoto il webhook è disabilitato.</div>
+          </div>
+          <div id="say-webhook-info" style="display:none;background:var(--surface3);border-radius:8px;padding:12px;font-size:.78rem">
+            <div style="color:var(--text-dim);margin-bottom:6px">Endpoint:</div>
+            <div class="kiosk-url" style="margin-bottom:10px">
+              <code id="say-webhook-url" style="font-size:.76rem">—</code>
+              <button class="btn btn-neutral btn-icon" onclick="copySayUrl()" title="Copia"><svg viewBox="0 0 24 24"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg></button>
+            </div>
+            <div style="color:var(--text-dim);margin-bottom:4px">Esempio curl:</div>
+            <pre id="say-webhook-curl" style="margin:0;font-size:.72rem;color:var(--accent2);white-space:pre-wrap;word-break:break-all"></pre>
+          </div>
+        </div>
+
+        <div class="section">
           <h3>Identità</h3>
           <div class="fields" style="gap:12px">
             <div class="field">
@@ -1866,6 +1887,27 @@ let avatars   = [];
 let currentId  = null;
 let _labelManuallyEdited = false;
 
+function genSayToken() {
+  const token = Array.from(crypto.getRandomValues(new Uint8Array(24)))
+    .map(b => b.toString(16).padStart(2,'0')).join('');
+  document.getElementById('f-webhook-say-token').value = token;
+  updateSayWebhookInfo(currentId, token);
+}
+
+function updateSayWebhookInfo(avatarId, token) {
+  const info = document.getElementById('say-webhook-info');
+  if (!token || !avatarId) { info.style.display = 'none'; return; }
+  const url = `${location.origin}/api/avatar/${avatarId}/say`;
+  document.getElementById('say-webhook-url').textContent = url;
+  document.getElementById('say-webhook-curl').textContent =
+    `curl -X POST ${url} \\\n  -H "Content-Type: application/json" \\\n  -d '{"text":"Ciao, ho un messaggio per te!","token":"${token}"}'`;
+  info.style.display = '';
+}
+
+function copySayUrl() {
+  navigator.clipboard.writeText(document.getElementById('say-webhook-url').textContent);
+}
+
 function syncLabelFromName() {
   if (_labelManuallyEdited) return;
   const name = document.getElementById('f-name').value;
@@ -1942,9 +1984,11 @@ function selectAvatar(id) {
   document.getElementById('f-mcp-tool-filter').value  = a.mcp_tool_filter  || '';
   document.getElementById('mcp-test-result').textContent = '';
   setTimeout(() => { autoFormatJSON(document.getElementById('f-mcp-headers')); }, 0);
-  document.getElementById('f-name').value         = a.name;
-  document.getElementById('f-label').value        = a.label || '';
+  document.getElementById('f-name').value              = a.name;
+  document.getElementById('f-label').value             = a.label || '';
+  document.getElementById('f-webhook-say-token').value = a.webhook_say_token || '';
   _labelManuallyEdited = !!(a.label && a.label !== a.name);
+  updateSayWebhookInfo(a.id, a.webhook_say_token);
   const currentTheme = a.theme || 'viola';
   document.getElementById('f-theme').value = currentTheme;
   document.querySelectorAll('.theme-swatch').forEach(b => b.classList.toggle('active', b.dataset.theme === currentTheme));
@@ -2576,8 +2620,9 @@ async function saveAvatar() {
     mcp_url:             document.getElementById('f-mcp-url').value.trim(),
     mcp_headers:         (() => { const v = document.getElementById('f-mcp-headers').value.trim() || '{}'; try { const p = JSON.parse(v); const f = JSON.stringify(p, null, 2); document.getElementById('f-mcp-headers').value = f; return f; } catch { return v; } })(),
     mcp_tool_filter:     document.getElementById('f-mcp-tool-filter').value.trim(),
-    name:            document.getElementById('f-name').value,
-    label:           document.getElementById('f-label').value.trim() || document.getElementById('f-name').value,
+    name:              document.getElementById('f-name').value,
+    label:             document.getElementById('f-label').value.trim() || document.getElementById('f-name').value,
+    webhook_say_token: document.getElementById('f-webhook-say-token').value.trim(),
     theme:           document.getElementById('f-theme').value,
     voice_id:        document.getElementById('f-voice-id').value,
     system_prompt:   document.getElementById('f-prompt').value,

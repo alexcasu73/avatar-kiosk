@@ -1603,6 +1603,36 @@ function _b64ToArrayBuffer(b64) {
   return buf.buffer;
 }
 
+async function handleSayMessage(text) {
+  try {
+    stopCurrentAudio();
+    addToHistory('avatar', text);
+    setMode('speaking');
+    state.vad?.resume();
+
+    const ttsRes = await fetch(`${CONFIG.serverUrl}/api/tts`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ text, avatarId: CONFIG.avatarId }),
+    });
+    if (ttsRes.ok) {
+      const ttsData = await ttsRes.json();
+      if (CONFIG.audioEnabled) {
+        startProceduralLipSync();
+        await playTTSAudio(ttsData);
+      }
+    }
+  } catch (e) {
+    console.error('[say]', e);
+  } finally {
+    stopProceduralLipSync();
+    anim.lipTarget = 0;
+    state.vad?.resume();
+    if (state.mode !== 'thinking') setMode('listening');
+    resetIdleTimer();
+  }
+}
+
 async function playTTSAudio(ttsData) {
   if (_isIOS) {
     // Su iOS: decodifica e riproduce via AudioContext (sbloccato in wakeUp durante il gesto)
@@ -3029,6 +3059,10 @@ function applyIdleParam(key, value) {
   ws.onmessage = e => {
     try {
       const msg = JSON.parse(e.data);
+      if (msg.type === 'say' && msg.avatarId === AVATAR_ID && msg.text) {
+        handleSayMessage(msg.text);
+        return;
+      }
       if (msg.type === 'config_update' && msg.avatarId === AVATAR_ID) {
         const d = msg.data;
         if (d.chat_bottom     !== undefined) applyParamLive('chat_bottom',     d.chat_bottom);
