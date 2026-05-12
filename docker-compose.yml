@@ -18,8 +18,7 @@ services:
       - .env
     networks:
       - default
-      - nutriai_default
 
 networks:
-  nutriai_default:
-    external: true
+  default:
+    driver: bridge
