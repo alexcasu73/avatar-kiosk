@@ -929,6 +929,167 @@ app.post('/api/admin/webhook-test', async (req, res) => {
   }
 });
 
+// ─── Helper: client MCP universale (SSE + JSON-RPC + REST) ───────────────────
+// Rilevamento automatico del trasporto:
+//   1. Se l'URL termina con /sse o risponde con text/event-stream → protocollo SSE
+//   2. Altrimenti prova JSON-RPC diretto (POST al root)
+//   3. Fallback REST (GET /tools, POST /call)
+async function mcpDetectTransport(url, headers) {
+  if (/\/sse$|\/sse\/|mcp_server/.test(url)) return 'sse';
+  try {
+    const r = await fetch(url, { method: 'HEAD', headers, signal: AbortSignal.timeout(3000) });
+    const ct = r.headers.get('content-type') || '';
+    if (ct.includes('text/event-stream')) return 'sse';
+  } catch {}
+  return 'jsonrpc';
+}
+
+async function mcpSseCall(url, headers, method, params, timeoutMs = 15000) {
+  return new Promise((resolve, reject) => {
+    const timer = setTimeout(() => reject(new Error('MCP SSE timeout')), timeoutMs);
+    let buffer = '';
+    let epUrl = null;
+    // ID fissi per i due messaggi: 1=initialize, 2=metodo target
+    const INIT_ID = 1;
+    const CALL_ID = 2;
+    let initialized = false;
+
+    const post = (body) => fetch(epUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', ...headers },
+      body: JSON.stringify(body),
+    });
+
+    (async () => {
+      const sseRes = await fetch(url, {
+        headers: { Accept: 'text/event-stream', ...headers },
+        signal: AbortSignal.timeout(timeoutMs),
+      });
+      if (!sseRes.ok) throw new Error(`SSE connect failed: ${sseRes.status} ${await sseRes.text()}`);
+
+      const reader = sseRes.body.getReader();
+      const decoder = new TextDecoder();
+      let eventType = null;
+
+      while (true) {
+        const { value, done } = await reader.read();
+        if (done) break;
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split('\n');
+        buffer = lines.pop();
+
+        for (const line of lines) {
+          const trimmed = line.replace(/\r$/, '');
+          if (trimmed.startsWith('event:')) {
+            eventType = trimmed.slice(6).trim();
+          } else if (trimmed.startsWith('data:')) {
+            const data = trimmed.slice(5).trim();
+            if (eventType === 'endpoint') {
+              const base = new URL(url);
+              epUrl = data.startsWith('http') ? data : `${base.protocol}//${base.host}${data}`;
+              // Fase 1: initialize
+              await post({ jsonrpc: '2.0', id: INIT_ID, method: 'initialize', params: {
+                protocolVersion: '2024-11-05',
+                capabilities: {},
+                clientInfo: { name: 'avatar-kiosk', version: '1.0' },
+              }});
+            } else if (eventType === 'message') {
+              try {
+                const msg = JSON.parse(data);
+                if (msg.id === INIT_ID && !initialized) {
+                  initialized = true;
+                  // Fase 2: invia il metodo richiesto
+                  await post({ jsonrpc: '2.0', id: CALL_ID, method, params: params || {} });
+                } else if (msg.id === CALL_ID) {
+                  clearTimeout(timer);
+                  reader.cancel();
+                  if (msg.error) reject(new Error(msg.error.message || JSON.stringify(msg.error)));
+                  else resolve(msg.result);
+                  return;
+                }
+              } catch {}
+            }
+          } else if (trimmed === '') {
+            eventType = null;
+          }
+        }
+      }
+      reject(new Error('SSE stream ended without response'));
+    })().catch(e => { clearTimeout(timer); reject(e); });
+  });
+}
+
+async function mcpListTools(url, headers) {
+  const transport = await mcpDetectTransport(url, headers);
+  const baseUrl = url.replace(/\/$/, '');
+
+  if (transport === 'sse') {
+    const result = await mcpSseCall(url, headers, 'tools/list', {});
+    return result?.tools || [];
+  }
+
+  // JSON-RPC diretto
+  try {
+    const r = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', ...headers },
+      body: JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'tools/list', params: {} }),
+    });
+    if (r.ok) {
+      const d = await r.json();
+      if (d.result?.tools) return d.result.tools;
+    }
+  } catch {}
+
+  // REST fallback
+  const r2 = await fetch(`${baseUrl}/tools`, { headers });
+  if (!r2.ok) throw new Error(`HTTP ${r2.status}: ${await r2.text()}`);
+  const d = await r2.json();
+  return Array.isArray(d) ? d : (d.tools || []);
+}
+
+async function mcpCallTool(url, headers, name, args) {
+  const transport = await mcpDetectTransport(url, headers);
+  const baseUrl = url.replace(/\/$/, '');
+
+  if (transport === 'sse') {
+    const result = await mcpSseCall(url, headers, 'tools/call', { name, arguments: args });
+    const content = result?.content;
+    if (Array.isArray(content)) return content.map(c => c.text ?? JSON.stringify(c)).join('\n');
+    return JSON.stringify(result);
+  }
+
+  // JSON-RPC diretto
+  try {
+    const r = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', ...headers },
+      body: JSON.stringify({ jsonrpc: '2.0', id: 2, method: 'tools/call', params: { name, arguments: args } }),
+    });
+    if (r.ok) {
+      const d = await r.json();
+      if (!d.error && d.result !== undefined) {
+        const content = d.result?.content;
+        if (Array.isArray(content)) return content.map(c => c.text ?? JSON.stringify(c)).join('\n');
+        return JSON.stringify(d.result);
+      }
+    }
+  } catch {}
+
+  // REST fallback
+  const r = await fetch(`${baseUrl}/call`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...headers },
+    body: JSON.stringify({ name, arguments: args }),
+  });
+  if (!r.ok) throw new Error(`MCP tool error ${r.status}: ${await r.text()}`);
+  const d = await r.json();
+  if (d.error) throw new Error(`MCP: ${d.error}`);
+  const content = d.content ?? d.result ?? d;
+  if (Array.isArray(content)) return content.map(c => c.text ?? JSON.stringify(c)).join('\n');
+  return typeof content === 'string' ? content : JSON.stringify(content);
+}
+
 // ─── Route: Test connessione MCP ──────────────────────────────────────────────
 app.post('/api/admin/mcp-test', requireAdmin, async (req, res) => {
   try {
@@ -936,29 +1097,7 @@ app.post('/api/admin/mcp-test', requireAdmin, async (req, res) => {
     if (!url) return res.status(400).json({ error: 'URL mancante' });
     let extraHeaders = {};
     try { extraHeaders = typeof extraHdrs === 'string' ? JSON.parse(extraHdrs) : (extraHdrs || {}); } catch {}
-    const baseUrl = url.replace(/\/$/, '');
-    let tools = [];
-    // Prova JSON-RPC
-    const r = await fetch(url, {
-      method:  'POST',
-      headers: { 'Content-Type': 'application/json', 'Accept': 'application/json, text/event-stream', ...extraHeaders },
-      body:    JSON.stringify({ jsonrpc: '2.0', method: 'tools/list', params: {}, id: 1 }),
-    });
-    if (r.ok) {
-      const data = await r.json();
-      if (data.result?.tools) {
-        tools = data.result.tools;
-      } else {
-        // Fallback REST
-        const r2 = await fetch(`${baseUrl}/tools`, { headers: extraHeaders });
-        if (r2.ok) { const d = await r2.json(); tools = Array.isArray(d) ? d : (d.tools || []); }
-      }
-    } else {
-      // Fallback REST
-      const r2 = await fetch(`${baseUrl}/tools`, { headers: extraHeaders });
-      if (!r2.ok) throw new Error(`HTTP ${r2.status}: ${await r2.text()}`);
-      const d = await r2.json(); tools = Array.isArray(d) ? d : (d.tools || []);
-    }
+    const tools = await mcpListTools(url, extraHeaders);
     res.json({ tools });
   } catch (e) {
     res.status(500).json({ error: e.message });
@@ -1172,38 +1311,11 @@ app.post('/api/chat', async (req, res) => {
     const mcpFilter = (avatar?.mcp_tool_filter || '').split(',').map(s => s.trim()).filter(Boolean);
 
     if (mcpUrl && avatar?.avatar_mode === 'mcp') {
-      const baseUrl = mcpUrl.replace(/\/$/, '');
-      const mcpPostHeaders = { 'Content-Type': 'application/json', 'Accept': 'application/json, text/event-stream', ...mcpHeaders };
-      let usedRest = false;
       try {
-        const listRes = await fetch(mcpUrl, {
-          method:  'POST',
-          headers: mcpPostHeaders,
-          body:    JSON.stringify({ jsonrpc: '2.0', method: 'tools/list', params: {}, id: 1 }),
-        });
-        if (listRes.ok) {
-          const listData = await listRes.json();
-          if (listData.result?.tools) {
-            mcpTools = listData.result.tools
-              .filter(t => mcpFilter.length === 0 || mcpFilter.includes(t.name));
-          } else {
-            usedRest = true;
-          }
-        } else {
-          usedRest = true;
-        }
-      } catch { usedRest = true; }
-
-      if (usedRest || mcpTools.length === 0) {
-        // Fallback: REST (GET /tools)
-        try {
-          const listRes = await fetch(`${baseUrl}/tools`, { headers: { ...mcpHeaders } });
-          if (listRes.ok) {
-            const tools = await listRes.json();
-            mcpTools = (Array.isArray(tools) ? tools : (tools.tools || []))
-              .filter(t => mcpFilter.length === 0 || mcpFilter.includes(t.name));
-          }
-        } catch {}
+        const allTools = await mcpListTools(mcpUrl, mcpHeaders);
+        mcpTools = allTools.filter(t => mcpFilter.length === 0 || mcpFilter.includes(t.name));
+      } catch (e) {
+        console.warn('[MCP] tools/list failed:', e.message);
       }
     }
 
@@ -1211,36 +1323,7 @@ app.post('/api/chat', async (req, res) => {
 
     // ── Helper: esegui tool call MCP ─────────────────────────────────────────
     async function callMcpTool(name, args) {
-      const baseUrl = mcpUrl.replace(/\/$/, '');
-      // Prova JSON-RPC prima
-      try {
-        const r = await fetch(mcpUrl, {
-          method:  'POST',
-          headers: { 'Content-Type': 'application/json', 'Accept': 'application/json, text/event-stream', ...mcpHeaders },
-          body:    JSON.stringify({ jsonrpc: '2.0', method: 'tools/call', params: { name, arguments: args }, id: 2 }),
-        });
-        if (r.ok) {
-          const d = await r.json();
-          if (!d.error && (d.result !== undefined)) {
-            const content = d.result?.content;
-            if (Array.isArray(content)) return content.map(c => c.text ?? JSON.stringify(c)).join('\n');
-            return JSON.stringify(d.result);
-          }
-        }
-      } catch {}
-      // Fallback REST: POST /call
-      const r = await fetch(`${baseUrl}/call`, {
-        method:  'POST',
-        headers: { 'Content-Type': 'application/json', ...mcpHeaders },
-        body:    JSON.stringify({ name, arguments: args }),
-      });
-      if (!r.ok) throw new Error(`MCP tool error ${r.status}: ${await r.text()}`);
-      const d = await r.json();
-      if (d.error) throw new Error(`MCP: ${d.error}`);
-      if (typeof d === 'string') return d;
-      const content = d.content ?? d.result ?? d;
-      if (Array.isArray(content)) return content.map(c => c.text ?? JSON.stringify(c)).join('\n');
-      return typeof content === 'string' ? content : JSON.stringify(content);
+      return mcpCallTool(mcpUrl, mcpHeaders, name, args);
     }
 
     let reply;
