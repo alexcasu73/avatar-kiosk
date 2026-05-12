@@ -1482,6 +1482,47 @@ server.on('error', (err) => {
   }
 });
 
+// ─── Seed: crea avatar Sofia al primo avvio se il DB è vuoto ─────────────────
+function seedIfEmpty() {
+  const count = db.prepare('SELECT COUNT(*) AS n FROM avatars').get().n;
+  if (count > 0) return;
+
+  try {
+    const seedCfg = JSON.parse(fs.readFileSync(join(__dirname, 'seed', 'sofia.json'), 'utf8'));
+    const seedId  = Math.random().toString(36).slice(2, 10);
+
+    // [file sorgente seed, cartella pubblica destinazione, campo DB]
+    const assets = [
+      ['seed/models/sofia.glb',               `public/models/${seedId}_model_file.glb`,        'model_file',        `models/${seedId}_model_file.glb`],
+      ['seed/bg-videos/sofia_bg.mp4',         `public/bg-videos/${seedId}_bg_video.mp4`,       'bg_video',          `bg-videos/${seedId}_bg_video.mp4`],
+      ['seed/icons/sofia_mic.png',            `public/icons/${seedId}_mic_icon.png`,            'mic_icon',          `icons/${seedId}_mic_icon.png`],
+      ['seed/icons/sofia_mic_disabled.png',   `public/icons/${seedId}_mic_icon_disabled.png`,   'mic_icon_disabled', `icons/${seedId}_mic_icon_disabled.png`],
+      ['seed/icons/sofia_audio.png',          `public/icons/${seedId}_audio_icon.png`,          'audio_icon',        `icons/${seedId}_audio_icon.png`],
+      ['seed/icons/sofia_audio_disabled.png', `public/icons/${seedId}_audio_icon_disabled.png`, 'audio_icon_disabled',`icons/${seedId}_audio_icon_disabled.png`],
+      ['seed/icons/sofia_idle.png',           `public/icons/${seedId}_idle_icon_img.png`,       'idle_icon_img',     `icons/${seedId}_idle_icon_img.png`],
+    ];
+
+    for (const [src, dst, cfgKey, dbPath] of assets) {
+      const srcPath = join(__dirname, src);
+      const dstPath = join(__dirname, dst);
+      if (fs.existsSync(srcPath)) {
+        fs.mkdirSync(dirname(dstPath), { recursive: true });
+        fs.copyFileSync(srcPath, dstPath);
+        seedCfg[cfgKey] = dbPath;
+      }
+    }
+
+    const cols = Object.keys(seedCfg);
+    db.prepare(`INSERT INTO avatars (id, ${cols.join(',')}) VALUES (?, ${cols.map(()=>'?').join(',')})`)
+      .run(seedId, ...Object.values(seedCfg));
+
+    console.log(`[seed] Avatar Sofia creato con id=${seedId}`);
+  } catch (e) {
+    console.warn('[seed] Errore durante il seed:', e.message);
+  }
+}
+seedIfEmpty();
+
 server.listen(PORT, () => {
   console.log(`\n🤖 Avatar Kiosk Platform`);
   console.log(`   → Kiosk:    http://localhost:${PORT}/k/{id}`);
