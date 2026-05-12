@@ -1508,12 +1508,12 @@ function startRenderLoop() {
       if (r.start < r.end) {
         const t = state.mainAction.time;
         if (CONFIG.animPingPong) {
-          if (state.mainAction.timeScale >= 0 && t >= r.end) {
+          if (t < r.start) {
+            state.mainAction.timeScale = 1;
+            state.mainAction.time = r.start;
+          } else if (t >= r.end) {
             state.mainAction.timeScale = -1;
             state.mainAction.time = r.end - 0.001;
-          } else if (state.mainAction.timeScale < 0 && t <= r.start) {
-            state.mainAction.timeScale = 1;
-            state.mainAction.time = r.start + 0.001;
           }
         } else {
           state.mainAction.timeScale = 1;
