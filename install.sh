@@ -86,7 +86,7 @@ if [[ "$INSTALL_MODE" == "2" ]]; then
   ok "Porta impostata: ${INPUT_PORT}"
 
   mkdir -p public/models public/backgrounds public/icons
-  touch avatars.db
+  mkdir -p data
 
   info "Build e avvio container..."
   docker compose up -d --build

@@ -18,7 +18,7 @@ ok "Codice aggiornato"
 
 info "Creazione directory dati mancanti..."
 mkdir -p public/models public/backgrounds public/icons \
-         public/bg-videos public/idle-videos public/idle-bgs
+         public/bg-videos public/idle-videos public/idle-bgs data
 ok "Directory verificate"
 
 info "Build e riavvio container (no cache per aggiornare dipendenze)..."

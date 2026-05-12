@@ -1,9 +1,12 @@
 import Database from 'better-sqlite3';
 import { join, dirname } from 'path';
 import { fileURLToPath } from 'url';
+import fs from 'fs';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
-const db = new Database(join(__dirname, 'avatars.db'));
+const dataDir = join(__dirname, 'data');
+if (!fs.existsSync(dataDir)) fs.mkdirSync(dataDir, { recursive: true });
+const db = new Database(join(dataDir, 'avatars.db'));
 
 db.exec(`
   CREATE TABLE IF NOT EXISTS avatars (

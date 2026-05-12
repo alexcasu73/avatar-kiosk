@@ -12,7 +12,7 @@ services:
       - ./public/bg-videos:/app/public/bg-videos
       - ./public/idle-videos:/app/public/idle-videos
       - ./public/idle-bgs:/app/public/idle-bgs
-      - ./avatars.db:/app/avatars.db
+      - ./data:/app/data
       - ./.env:/app/.env
     env_file:
       - .env
