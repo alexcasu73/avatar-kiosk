@@ -1024,8 +1024,8 @@ class VAD {
 
     const now = Date.now();
 
-    // Aggiorna stima rumore di fondo (solo in silenzio, non durante la registrazione, non durante TTS)
-    if (!this._speaking && !this._speechStart && !this._ignoringNoise) {
+    // Aggiorna stima rumore di fondo (solo in silenzio, non durante la registrazione)
+    if (!this._speaking && !this._speechStart) {
       // Dopo 30s senza suono sopra soglia, resetta la stima per ricalibrare
       if (this._lastSoundTime && now - this._lastSoundTime > 30000) {
         this._noiseHistory = [];
@@ -1608,10 +1608,6 @@ async function handleSayMessage(text) {
     stopCurrentAudio();
     addToHistory('avatar', text);
     setMode('speaking');
-    if (state.vad) {
-      state.vad._ignoringNoise = true;
-      state.vad._NOISE_MULT = Math.max((CONFIG.vadNoiseMult ?? 2.8) * 3, 8);
-    }
     state.vad?.resume();
 
     const ttsRes = await fetch(`${CONFIG.serverUrl}/api/tts`, {
@@ -1631,13 +1627,6 @@ async function handleSayMessage(text) {
   } finally {
     stopProceduralLipSync();
     anim.lipTarget = 0;
-    if (state.vad) {
-      state.vad._ignoringNoise   = false;
-      state.vad._NOISE_MULT      = CONFIG.vadNoiseMult ?? 2.8;
-      state.vad._noiseHistory    = [];
-      state.vad._noiseFloor      = null;
-      state.vad._adaptiveThresh  = null;
-    }
     state.vad?.resume();
     if (state.mode !== 'thinking') setMode('listening');
     resetIdleTimer();
@@ -1857,10 +1846,7 @@ async function processUserInput(text) {
     document.getElementById('typing').classList.remove('visible');
     addToHistory('avatar', chatData.reply);
     setMode('speaking');
-    if (state.vad) {
-      state.vad._ignoringNoise = true;
-      state.vad._NOISE_MULT = Math.max((CONFIG.vadNoiseMult ?? 2.8) * 3, 8);
-    }
+    state.vad?.resume();
 
     if (ttsRes.ok) {
       const ttsData = await ttsRes.json();
@@ -1885,14 +1871,6 @@ async function processUserInput(text) {
 
     const wasBargeIn = state.bargeIn;
     state.bargeIn = false;
-    // Riabilita noise floor dopo TTS: pulisce la history per ricalibrare da zero senza eco
-    if (state.vad) {
-      state.vad._ignoringNoise   = false;
-      state.vad._NOISE_MULT      = CONFIG.vadNoiseMult ?? 2.8;
-      state.vad._noiseHistory    = [];
-      state.vad._noiseFloor      = null;
-      state.vad._adaptiveThresh  = null;
-    }
     state.vad?.resume();
 
     if (wasBargeIn && !CONFIG.wakeWordAlwaysRequired) {
@@ -2242,17 +2220,8 @@ async function _startVad() {
       onSpeechStart: () => {
         clearTimeout(state._wakeTimeout);
         if (state.mode === 'idle' && !CONFIG.wakeWordAlwaysRequired && !CONFIG.wakeWordEnabled) {
-          // Free-talk puro: l'utente sta già parlando — entra subito in recording
-          // senza aspettare il greeting TTS (che pauserebbe il VAD e perderebbe il blob)
-          document.getElementById('idle-overlay').classList.add('hidden');
-          setControlsVisible(true);
-          stopWakeWord();
-          resetIdleTimer();
-          state.wakeActivated = false;
-          state.bargeIn = false;
-          if (!state.vad) _startVad();
-          else state.vad.resume();
-          setMode('recording');
+          // Free-talk puro: entra in sessione automaticamente al primo parlato
+          wakeUp().then(() => setMode('recording'));
           return;
         } else if (state.mode === 'listening') {
           if (CONFIG.wakeWordAlwaysRequired && !state.wakeActivated) return;
@@ -2292,6 +2261,7 @@ async function _startVad() {
         }
       },
       onSpeechEnd: async blob => {
+        console.log('[VAD] onSpeechEnd blob.size:', blob.size, 'mode:', state.mode, 'wakeActivated:', state.wakeActivated);
         if (state.mode === 'recording') {
           if (CONFIG.wakeWordAlwaysRequired && !state.wakeActivated && !state.bargeIn) {
             setMode('listening');
@@ -3406,10 +3376,8 @@ async function initAvatar() {
     } else if (CONFIG.wakeWordEnabled) {
       // Casi 4,5: avvia subito la recognition in idle così la wake word funziona senza toccare
       setTimeout(() => { if (state.mode === 'idle') startWakeWord(); }, 500);
-    } else {
-      // Caso 6b: free-talk puro — avvia VAD in idle così qualsiasi voce fa wakeUp()
-      setTimeout(() => { if (state.mode === 'idle' && !state.vad) _startVad(); }, 500);
     }
+    // Caso 6: nessuna recognition, solo click su overlay → wakeUp()
 
     // Aggiorna camera
     camera.position.set(0, CONFIG.cameraY, CONFIG.cameraZ);
