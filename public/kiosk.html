@@ -1036,14 +1036,14 @@ class VAD {
       }
       // Cooldown dopo ogni rilevamento voce: evita che i campioni di voce
       // vengano aggiunti come rumore di fondo (causa feedback thresh infinito)
-      if (now >= this._noiseCooldown) {
-        this._noiseHistory.push(rms);
-        if (this._noiseHistory.length > this._NOISE_SAMPLES) this._noiseHistory.shift();
-        if (this._noiseHistory.length >= 10) {
-          const sorted = [...this._noiseHistory].sort((a, b) => a - b);
-          this._noiseFloor = sorted[Math.floor(sorted.length * 0.75)];
-          this._adaptiveThresh = Math.max(this.threshold, this._noiseFloor * this._NOISE_MULT);
-        }
+      if (now < this._noiseCooldown) return;
+      this._noiseHistory.push(rms);
+      if (this._noiseHistory.length > this._NOISE_SAMPLES) this._noiseHistory.shift();
+      if (this._noiseHistory.length >= 10) {
+        const sorted = [...this._noiseHistory].sort((a, b) => a - b);
+        // Usa il 75° percentile come stima rumore di fondo (ignora picchi casuali)
+        this._noiseFloor = sorted[Math.floor(sorted.length * 0.75)];
+        this._adaptiveThresh = Math.max(this.threshold, this._noiseFloor * this._NOISE_MULT);
       }
     } else {
       this._lastSoundTime = now;
