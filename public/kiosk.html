@@ -942,7 +942,6 @@ class VAD {
     this._NOISE_MULT      = CONFIG.vadNoiseMult ?? 2.8;
     this._NOISE_SAMPLES   = 30;    // campioni per stimare il rumore
     this._MAX_RECORD_MS   = 12000; // taglia registrazione dopo 12s per evitare blob enormi
-    this._noiseCooldown   = 0;     // timestamp fino a cui sospendere l'accumulo noise
     this._lastSoundTime   = null;  // ultimo istante con suono sopra soglia
   }
 
@@ -1034,9 +1033,6 @@ class VAD {
         this._adaptiveThresh = null;
         this._lastSoundTime  = null;
       }
-      // Cooldown dopo ogni rilevamento voce: evita che i campioni di voce
-      // vengano aggiunti come rumore di fondo (causa feedback thresh infinito)
-      if (now < this._noiseCooldown) return;
       this._noiseHistory.push(rms);
       if (this._noiseHistory.length > this._NOISE_SAMPLES) this._noiseHistory.shift();
       if (this._noiseHistory.length >= 10) {
@@ -1068,7 +1064,6 @@ class VAD {
         if (this._speechStart && !this._speaking) {
           // Parlato troppo breve: scarta
           this._speechStart = null;
-          this._noiseCooldown = now + 500; // non accumulare noise per 500ms
           if (this._recorder.state === 'recording') {
             this._recorder.ondataavailable = () => {};
             this._recorder.stop();
@@ -1093,7 +1088,6 @@ class VAD {
           this._speaking = false;
           this._silenceStart = null;
           this._speechStart  = null;
-          this._noiseCooldown = now + 500;
           if (this._recorder.state === 'recording') this._recorder.stop();
         }
       } else {
