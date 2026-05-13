@@ -924,8 +924,9 @@ class VAD {
     this._paused    = false;
     this._speaking  = false;
     this.recordingEnabled = true; // se false, monitora RMS ma non avvia il recorder
-    this._speechStart  = null;
-    this._silenceStart = null;
+    this._speechStart      = null;
+    this._briefSilence     = null; // breve dip sotto soglia durante potenziale speech
+    this._silenceStart     = null;
     this._chunks    = [];
     this._recorder  = null;
     this._stream    = null;
@@ -1007,8 +1008,9 @@ class VAD {
   }
 
   _forceStop() {
-    this._speaking = false;
+    this._speaking     = false;
     this._speechStart  = null;
+    this._briefSilence = null;
     this._silenceStart = null;
     if (this._recorder.state === 'recording') this._recorder.stop();
   }
@@ -1048,6 +1050,7 @@ class VAD {
 
     if (!this._speaking) {
       if (rms > activeThresh) {
+        this._briefSilence = null; // cancella eventuale dip breve
         if (!this._speechStart) {
           this._speechStart = now;
           if (this.recordingEnabled) {
@@ -1055,15 +1058,19 @@ class VAD {
             if (this._recorder.state === 'inactive') this._recorder.start();
           }
         }
-        if (this._speechStart && now - this._speechStart >= this.minSpeechDuration) {
+        if (now - this._speechStart >= this.minSpeechDuration) {
           this._speaking = true;
           this._silenceStart = null;
           this.onSpeechStart();
         }
-      } else {
-        if (this._speechStart && !this._speaking) {
-          // Parlato troppo breve: scarta
-          this._speechStart = null;
+      } else if (this._speechStart) {
+        // Dip sotto soglia: aspetta 80ms prima di considerare "troppo breve"
+        // così le oscillazioni naturali della voce non azzerano il contatore
+        if (!this._briefSilence) this._briefSilence = now;
+        if (now - this._briefSilence >= 80) {
+          // Silenzio confermato: scarta
+          this._speechStart  = null;
+          this._briefSilence = null;
           if (this._recorder.state === 'recording') {
             this._recorder.ondataavailable = () => {};
             this._recorder.stop();
@@ -1071,7 +1078,6 @@ class VAD {
           }
           this._chunks = [];
         }
-        if (!this._speechStart) { /* nessun reset necessario */ }
       }
     } else {
       // Limite massimo durata registrazione
