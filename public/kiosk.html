@@ -1770,7 +1770,6 @@ function resetIdleTimer() {
     setMode('idle');
     state.vad?.pause();
     if (CONFIG.wakeWordEnabled) startWakeWord();
-    else if (!CONFIG.wakeWordAlwaysRequired && CONFIG.micEnabled) state.vad?.resume();
   }, CONFIG.idleTimeout);
 }
 
@@ -2242,11 +2241,9 @@ async function _startVad() {
       onVolume:    rms => updateVadVisualizer(rms),
       onSpeechStart: () => {
         clearTimeout(state._wakeTimeout);
-        if (state.mode === 'idle' && !CONFIG.wakeWordAlwaysRequired) {
-          // VAD attivo in idle → qualsiasi voce sveglia il kiosk (free-talk o wake word)
-          // Guard: se la wake word recognition ha già chiamato wakeUp(), l'overlay è già hidden
-          if (document.getElementById('idle-overlay').classList.contains('hidden')) return;
-          // Entra subito in recording senza greeting TTS (evita pausa VAD e perdita blob)
+        if (state.mode === 'idle' && !CONFIG.wakeWordAlwaysRequired && !CONFIG.wakeWordEnabled) {
+          // Free-talk puro: l'utente sta già parlando — entra subito in recording
+          // senza aspettare il greeting TTS (che pauserebbe il VAD e perderebbe il blob)
           document.getElementById('idle-overlay').classList.add('hidden');
           setControlsVisible(true);
           stopWakeWord();
@@ -3406,17 +3403,12 @@ async function initAvatar() {
       const _doWakeUp = () => { if (!_wakeUpDone) { _wakeUpDone = true; wakeUp(); } };
       setTimeout(_doWakeUp, 600);
       document.addEventListener('click', _doWakeUp, { once: true });
-    } else if (CONFIG.wakeWordEnabled && CONFIG.wakeWordAlwaysRequired) {
-      // Wake word obbligatoria: solo recognition, VAD con recordingEnabled=false
+    } else if (CONFIG.wakeWordEnabled) {
+      // Casi 4,5: avvia subito la recognition in idle così la wake word funziona senza toccare
       setTimeout(() => { if (state.mode === 'idle') startWakeWord(); }, 500);
     } else {
-      // Free-talk (con o senza wake word opzionale): avvia VAD in idle
-      // così qualsiasi voce sveglia il kiosk; se wakeWordEnabled, recognition gira in parallelo
-      setTimeout(() => {
-        if (state.mode !== 'idle') return;
-        if (!state.vad) _startVad();
-        if (CONFIG.wakeWordEnabled) startWakeWord();
-      }, 500);
+      // Caso 6b: free-talk puro — avvia VAD in idle così qualsiasi voce fa wakeUp()
+      setTimeout(() => { if (state.mode === 'idle' && !state.vad) _startVad(); }, 500);
     }
 
     // Aggiorna camera
