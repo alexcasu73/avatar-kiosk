@@ -936,16 +936,30 @@ class VAD {
     this._rafId     = null;
 
     // Noise gate adattivo
-    this._noiseFloor      = null;
-    this._noiseHistory    = [];
-    this._adaptiveThresh  = null;
+    this._noiseFloor      = null;  // stimato durante il silenzio
+    this._noiseHistory    = [];    // campioni RMS recenti in silenzio
+    this._adaptiveThresh  = null;  // soglia = noiseFloor * multiplier
     this._NOISE_MULT      = CONFIG.vadNoiseMult ?? 2.8;
-    this._NOISE_SAMPLES   = 30;
-    this._noiseCooldown   = 0;  // timestamp fino a cui sospendere l'accumulo noise
+    this._NOISE_SAMPLES   = 30;    // campioni per stimare il rumore
+    this._MAX_RECORD_MS   = 12000; // taglia registrazione dopo 12s per evitare blob enormi
+    this._noiseCooldown   = 0;     // timestamp fino a cui sospendere l'accumulo noise
+    this._lastSoundTime   = null;  // ultimo istante con suono sopra soglia
   }
 
   async start() {
-    this._stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
+    const audioConstraints = {
+      echoCancellation:   { ideal: true },
+      noiseSuppression:   { ideal: true },
+      autoGainControl:    { ideal: true },
+    };
+    this._stream = await navigator.mediaDevices.getUserMedia({ audio: audioConstraints, video: false });
+    // Verifica supporto effettivo e avvisa se non disponibile
+    const track = this._stream.getAudioTracks()[0];
+    if (track) {
+      const settings = track.getSettings();
+      if (settings.noiseSuppression === false) console.warn('[VAD] noiseSuppression non supportato da questo dispositivo/browser');
+      if (settings.echoCancellation === false) console.warn('[VAD] echoCancellation non supportato da questo dispositivo/browser');
+    }
     this._context = new AudioContext();
     const source  = this._context.createMediaStreamSource(this._stream);
 
@@ -1013,6 +1027,13 @@ class VAD {
 
     // Aggiorna stima rumore di fondo (solo in silenzio, non durante la registrazione)
     if (!this._speaking && !this._speechStart) {
+      // Dopo 30s senza suono sopra soglia, resetta la stima per ricalibrare
+      if (this._lastSoundTime && now - this._lastSoundTime > 30000) {
+        this._noiseHistory = [];
+        this._noiseFloor   = null;
+        this._adaptiveThresh = null;
+        this._lastSoundTime  = null;
+      }
       // Cooldown dopo ogni rilevamento voce: evita che i campioni di voce
       // vengano aggiunti come rumore di fondo (causa feedback thresh infinito)
       if (now >= this._noiseCooldown) {
@@ -1020,11 +1041,12 @@ class VAD {
         if (this._noiseHistory.length > this._NOISE_SAMPLES) this._noiseHistory.shift();
         if (this._noiseHistory.length >= 10) {
           const sorted = [...this._noiseHistory].sort((a, b) => a - b);
-          // Usa il 75° percentile come stima rumore di fondo (ignora picchi casuali)
           this._noiseFloor = sorted[Math.floor(sorted.length * 0.75)];
           this._adaptiveThresh = Math.max(this.threshold, this._noiseFloor * this._NOISE_MULT);
         }
       }
+    } else {
+      this._lastSoundTime = now;
     }
     const activeThresh = this._adaptiveThresh ?? this.threshold;
 
@@ -1057,6 +1079,14 @@ class VAD {
         if (!this._speechStart) { /* nessun reset necessario */ }
       }
     } else {
+      // Limite massimo durata registrazione
+      if (this._speechStart && now - this._speechStart >= this._MAX_RECORD_MS) {
+        this._speaking = false;
+        this._silenceStart = null;
+        this._speechStart  = null;
+        if (this._recorder.state === 'recording') this._recorder.stop();
+        return;
+      }
       if (rms < activeThresh) {
         if (!this._silenceStart) this._silenceStart = now;
         if (now - this._silenceStart >= this.silenceDuration) {
