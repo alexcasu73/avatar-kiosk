@@ -1614,7 +1614,7 @@ async function handleSayMessage(text) {
     stopCurrentAudio();
     addToHistory('avatar', text);
     setMode('speaking');
-    state.vad?.resume();
+    if (state.vad) state.vad._noiseCooldown = Date.now() + 60000;
 
     const ttsRes = await fetch(`${CONFIG.serverUrl}/api/tts`, {
       method: 'POST',
@@ -1633,6 +1633,12 @@ async function handleSayMessage(text) {
   } finally {
     stopProceduralLipSync();
     anim.lipTarget = 0;
+    if (state.vad) {
+      state.vad._noiseCooldown  = Date.now() + 800;
+      state.vad._noiseHistory   = [];
+      state.vad._noiseFloor     = null;
+      state.vad._adaptiveThresh = null;
+    }
     state.vad?.resume();
     if (state.mode !== 'thinking') setMode('listening');
     resetIdleTimer();
@@ -1852,7 +1858,9 @@ async function processUserInput(text) {
     document.getElementById('typing').classList.remove('visible');
     addToHistory('avatar', chatData.reply);
     setMode('speaking');
-    state.vad?.resume();
+    // Blocca noise accumulation per tutta la durata del TTS: l'audio dell'avatar
+    // captato dal microfono alzerebbe il noise floor e renderebbe il VAD sordo
+    if (state.vad) state.vad._noiseCooldown = Date.now() + 60000;
 
     if (ttsRes.ok) {
       const ttsData = await ttsRes.json();
@@ -1877,6 +1885,13 @@ async function processUserInput(text) {
 
     const wasBargeIn = state.bargeIn;
     state.bargeIn = false;
+    // Ricalibrare il noise floor dopo il TTS: l'audio captato va scartato
+    if (state.vad) {
+      state.vad._noiseCooldown = Date.now() + 800;
+      state.vad._noiseHistory  = [];
+      state.vad._noiseFloor    = null;
+      state.vad._adaptiveThresh = null;
+    }
     state.vad?.resume();
 
     if (wasBargeIn && !CONFIG.wakeWordAlwaysRequired) {
