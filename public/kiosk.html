@@ -2859,6 +2859,10 @@ window.addEventListener('message', e => {
             state.vad = null;
             old.stop();
             _startVad();
+          } else {
+            // Sessione attiva: sblocca subito la registrazione
+            state.vad.recordingEnabled = true;
+            state.wakeActivated = false;
           }
         }
       }
