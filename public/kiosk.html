@@ -2320,12 +2320,11 @@ async function wakeUp() {
     src.buffer = buf; src.connect(_lipAudioCtx.destination); src.start(0);
   } catch (_) {}
 
-  // Assicura mic abilitato
-  if (!CONFIG.micEnabled) { CONFIG.micEnabled = true; updateMicBtn(); }
-
-  // Avvia VAD
-  if (!state.vad) await _startVad();
-  else state.vad.resume();
+  // Avvia VAD solo se il mic è abilitato (non riabilitare mai se l'utente l'ha spento)
+  if (CONFIG.micEnabled) {
+    if (!state.vad) await _startVad();
+    else state.vad.resume();
+  }
 
   if (comingFromIdle && CONFIG.audioEnabled) {
     // Casi 4,5,6: presentazione TTS — ferma recognition per evitare self-listening
@@ -2366,6 +2365,7 @@ async function wakeUp() {
     if (state.vad) state.vad.recordingEnabled = false;
     startWakeWord();
   }
+  resetIdleTimer();
   console.log('[wakeUp] done — mode:', state.mode, 'micEnabled:', CONFIG.micEnabled, 'wakeAlways:', CONFIG.wakeWordAlwaysRequired);
 }
 
