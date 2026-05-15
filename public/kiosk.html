@@ -326,6 +326,23 @@
     #text-input:focus { border-color: var(--accent); }
     #text-input::placeholder { color: var(--text-dim); }
 
+    /* ─── Fumetto mic ────────────────────────────────── */
+    #mic-bubble {
+      position: fixed;
+      color: #1a1a2e;
+      font-weight: 500;
+      line-height: 1.35;
+      padding: 8px 12px;
+      max-width: 190px;
+      white-space: normal;
+      box-shadow: 0 4px 16px rgba(0,0,0,0.18);
+      pointer-events: none;
+      z-index: 101;
+      display: none;
+      transition: opacity 0.3s;
+    }
+    body.idle-hidden #mic-bubble { opacity: 0; }
+
     /* ─── Forme d'onda nei bottoni mic/audio ─────────── */
     .btn-wave {
       position: absolute;
@@ -662,6 +679,7 @@
   <!-- Header -->
   <div id="header"></div>
   <div id="controls-section">
+    <div id="mic-bubble"></div>
     <button id="mic-btn" onclick="toggleMic()" title="Attiva/disattiva microfono"
       style="position:absolute;top:1.67vh;right:2.96vw;background:rgba(248,113,113,.15);border:2px solid rgba(248,113,113,.4);
              border-radius:50%;width:44px;height:44px;padding:0;display:flex;align-items:center;
@@ -852,7 +870,7 @@
 const CONFIG = {
   serverUrl:    window.location.origin,
   idleTimeout:  90000,
-  micEnabled:   false,
+  micEnabled:   true,
   audioEnabled: true,
   micIcon:      '',
   audioIcon:    '',
@@ -860,6 +878,18 @@ const CONFIG = {
   micIconSize:  44,
   micIconX:     0,
   micIconY:     0,
+  micBubbleVisible:      true,
+  micBubbleText:         '',
+  micBubbleX:            0,
+  micBubbleY:            -80,
+  micBubbleFont:         '',
+  micBubbleFontSize:     13,
+  micBubbleBgColor:      'rgba(255,255,255,0.95)',
+  micBubbleBorderColor:  'transparent',
+  micBubbleBorderRadius: 12,
+  micBubbleBgImage:      '',
+  micBubbleWidth:        0,
+  micBubbleHeight:       0,
   audioIconSize: 44,
   audioIconX:   0,
   audioIconY:   0,
@@ -2148,6 +2178,97 @@ function updateMicBtn() {
     if (img && !CONFIG.micIconDisabled) img.style.filter = 'grayscale(1)';
     setMicWaveVisible(false);
   }
+  updateMicBubble();
+}
+
+function updateMicBubble() {
+  const bubble = document.getElementById('mic-bubble');
+  const btn    = document.getElementById('mic-btn');
+  console.log('[BUBBLE] visible:', CONFIG.micBubbleVisible, '| text:', JSON.stringify(CONFIG.micBubbleText), '| bubble:', !!bubble, '| btn:', !!btn, '| btnRect:', btn?.getBoundingClientRect());
+  if (!bubble || !btn) return;
+
+  if (!CONFIG.micBubbleVisible || !(CONFIG.micBubbleText || '').trim()) {
+    bubble.style.display = 'none';
+    return;
+  }
+
+  const BG     = CONFIG.micBubbleBgColor      || 'rgba(255,255,255,0.95)';
+  const BORDER = CONFIG.micBubbleBorderColor  || 'transparent';
+  const RADIUS = CONFIG.micBubbleBorderRadius ?? 12;
+  const filled = (CONFIG.micBubbleText || '').replace(/\{\{nome\}\}/gi, CONFIG.avatarName || '');
+
+  const img = CONFIG.micBubbleBgImage || '';
+  const A = 8; // dimensione freccia px
+
+  bubble.innerHTML = img
+    ? `<div style="position:absolute;inset:0;border-radius:${RADIUS}px;background:url(/${img}) center/cover no-repeat"></div><span style="position:relative;z-index:1">${filled}</span><span class="mb-arrow"></span>`
+    : `${filled}<span class="mb-arrow"></span>`;
+
+  bubble.style.background   = img ? 'transparent' : BG;
+  bubble.style.border       = `1px solid ${BORDER}`;
+  bubble.style.borderRadius = RADIUS + 'px';
+  bubble.style.fontSize     = (CONFIG.micBubbleFontSize || 13) + 'px';
+  bubble.style.fontFamily   = CONFIG.micBubbleFont || 'inherit';
+  bubble.style.overflow     = 'visible';
+  bubble.style.width        = CONFIG.micBubbleWidth  > 0 ? CONFIG.micBubbleWidth  + 'px' : '';
+  bubble.style.height       = CONFIG.micBubbleHeight > 0 ? CONFIG.micBubbleHeight + 'px' : '';
+  bubble.style.maxWidth     = CONFIG.micBubbleWidth  > 0 ? 'none' : '190px';
+  bubble.style.display      = 'block';
+
+  requestAnimationFrame(() => {
+    const br = btn.getBoundingClientRect();
+    const bw = bubble.offsetWidth  || 190;
+    const bh = bubble.offsetHeight || 48;
+    const cx = br.left + br.width  / 2;
+    const cy = br.top  + br.height / 2;
+    const ox = CONFIG.micBubbleX || 0;
+    const oy = CONFIG.micBubbleY ?? -80;
+
+    const left = Math.max(4, cx - bw / 2 + ox);
+    const top  = Math.max(4, cy - bh / 2 + oy);
+    bubble.style.left = left + 'px';
+    bubble.style.top  = top  + 'px';
+
+    // Freccia: punta verso il centro del bottone
+    const arr = bubble.querySelector('.mb-arrow');
+    if (!arr) return;
+    const bcx = left + bw / 2;
+    const dx = cx - bcx;
+    const dy = cy - (top + bh / 2);
+    // Se il fumetto è sopra il bottone (fondo fumetto < centro bottone) → freccia sempre in basso
+    const bubbleIsAbove = (top + bh) < cy;
+    const bubbleIsBelow = top > cy;
+    let as = {};
+    if (bubbleIsAbove || bubbleIsBelow || Math.abs(dy) >= Math.abs(dx)) {
+      // freccia su top o bottom
+      const arrowX = Math.min(Math.max(bw / 2 + dx - A, A), bw - A * 3);
+      if (dy > 0) {
+        // bottone sotto → freccia in basso
+        as = { top: bh + 'px', bottom: 'auto', left: arrowX + 'px', right: 'auto',
+          borderLeft: `${A}px solid transparent`, borderRight: `${A}px solid transparent`,
+          borderTop: `${A}px solid ${BG}`, borderBottom: 'none' };
+      } else {
+        // bottone sopra → freccia in alto
+        as = { top: (-A) + 'px', bottom: 'auto', left: arrowX + 'px', right: 'auto',
+          borderLeft: `${A}px solid transparent`, borderRight: `${A}px solid transparent`,
+          borderBottom: `${A}px solid ${BG}`, borderTop: 'none' };
+      }
+    } else {
+      const arrowY = Math.min(Math.max(bh / 2 + dy - A, A), bh - A * 3);
+      if (dx > 0) {
+        // bottone a destra → freccia a destra
+        as = { left: bw + 'px', right: 'auto', top: arrowY + 'px', bottom: 'auto',
+          borderTop: `${A}px solid transparent`, borderBottom: `${A}px solid transparent`,
+          borderLeft: `${A}px solid ${BG}`, borderRight: 'none' };
+      } else {
+        // bottone a sinistra → freccia a sinistra
+        as = { left: (-A) + 'px', right: 'auto', top: arrowY + 'px', bottom: 'auto',
+          borderTop: `${A}px solid transparent`, borderBottom: `${A}px solid transparent`,
+          borderRight: `${A}px solid ${BG}`, borderLeft: 'none' };
+      }
+    }
+    Object.assign(arr.style, { position: 'absolute', width: '0', height: '0' }, as);
+  });
 }
 
 function updateAudioBtn() {
@@ -2326,10 +2447,10 @@ async function wakeUp() {
     else state.vad.resume();
   }
 
-  if (comingFromIdle && CONFIG.audioEnabled) {
+  if (comingFromIdle && CONFIG.greetingText.trim() && CONFIG.audioEnabled) {
     // Casi 4,5,6: presentazione TTS — ferma recognition per evitare self-listening
     stopWakeWord();
-    const greetingText = (CONFIG.greetingText || `Ciao! Sono ${CONFIG.avatarName}. Come posso aiutarti?`)
+    const greetingText = CONFIG.greetingText
       .replace(/\{\{nome\}\}/gi, CONFIG.avatarName)
       .replace(/\{\{sessionID\}\}/gi, state.kioskSessionId);
     addToHistory('avatar', greetingText);
@@ -2350,9 +2471,9 @@ async function wakeUp() {
     stopProceduralLipSync(); anim.lipTarget = 0;
     state.vad?.resume();
     setMode('listening');
-  } else if (comingFromIdle) {
+  } else if (comingFromIdle && CONFIG.greetingText.trim()) {
     // audioEnabled=false: solo testo
-    const greetingText = (CONFIG.greetingText || `Ciao! Sono ${CONFIG.avatarName}. Come posso aiutarti?`)
+    const greetingText = CONFIG.greetingText
       .replace(/\{\{nome\}\}/gi, CONFIG.avatarName)
       .replace(/\{\{sessionID\}\}/gi, state.kioskSessionId);
     setTimeout(() => addToHistory('avatar', greetingText), 50);
@@ -2918,7 +3039,7 @@ window.addEventListener('message', e => {
       document.getElementById('avatar-panel').style.background =
         `radial-gradient(ellipse at 50% 60%, ${color}aa 0%, ${color} 70%)`;
     } else {
-      const stringKeys = ['chat_align', 'model_file', 'mic_icon', 'mic_icon_disabled', 'audio_icon', 'audio_icon_disabled', 'chat_font', 'mic_wave_color', 'audio_wave_color', 'idle_font', 'idle_icon_img', 'theme', 'mic_bg_color', 'mic_disabled_color', 'mic_border_color', 'mic_border_disabled_color', 'audio_bg_color', 'audio_disabled_color', 'audio_border_color', 'audio_border_disabled_color', 'greeting_text', 'stt_prompt', 'wake_words'];
+      const stringKeys = ['chat_align', 'model_file', 'mic_icon', 'mic_icon_disabled', 'audio_icon', 'audio_icon_disabled', 'chat_font', 'mic_wave_color', 'audio_wave_color', 'idle_font', 'idle_icon_img', 'theme', 'mic_bg_color', 'mic_disabled_color', 'mic_border_color', 'mic_border_disabled_color', 'audio_bg_color', 'audio_disabled_color', 'audio_border_color', 'audio_border_disabled_color', 'greeting_text', 'stt_prompt', 'wake_words', 'mic_bubble_text', 'mic_bubble_bg_color', 'mic_bubble_border_color', 'mic_bubble_font', 'mic_bubble_bg_image'];
       const val = stringKeys.includes(msg.key) ? msg.value : parseFloat(msg.value);
       applyParamLive(msg.key, val);
     }
@@ -3231,6 +3352,18 @@ function applyParamLive(key, v) {
     mic_wave_color:       () => { CONFIG.micWaveColor       = v; applyWaveColors(); },
     audio_wave_color:     () => { CONFIG.audioWaveColor     = v; applyWaveColors(); },
     mic_visible:                 () => { CONFIG.micVisible              = v !== 0 && v !== false; updateMicBtn(); },
+    mic_bubble_visible:          () => { CONFIG.micBubbleVisible  = v !== 0 && v !== false; updateMicBubble(); },
+    mic_bubble_text:             () => { CONFIG.micBubbleText     = v; updateMicBubble(); },
+    mic_bubble_x:                () => { CONFIG.micBubbleX        = +v; updateMicBubble(); },
+    mic_bubble_y:                () => { CONFIG.micBubbleY        = +v; updateMicBubble(); },
+    mic_bubble_font:             () => { CONFIG.micBubbleFont         = v; updateMicBubble(); },
+    mic_bubble_font_size:        () => { CONFIG.micBubbleFontSize     = +v; updateMicBubble(); },
+    mic_bubble_bg_color:         () => { CONFIG.micBubbleBgColor      = v; updateMicBubble(); },
+    mic_bubble_border_color:     () => { CONFIG.micBubbleBorderColor  = v; updateMicBubble(); },
+    mic_bubble_border_radius:    () => { CONFIG.micBubbleBorderRadius = +v; updateMicBubble(); },
+    mic_bubble_bg_image:         () => { CONFIG.micBubbleBgImage      = v; updateMicBubble(); },
+    mic_bubble_width:            () => { CONFIG.micBubbleWidth        = +v; updateMicBubble(); },
+    mic_bubble_height:           () => { CONFIG.micBubbleHeight       = +v; updateMicBubble(); },
     mic_bg_color:                () => { CONFIG.micBgColor              = v; updateMicBtn(); },
     mic_disabled_color:          () => { CONFIG.micDisabledColor        = v; updateMicBtn(); },
     mic_border_color:            () => { CONFIG.micBorderColor          = v; updateMicBtn(); },
@@ -3278,6 +3411,18 @@ async function initAvatar() {
     CONFIG.audioIconY      = cfg.audio_icon_y      ?? 0;
     CONFIG.micWaveColor      = cfg.mic_wave_color      || '#ffffff';
     CONFIG.audioWaveColor    = cfg.audio_wave_color    || '#ffffff';
+    CONFIG.micBubbleVisible      = (cfg.mic_bubble_visible ?? 1) !== 0;
+    CONFIG.micBubbleText         = cfg.mic_bubble_text          || '';
+    CONFIG.micBubbleX            = cfg.mic_bubble_x             ?? 0;
+    CONFIG.micBubbleY            = cfg.mic_bubble_y             ?? -80;
+    CONFIG.micBubbleFont         = cfg.mic_bubble_font          || '';
+    CONFIG.micBubbleFontSize     = cfg.mic_bubble_font_size     ?? 13;
+    CONFIG.micBubbleBgColor      = cfg.mic_bubble_bg_color      || 'rgba(255,255,255,0.95)';
+    CONFIG.micBubbleBorderColor  = cfg.mic_bubble_border_color  || 'rgba(0,0,0,0)';
+    CONFIG.micBubbleBorderRadius = cfg.mic_bubble_border_radius ?? 12;
+    CONFIG.micBubbleBgImage      = cfg.mic_bubble_bg_image      || '';
+    CONFIG.micBubbleWidth        = cfg.mic_bubble_width         ?? 0;
+    CONFIG.micBubbleHeight       = cfg.mic_bubble_height        ?? 0;
     CONFIG.micVisible              = (cfg.mic_visible   ?? 1) !== 0;
     CONFIG.micBgColor              = cfg.mic_bg_color              || 'rgba(248,113,113,0.15)';
     CONFIG.micDisabledColor        = cfg.mic_disabled_color        || 'rgba(248,113,113,0.15)';
@@ -3350,6 +3495,7 @@ async function initAvatar() {
     applyTheme(cfg.theme || 'viola');
     updateMicBtn();
     updateAudioBtn();
+    setTimeout(() => updateMicBubble(), 300);
 
     // UI
     document.getElementById('avatar-response-label').textContent = cfg.name.toUpperCase();

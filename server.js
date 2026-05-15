@@ -181,7 +181,10 @@ app.get('/api/avatar/:id', (req, res) => {
           mic_icon, mic_icon_disabled, mic_icon_size, mic_icon_x, mic_icon_y, mic_visible, mic_bg_color, mic_disabled_color, mic_border_color, mic_border_disabled_color,
           audio_icon, audio_icon_disabled, audio_icon_size, audio_icon_x, audio_icon_y, audio_visible, audio_bg_color, audio_disabled_color, audio_border_color, audio_border_disabled_color,
           mic_wave_color, audio_wave_color, theme, wake_word_enabled, wake_word_always, wake_words, greeting_text,
-          vad_threshold, vad_silence_duration, vad_min_speech_duration, vad_min_blob_size, vad_wake_timeout } = avatar;
+          vad_threshold, vad_silence_duration, vad_min_speech_duration, vad_min_blob_size, vad_wake_timeout,
+          mic_bubble_visible, mic_bubble_text, mic_bubble_position, mic_bubble_x, mic_bubble_y,
+          mic_bubble_font, mic_bubble_font_size, mic_bubble_bg_color, mic_bubble_border_color, mic_bubble_border_radius,
+          mic_bubble_bg_image, mic_bubble_width, mic_bubble_height } = avatar;
   res.json({ id, name, background, bg_video, model_file, idle_start, idle_end,
              speech_start, speech_end, anim_pingpong, tts_text_normalization, tts_language_normalization, avatar_scale, avatar_offset_x,
              avatar_offset_y, avatar_rot_y, camera_z, camera_y, camera_look_at_y,
@@ -192,7 +195,10 @@ app.get('/api/avatar/:id', (req, res) => {
              mic_icon, mic_icon_disabled, mic_icon_size, mic_icon_x, mic_icon_y, mic_visible, mic_bg_color, mic_disabled_color, mic_border_color, mic_border_disabled_color,
              audio_icon, audio_icon_disabled, audio_icon_size, audio_icon_x, audio_icon_y, audio_visible, audio_bg_color, audio_disabled_color, audio_border_color, audio_border_disabled_color,
              mic_wave_color, audio_wave_color, theme, wake_word_enabled, wake_word_always, wake_words, greeting_text,
-             vad_threshold, vad_silence_duration, vad_min_speech_duration, vad_min_blob_size, vad_wake_timeout });
+             vad_threshold, vad_silence_duration, vad_min_speech_duration, vad_min_blob_size, vad_wake_timeout,
+             mic_bubble_visible, mic_bubble_text, mic_bubble_x, mic_bubble_y,
+             mic_bubble_font, mic_bubble_font_size, mic_bubble_bg_color, mic_bubble_border_color, mic_bubble_border_radius,
+             mic_bubble_bg_image, mic_bubble_width, mic_bubble_height });
 });
 
 // ─── Route: Kiosk page ────────────────────────────────────────────────────────
@@ -222,7 +228,10 @@ app.get('/api/preview/:id', (req, res) => {
           mic_icon, mic_icon_disabled, mic_icon_size, mic_icon_x, mic_icon_y, mic_visible, mic_bg_color, mic_disabled_color, mic_border_color, mic_border_disabled_color,
           audio_icon, audio_icon_disabled, audio_icon_size, audio_icon_x, audio_icon_y, audio_visible, audio_bg_color, audio_disabled_color, audio_border_color, audio_border_disabled_color,
           mic_wave_color, audio_wave_color, theme, wake_word_enabled, wake_word_always, wake_words, greeting_text,
-          vad_threshold, vad_silence_duration, vad_min_speech_duration, vad_min_blob_size, vad_wake_timeout } = avatar;
+          vad_threshold, vad_silence_duration, vad_min_speech_duration, vad_min_blob_size, vad_wake_timeout,
+          mic_bubble_visible, mic_bubble_text, mic_bubble_position, mic_bubble_x, mic_bubble_y,
+          mic_bubble_font, mic_bubble_font_size, mic_bubble_bg_color, mic_bubble_border_color, mic_bubble_border_radius,
+          mic_bubble_bg_image, mic_bubble_width, mic_bubble_height } = avatar;
   res.json({ id, name, background, bg_video, model_file, idle_start, idle_end,
              speech_start, speech_end, anim_pingpong, tts_text_normalization, tts_language_normalization, avatar_scale, avatar_offset_x,
              avatar_offset_y, avatar_rot_y, camera_z, camera_y, camera_look_at_y,
@@ -233,7 +242,10 @@ app.get('/api/preview/:id', (req, res) => {
              mic_icon, mic_icon_disabled, mic_icon_size, mic_icon_x, mic_icon_y, mic_visible, mic_bg_color, mic_disabled_color, mic_border_color, mic_border_disabled_color,
              audio_icon, audio_icon_disabled, audio_icon_size, audio_icon_x, audio_icon_y, audio_visible, audio_bg_color, audio_disabled_color, audio_border_color, audio_border_disabled_color,
              mic_wave_color, audio_wave_color, theme, wake_word_enabled, wake_word_always, wake_words, greeting_text,
-             vad_threshold, vad_silence_duration, vad_min_speech_duration, vad_min_blob_size, vad_wake_timeout });
+             vad_threshold, vad_silence_duration, vad_min_speech_duration, vad_min_blob_size, vad_wake_timeout,
+             mic_bubble_visible, mic_bubble_text, mic_bubble_x, mic_bubble_y,
+             mic_bubble_font, mic_bubble_font_size, mic_bubble_bg_color, mic_bubble_border_color, mic_bubble_border_radius,
+             mic_bubble_bg_image, mic_bubble_width, mic_bubble_height });
 });
 
 // ─── Route: Admin login ───────────────────────────────────────────────────────
@@ -334,6 +346,8 @@ app.put('/api/admin/avatars/:id', (req, res) => {
                   'vad_threshold','vad_silence_duration','vad_min_speech_duration','vad_min_blob_size','vad_wake_timeout',
                   'vad_noise_mult','stt_prompt',
                   'mcp_url','mcp_headers','mcp_tool_filter',
+                  'mic_bubble_visible','mic_bubble_text','mic_bubble_x','mic_bubble_y',
+                  'mic_bubble_font','mic_bubble_font_size','mic_bubble_bg_color','mic_bubble_border_color','mic_bubble_border_radius','mic_bubble_bg_image','mic_bubble_width','mic_bubble_height',
                   'rate_limit_rpm'];
   const updates = [];
   const values  = [];
@@ -720,10 +734,11 @@ const uploadIcon = multer({ storage: multer.diskStorage({
 app.post('/api/admin/avatars/:id/upload-icon/:type', uploadIcon.single('icon'), (req, res) => {
   if (!req.file) return res.status(400).json({ error: 'Nessun file ricevuto' });
   const type = req.params.type; // 'mic' | 'audio' | 'idle'
-  if (!['mic', 'mic-disabled', 'audio', 'audio-disabled', 'idle'].includes(type)) return res.status(400).json({ error: 'Tipo non valido' });
+  if (!['mic', 'mic-disabled', 'audio', 'audio-disabled', 'idle', 'mic-bubble'].includes(type)) return res.status(400).json({ error: 'Tipo non valido' });
   const iconFile = `icons/${req.file.filename}`;
   const col = type === 'mic' ? 'mic_icon' : type === 'mic-disabled' ? 'mic_icon_disabled'
-            : type === 'audio' ? 'audio_icon' : type === 'audio-disabled' ? 'audio_icon_disabled' : 'idle_icon_img';
+            : type === 'audio' ? 'audio_icon' : type === 'audio-disabled' ? 'audio_icon_disabled'
+            : type === 'mic-bubble' ? 'mic_bubble_bg_image' : 'idle_icon_img';
   db.prepare(`UPDATE avatars SET ${col} = ?, updated_at = datetime('now') WHERE id = ?`)
     .run(iconFile, req.params.id);
   res.json({ ok: true, [col]: iconFile });
@@ -1022,27 +1037,31 @@ async function mcpSseCall(url, headers, method, params, timeoutMs = 15000) {
 async function mcpListTools(url, headers) {
   const transport = await mcpDetectTransport(url, headers);
   const baseUrl = url.replace(/\/$/, '');
+  const jsonHeaders = { 'Content-Type': 'application/json', ...headers };
 
   if (transport === 'sse') {
     const result = await mcpSseCall(url, headers, 'tools/list', {});
     return result?.tools || [];
   }
 
-  // JSON-RPC diretto
+  // JSON-RPC diretto — initialize + tools/list
   try {
-    const r = await fetch(url, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', ...headers },
-      body: JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'tools/list', params: {} }),
-    });
-    if (r.ok) {
-      const d = await r.json();
-      if (d.result?.tools) return d.result.tools;
-    }
+    const post = async (body) => {
+      const r = await fetch(url, { method: 'POST', headers: jsonHeaders, body: JSON.stringify(body) });
+      const text = await r.text();
+      if (!r.ok) throw new Error(`HTTP ${r.status}`);
+      return JSON.parse(text);
+    };
+    await post({ jsonrpc: '2.0', id: 1, method: 'initialize', params: {
+      protocolVersion: '2024-11-05', capabilities: {},
+      clientInfo: { name: 'avatar-kiosk', version: '1.0' },
+    }});
+    const d = await post({ jsonrpc: '2.0', id: 2, method: 'tools/list', params: {} });
+    if (d.result?.tools) return d.result.tools;
   } catch {}
 
   // REST fallback
-  const r2 = await fetch(`${baseUrl}/tools`, { headers });
+  const r2 = await fetch(`${baseUrl}/tools`, { headers: jsonHeaders });
   if (!r2.ok) throw new Error(`HTTP ${r2.status}: ${await r2.text()}`);
   const d = await r2.json();
   return Array.isArray(d) ? d : (d.tools || []);
@@ -1051,6 +1070,7 @@ async function mcpListTools(url, headers) {
 async function mcpCallTool(url, headers, name, args) {
   const transport = await mcpDetectTransport(url, headers);
   const baseUrl = url.replace(/\/$/, '');
+  const jsonHeaders = { 'Content-Type': 'application/json', ...headers };
 
   if (transport === 'sse') {
     const result = await mcpSseCall(url, headers, 'tools/call', { name, arguments: args });
@@ -1059,35 +1079,75 @@ async function mcpCallTool(url, headers, name, args) {
     return JSON.stringify(result);
   }
 
-  // JSON-RPC diretto
-  try {
+  // JSON-RPC diretto — initialize (con session), poi tools/call
+  const postJson = async (body, extraHeaders = {}) => {
     const r = await fetch(url, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', ...headers },
-      body: JSON.stringify({ jsonrpc: '2.0', id: 2, method: 'tools/call', params: { name, arguments: args } }),
+      headers: { ...jsonHeaders, ...extraHeaders },
+      body: JSON.stringify(body),
     });
-    if (r.ok) {
-      const d = await r.json();
-      if (!d.error && d.result !== undefined) {
-        const content = d.result?.content;
-        if (Array.isArray(content)) return content.map(c => c.text ?? JSON.stringify(c)).join('\n');
-        return JSON.stringify(d.result);
-      }
-    }
-  } catch {}
+    const text = await r.text();
+    if (!r.ok) throw new Error(`MCP HTTP ${r.status}: ${text.slice(0, 300)}`);
+    return { data: JSON.parse(text), sessionId: r.headers.get('mcp-session-id') };
+  };
 
-  // REST fallback
-  const r = await fetch(`${baseUrl}/call`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', ...headers },
-    body: JSON.stringify({ name, arguments: args }),
-  });
-  if (!r.ok) throw new Error(`MCP tool error ${r.status}: ${await r.text()}`);
-  const d = await r.json();
-  if (d.error) throw new Error(`MCP: ${d.error}`);
-  const content = d.content ?? d.result ?? d;
-  if (Array.isArray(content)) return content.map(c => c.text ?? JSON.stringify(c)).join('\n');
-  return typeof content === 'string' ? content : JSON.stringify(content);
+  try {
+    const initRes = await postJson({ jsonrpc: '2.0', id: 1, method: 'initialize', params: {
+      protocolVersion: '2024-11-05', capabilities: {},
+      clientInfo: { name: 'avatar-kiosk', version: '1.0' },
+    }});
+    const sessionHeaders = initRes.sessionId ? { 'mcp-session-id': initRes.sessionId } : {};
+
+    const callRes = await postJson(
+      { jsonrpc: '2.0', id: 2, method: 'tools/call', params: { name, arguments: args } },
+      sessionHeaders
+    );
+    const d = callRes.data;
+    if (d.error) throw new Error(`MCP error: ${JSON.stringify(d.error)}`);
+    const content = d.result?.content;
+    if (Array.isArray(content)) return content.map(c => c.text ?? JSON.stringify(c)).join('\n');
+    return JSON.stringify(d.result);
+  } catch (e) {
+    throw new Error(`MCP tool call failed: ${e.message}`);
+  }
+}
+
+// Crea una sessione MCP persistente (un solo initialize, tutte le call condividono la sessione)
+async function mcpOpenSession(url, headers) {
+  const jsonHeaders = { 'Content-Type': 'application/json', ...headers };
+  let callId = 1;
+
+  const post = async (body, sessionId) => {
+    const h = sessionId ? { ...jsonHeaders, 'mcp-session-id': sessionId } : jsonHeaders;
+    const r = await fetch(url, { method: 'POST', headers: h, body: JSON.stringify(body) });
+    const text = await r.text();
+    if (!r.ok) throw new Error(`MCP HTTP ${r.status}: ${text.slice(0, 300)}`);
+    return { data: JSON.parse(text), sessionId: r.headers.get('mcp-session-id') };
+  };
+
+  const initRes = await post({ jsonrpc: '2.0', id: callId++, method: 'initialize', params: {
+    protocolVersion: '2024-11-05', capabilities: {},
+    clientInfo: { name: 'avatar-kiosk', version: '1.0' },
+  }});
+  const transportSessionId = initRes.sessionId;
+
+  return {
+    async listTools() {
+      const res = await post({ jsonrpc: '2.0', id: callId++, method: 'tools/list', params: {} }, transportSessionId);
+      return res.data.result?.tools || [];
+    },
+    async callTool(name, args) {
+      const res = await post(
+        { jsonrpc: '2.0', id: callId++, method: 'tools/call', params: { name, arguments: args } },
+        transportSessionId
+      );
+      const d = res.data;
+      if (d.error) throw new Error(`MCP error: ${JSON.stringify(d.error)}`);
+      const content = d.result?.content;
+      if (Array.isArray(content)) return content.map(c => c.text ?? JSON.stringify(c)).join('\n');
+      return JSON.stringify(d.result);
+    },
+  };
 }
 
 // ─── Route: Test connessione MCP ──────────────────────────────────────────────
@@ -1307,23 +1367,66 @@ app.post('/api/chat', async (req, res) => {
     const mcpUrl    = avatar?.mcp_url?.trim();
     let mcpTools    = [];
     let mcpHeaders  = {};
+    let mcpSession  = null;  // sessione persistente (un solo initialize per tutta la richiesta)
     try { mcpHeaders = JSON.parse(avatar?.mcp_headers || '{}'); } catch {}
     const mcpFilter = (avatar?.mcp_tool_filter || '').split(',').map(s => s.trim()).filter(Boolean);
 
     if (mcpUrl && avatar?.avatar_mode === 'mcp') {
       try {
-        const allTools = await mcpListTools(mcpUrl, mcpHeaders);
-        mcpTools = allTools.filter(t => mcpFilter.length === 0 || mcpFilter.includes(t.name));
+        const transport = await mcpDetectTransport(mcpUrl, mcpHeaders);
+
+        if (transport === 'sse') {
+          // SSE: ogni call è già indipendente, usa il percorso legacy
+          const allTools = await mcpListTools(mcpUrl, mcpHeaders);
+          const authTool = allTools.find(t => t.name === 'authenticate');
+          if (authTool) {
+            const bearerToken = (mcpHeaders['Authorization'] || mcpHeaders['authorization'] || '')
+              .replace(/^Bearer\s+/i, '').trim();
+            try { await mcpCallTool(mcpUrl, mcpHeaders, 'authenticate', { token: bearerToken }); }
+            catch (e) { console.warn('[MCP-CHAT] SSE authenticate failed:', e.message); }
+          }
+          const filtered = allTools.filter(t => t.name !== 'authenticate');
+          mcpTools = mcpFilter.length === 0 ? filtered : filtered.filter(t => mcpFilter.includes(t.name));
+        } else {
+          // Streamable HTTP: apri UNA sessione e riusa per tutte le call
+          mcpSession = await mcpOpenSession(mcpUrl, mcpHeaders);
+          const allTools = await mcpSession.listTools();
+
+          const authTool = allTools.find(t => t.name === 'authenticate');
+          let mcpAppSessionId = null;
+          if (authTool) {
+            const bearerToken = (mcpHeaders['Authorization'] || mcpHeaders['authorization'] || '')
+              .replace(/^Bearer\s+/i, '').trim();
+            try {
+              const authResult = await mcpSession.callTool('authenticate', { token: bearerToken });
+              const m = String(authResult).match(/session_id[:\s"']+([a-f0-9-]{36})/i);
+              if (m) mcpAppSessionId = m[1];
+              console.log('[MCP-CHAT] authenticate OK | app session_id:', mcpAppSessionId);
+              console.log('[MCP-CHAT] authenticate risposta completa:', String(authResult).slice(0, 400));
+            } catch (e) {
+              console.warn('[MCP-CHAT] authenticate failed:', e.message);
+            }
+          }
+          // Chiudi e riapri nel closure del helper
+          mcpSession._appSessionId = mcpAppSessionId;
+
+          const filtered = allTools.filter(t => t.name !== 'authenticate');
+          mcpTools = mcpFilter.length === 0 ? filtered : filtered.filter(t => mcpFilter.includes(t.name));
+        }
       } catch (e) {
-        console.warn('[MCP] tools/list failed:', e.message);
+        console.warn('[MCP-CHAT] setup FAILED:', e.message);
       }
     }
 
-    console.log('[CHAT] avatar_mode:', avatar?.avatar_mode, '| mcp_url:', avatar?.mcp_url, '| mcpTools:', mcpTools.length);
-
     // ── Helper: esegui tool call MCP ─────────────────────────────────────────
     async function callMcpTool(name, args) {
-      return mcpCallTool(mcpUrl, mcpHeaders, name, args);
+      if (mcpSession) {
+        console.log('[MCP-CALL] tool:', name, '| args:', JSON.stringify(args));
+        const result = await mcpSession.callTool(name, args);
+        console.log('[MCP-CALL] result:', String(result).slice(0, 300));
+        return result;
+      }
+      return await mcpCallTool(mcpUrl, mcpHeaders, name, args);
     }
 
     let reply;

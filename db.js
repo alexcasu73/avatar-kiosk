@@ -208,6 +208,32 @@ if (!existing.includes('audio_border_disabled_color'))
   db.exec("ALTER TABLE avatars ADD COLUMN audio_border_disabled_color TEXT DEFAULT 'rgba(248,113,113,0.4)'");
 if (!existing.includes('mic_wave_color'))
   db.exec("ALTER TABLE avatars ADD COLUMN mic_wave_color TEXT DEFAULT '#ffffff'");
+if (!existing.includes('mic_bubble_visible'))
+  db.exec("ALTER TABLE avatars ADD COLUMN mic_bubble_visible INTEGER DEFAULT 1");
+if (!existing.includes('mic_bubble_text'))
+  db.exec("ALTER TABLE avatars ADD COLUMN mic_bubble_text TEXT DEFAULT ''");
+if (!existing.includes('mic_bubble_position'))
+  db.exec("ALTER TABLE avatars ADD COLUMN mic_bubble_position TEXT DEFAULT 'top'");
+if (!existing.includes('mic_bubble_x'))
+  db.exec("ALTER TABLE avatars ADD COLUMN mic_bubble_x INTEGER DEFAULT 0");
+if (!existing.includes('mic_bubble_y'))
+  db.exec("ALTER TABLE avatars ADD COLUMN mic_bubble_y INTEGER DEFAULT -80");
+if (!existing.includes('mic_bubble_font'))
+  db.exec("ALTER TABLE avatars ADD COLUMN mic_bubble_font TEXT DEFAULT ''");
+if (!existing.includes('mic_bubble_font_size'))
+  db.exec("ALTER TABLE avatars ADD COLUMN mic_bubble_font_size INTEGER DEFAULT 13");
+if (!existing.includes('mic_bubble_bg_color'))
+  db.exec("ALTER TABLE avatars ADD COLUMN mic_bubble_bg_color TEXT DEFAULT 'rgba(255,255,255,0.95)'");
+if (!existing.includes('mic_bubble_border_color'))
+  db.exec("ALTER TABLE avatars ADD COLUMN mic_bubble_border_color TEXT DEFAULT 'transparent'");
+if (!existing.includes('mic_bubble_border_radius'))
+  db.exec("ALTER TABLE avatars ADD COLUMN mic_bubble_border_radius INTEGER DEFAULT 12");
+if (!existing.includes('mic_bubble_bg_image'))
+  db.exec("ALTER TABLE avatars ADD COLUMN mic_bubble_bg_image TEXT DEFAULT ''");
+if (!existing.includes('mic_bubble_width'))
+  db.exec("ALTER TABLE avatars ADD COLUMN mic_bubble_width INTEGER DEFAULT 0");
+if (!existing.includes('mic_bubble_height'))
+  db.exec("ALTER TABLE avatars ADD COLUMN mic_bubble_height INTEGER DEFAULT 0");
 if (!existing.includes('audio_wave_color'))
   db.exec("ALTER TABLE avatars ADD COLUMN audio_wave_color TEXT DEFAULT '#ffffff'");
 if (!existing.includes('idle_icon_img'))
