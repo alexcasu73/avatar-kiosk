@@ -320,8 +320,15 @@ app.post('/api/admin/avatars', (req, res) => {
   const { name = 'Nuovo Avatar', voice_id = '', system_prompt = DEFAULT_SYSTEM_PROMPT,
           background = '#0a0a0f' } = req.body;
   db.prepare(`INSERT INTO avatars (id, name, voice_id, system_prompt, background,
-              chat_font_size, idle_font_size, mic_icon_size, audio_icon_size, chat_bottom)
-              VALUES (?, ?, ?, ?, ?, 1.1, 1.1, 100, 100, 100)`).run(id, name, voice_id, system_prompt, background);
+              chat_font_size, idle_font_size, mic_icon_size, audio_icon_size, chat_bottom,
+              mic_icon, mic_icon_disabled, audio_icon, audio_icon_disabled,
+              mic_bg_color, mic_disabled_color, mic_border_color, mic_border_disabled_color,
+              audio_bg_color, audio_disabled_color, audio_border_color, audio_border_disabled_color)
+              VALUES (?, ?, ?, ?, ?, 1.1, 1.1, 100, 100, 100,
+              'icons/syyvs2jk_mic_icon.png', 'icons/syyvs2jk_mic_icon_disabled.png',
+              'icons/syyvs2jk_audio_icon.png', 'icons/syyvs2jk_audio_icon_disabled.png',
+              'rgba(250,250,250,0.70)', 'rgba(222,222,222,0.23)', 'rgba(255,255,255,0.79)', 'rgba(250,250,250,0.71)',
+              'rgba(255,255,255,0.71)', 'rgba(255,255,255,0.22)', 'rgba(255,255,255,0.75)', 'rgba(255,255,255,0.71)')`).run(id, name, voice_id, system_prompt, background);
   res.json(db.prepare('SELECT * FROM avatars WHERE id = ?').get(id));
 });
 
@@ -774,7 +781,19 @@ app.post('/api/stt', multer({ storage: multer.memoryStorage() }).single('audio')
     const data = await response.json();
     const sttSeconds = Math.ceil(data.duration || 0);
     logRequest(req.body?.avatarId, 'stt', rl.ip || getClientIp(req), false, sttSeconds, 0);
-    res.json({ transcript: data.text });
+    const WHISPER_HALLUCINATIONS = [
+      'sottotitoli e revisione a cura di qtss',
+      'sottotitoli a cura di qtss',
+      'sub ita by qtss',
+      'sottotitoli creati dalla comunità di amara.org',
+      'amara.org',
+      'grazie per aver guardato',
+      'grazie per la visione',
+      'iscriviti al canale',
+    ];
+    const transcript = data.text || '';
+    const isHallucination = WHISPER_HALLUCINATIONS.some(h => transcript.toLowerCase().includes(h));
+    res.json({ transcript: isHallucination ? '' : transcript });
   } catch (error) {
     console.error('STT error:', error);
     res.status(500).json({ error: error.message });
