@@ -1167,11 +1167,17 @@
               <span class="provider-badge hidden" id="badge-tavily">● ATTIVO</span>
             </div>
             <div class="field">
-              <label>API Key <span class="hint" style="margin:0">(opzionale — lascia vuoto per disabilitare)</span></label>
-              <input type="password" autocomplete="new-password" id="f-tavily-api-key" placeholder="tvly-…"
-                oninput="document.getElementById('badge-tavily').classList.toggle('hidden', !this.value.trim())"/>
+              <label>API Key</label>
+              <input type="password" autocomplete="new-password" id="f-tavily-api-key" placeholder="tvly-…"/>
             </div>
-            <div class="field-hint" style="font-size:11px;color:#888">Abilita la ricerca su internet. Il modello decide autonomamente quando cercare. Chiave su <a href="https://tavily.com" target="_blank" style="color:inherit">tavily.com</a>.</div>
+            <div class="field" style="margin-bottom:4px">
+              <label style="display:flex;align-items:center;gap:10px;cursor:pointer;font-size:.85rem">
+                <input type="checkbox" id="f-tavily-enabled"
+                  onchange="document.getElementById('badge-tavily').classList.toggle('hidden', !this.checked)"/>
+                Abilita ricerca web
+              </label>
+            </div>
+            <div class="field-hint" style="font-size:11px;color:#888">Il modello decide autonomamente quando cercare su internet. Chiave su <a href="https://tavily.com" target="_blank" style="color:inherit">tavily.com</a>.</div>
           </div>
         </div>
 
@@ -2130,8 +2136,9 @@ function selectAvatar(id) {
   // AI Agent
   setAiProvider(a.ai_provider || 'anthropic');
   document.getElementById('f-anthropic-api-key').value = a.anthropic_api_key || '';
-  document.getElementById('f-tavily-api-key').value    = a.tavily_api_key    || '';
-  document.getElementById('badge-tavily').classList.toggle('hidden', !(a.tavily_api_key || '').trim());
+  document.getElementById('f-tavily-api-key').value    = a.tavily_api_key || '';
+  document.getElementById('f-tavily-enabled').checked  = !!a.tavily_enabled;
+  document.getElementById('badge-tavily').classList.toggle('hidden', !a.tavily_enabled);
   document.getElementById('f-anthropic-model').value   = a.anthropic_model   || '';
   document.getElementById('f-openai-api-key').value    = a.openai_api_key    || '';
   document.getElementById('f-openai-model').value      = a.openai_model      || '';
@@ -2749,6 +2756,7 @@ async function saveAvatar() {
     ai_max_tokens:      parseInt(document.getElementById('f-ai-max-tokens').value) || 0,
     rate_limit_rpm:     parseInt(document.getElementById('f-rate-limit-rpm').value) || 0,
     tavily_api_key:     document.getElementById('f-tavily-api-key').value.trim(),
+    tavily_enabled:     document.getElementById('f-tavily-enabled').checked ? 1 : 0,
     avatar_mode:          setAvatarMode._current,
     webhook_url:             document.getElementById('f-webhook-url').value.trim(),
     webhook_input_template:  (() => { const v = document.getElementById('f-webhook-input-template').value.trim() || '{"query":"{{query}}"}'; try { const p = JSON.parse(v); const f = JSON.stringify(p, null, 2); document.getElementById('f-webhook-input-template').value = f; return f; } catch { return v; } })(),

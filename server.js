@@ -352,7 +352,7 @@ app.put('/api/admin/avatars/:id', (req, res) => {
                   'wake_word_enabled','wake_word_always','wake_words','greeting_text',
                   'vad_threshold','vad_silence_duration','vad_min_speech_duration','vad_min_blob_size','vad_wake_timeout',
                   'vad_noise_mult','stt_prompt',
-                  'mcp_url','mcp_headers','mcp_tool_filter','tavily_api_key',
+                  'mcp_url','mcp_headers','mcp_tool_filter','tavily_api_key','tavily_enabled',
                   'mic_bubble_visible','mic_bubble_text','mic_bubble_x','mic_bubble_y',
                   'mic_bubble_font','mic_bubble_font_size','mic_bubble_bg_color','mic_bubble_border_color','mic_bubble_border_radius','mic_bubble_bg_image','mic_bubble_width','mic_bubble_height',
                   'rate_limit_rpm'];
@@ -1456,7 +1456,7 @@ app.post('/api/chat', async (req, res) => {
     }
 
     // ── Tavily web search (opzionale) ────────────────────────────────────────
-    const tavilyKey = avatar?.tavily_api_key?.trim() || '';
+    const tavilyKey = (avatar?.tavily_enabled && avatar?.tavily_api_key?.trim()) ? avatar.tavily_api_key.trim() : '';
     async function tavilySearch(query) {
       const r = await fetch('https://api.tavily.com/search', {
         method: 'POST',

@@ -1,6 +1,6 @@
 {
   "name": "avatar-kiosk",
-  "version": "1.0.2",
+  "version": "1.0.3",
   "description": "AI Avatar Kiosk - 3D avatar interattivo con lip sync e AI agent",
   "type": "module",
   "main": "server.js",
