@@ -1316,14 +1316,21 @@ app.post('/api/chat', async (req, res) => {
       const timestamp = new Date().toISOString();
       const tempId    = `temp_${Date.now()}_${Math.random().toString(36).slice(2,8)}`;
 
+      const whBaseName     = avatar?.name || AVATAR_NAME;
+      const whSystemPrompt = (avatar?.system_prompt || DEFAULT_SYSTEM_PROMPT)
+        .replace(/\{\{nome\}\}/gi, whBaseName)
+        .replace(/\{\{sessionID\}\}/gi, kioskSessionId || sid);
+
       const esc = s => s.replace(/\\/g,'\\\\').replace(/"/g,'\\"');
       const jsonStr = template
-        .replace(/\{\{query\}\}/g,      esc(message))
-        .replace(/\{\{session_id\}\}/g, esc(sid))
-        .replace(/\{\{user_id\}\}/g,    esc(userId))
-        .replace(/\{\{timestamp\}\}/g,  esc(timestamp))
-        .replace(/\{\{temp_id\}\}/g,    esc(tempId))
-        .replace(/\{\{sessionID\}\}/gi, esc(kioskSessionId || sid));
+        .replace(/\{\{query\}\}/g,         esc(message))
+        .replace(/\{\{session_id\}\}/g,    esc(sid))
+        .replace(/\{\{user_id\}\}/g,       esc(userId))
+        .replace(/\{\{timestamp\}\}/g,     esc(timestamp))
+        .replace(/\{\{temp_id\}\}/g,       esc(tempId))
+        .replace(/\{\{sessionID\}\}/gi,    esc(kioskSessionId || sid))
+        .replace(/\{\{system_prompt\}\}/g, esc(whSystemPrompt))
+        .replace(/\{\{avatar_name\}\}/g,   esc(whBaseName));
 
       let body;
       try { body = JSON.parse(jsonStr); }
