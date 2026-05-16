@@ -352,7 +352,7 @@ app.put('/api/admin/avatars/:id', (req, res) => {
                   'wake_word_enabled','wake_word_always','wake_words','greeting_text',
                   'vad_threshold','vad_silence_duration','vad_min_speech_duration','vad_min_blob_size','vad_wake_timeout',
                   'vad_noise_mult','stt_prompt',
-                  'mcp_url','mcp_headers','mcp_tool_filter',
+                  'mcp_url','mcp_headers','mcp_tool_filter','tavily_api_key',
                   'mic_bubble_visible','mic_bubble_text','mic_bubble_x','mic_bubble_y',
                   'mic_bubble_font','mic_bubble_font_size','mic_bubble_bg_color','mic_bubble_border_color','mic_bubble_border_radius','mic_bubble_bg_image','mic_bubble_width','mic_bubble_height',
                   'rate_limit_rpm'];
@@ -1455,6 +1455,28 @@ app.post('/api/chat', async (req, res) => {
       return await mcpCallTool(mcpUrl, mcpHeaders, name, args);
     }
 
+    // ── Tavily web search (opzionale) ────────────────────────────────────────
+    const tavilyKey = avatar?.tavily_api_key?.trim() || '';
+    async function tavilySearch(query) {
+      const r = await fetch('https://api.tavily.com/search', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ api_key: tavilyKey, query, max_results: 5, search_depth: 'basic' }),
+      });
+      if (!r.ok) throw new Error(`Tavily: ${await r.text()}`);
+      const data = await r.json();
+      return data.results?.map(x => `[${x.title}](${x.url})\n${x.content}`).join('\n\n') || 'Nessun risultato trovato.';
+    }
+    const TAVILY_TOOL_DEF_CLAUDE = tavilyKey ? [{
+      name: 'search_web',
+      description: 'Cerca informazioni aggiornate su internet. Usa questo tool quando la domanda riguarda eventi recenti, notizie, prezzi, orari o qualsiasi informazione che potrebbe essere cambiata nel tempo.',
+      input_schema: { type: 'object', properties: { query: { type: 'string', description: 'La query di ricerca' } }, required: ['query'] },
+    }] : [];
+    const TAVILY_TOOL_DEF_OAI = tavilyKey ? [{
+      type: 'function',
+      function: { name: 'search_web', description: TAVILY_TOOL_DEF_CLAUDE[0]?.description || '', parameters: { type: 'object', properties: { query: { type: 'string' } }, required: ['query'] } },
+    }] : [];
+
     let reply;
     let chatTokensIn = 0, chatTokensOut = 0;
 
@@ -1462,10 +1484,10 @@ app.post('/api/chat', async (req, res) => {
       const aiKey   = avatar?.openai_api_key || process.env.OPENAI_API_KEY;
       const aiModel = avatar?.openai_model   || 'gpt-4o';
       const msgs    = [{ role: 'system', content: systemPrompt }, ...history];
-      const oaiTools = mcpTools.map(t => ({
-        type: 'function',
-        function: { name: t.name, description: t.description || '', parameters: t.inputSchema || { type: 'object', properties: {} } },
-      }));
+      const oaiTools = [
+        ...mcpTools.map(t => ({ type: 'function', function: { name: t.name, description: t.description || '', parameters: t.inputSchema || { type: 'object', properties: {} } } })),
+        ...TAVILY_TOOL_DEF_OAI,
+      ];
       let iterMsgs = [...msgs];
       for (let i = 0; i < 5; i++) {
         const body = { model: aiModel, max_tokens: aiTokens, messages: iterMsgs };
@@ -1489,8 +1511,12 @@ app.post('/api/chat', async (req, res) => {
         const toolResults = [];
         for (const tc of msg.tool_calls) {
           let result;
-          try { result = await callMcpTool(tc.function.name, JSON.parse(tc.function.arguments || '{}')); }
-          catch (e) { result = `Errore: ${e.message}`; }
+          try {
+            const args = JSON.parse(tc.function.arguments || '{}');
+            result = tc.function.name === 'search_web'
+              ? await tavilySearch(args.query)
+              : await callMcpTool(tc.function.name, args);
+          } catch (e) { result = `Errore: ${e.message}`; }
           toolResults.push({ role: 'tool', tool_call_id: tc.id, content: result });
         }
         iterMsgs.push(...toolResults);
@@ -1501,11 +1527,10 @@ app.post('/api/chat', async (req, res) => {
       const aiModel = avatar?.anthropic_model   || CLAUDE_MODEL;
       const aiClient = aiKey !== process.env.ANTHROPIC_API_KEY
         ? new Anthropic({ apiKey: aiKey }) : anthropic;
-      const claudeTools = mcpTools.map(t => ({
-        name: t.name,
-        description: t.description || '',
-        input_schema: t.inputSchema || { type: 'object', properties: {} },
-      }));
+      const claudeTools = [
+        ...mcpTools.map(t => ({ name: t.name, description: t.description || '', input_schema: t.inputSchema || { type: 'object', properties: {} } })),
+        ...TAVILY_TOOL_DEF_CLAUDE,
+      ];
       let iterMsgs = [...history];
       for (let i = 0; i < 5; i++) {
         const params = { model: aiModel, max_tokens: aiTokens, system: systemPrompt, messages: iterMsgs };
@@ -1517,14 +1542,16 @@ app.post('/api/chat', async (req, res) => {
           reply = response.content.find(b => b.type === 'text')?.text || '';
           break;
         }
-        // Aggiungi risposta assistente con tool_use blocks
         iterMsgs.push({ role: 'assistant', content: response.content });
         const toolResults = [];
         for (const block of response.content) {
           if (block.type !== 'tool_use') continue;
           let result;
-          try { result = await callMcpTool(block.name, block.input); }
-          catch (e) { result = `Errore: ${e.message}`; }
+          try {
+            result = block.name === 'search_web'
+              ? await tavilySearch(block.input.query)
+              : await callMcpTool(block.name, block.input);
+          } catch (e) { result = `Errore: ${e.message}`; }
           toolResults.push({ type: 'tool_result', tool_use_id: block.id, content: result });
         }
         iterMsgs.push({ role: 'user', content: toolResults });

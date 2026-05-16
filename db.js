@@ -296,6 +296,8 @@ if (!existing.includes('label'))
   db.exec("ALTER TABLE avatars ADD COLUMN label TEXT DEFAULT ''")
 if (!existing.includes('webhook_say_token'))
   db.exec("ALTER TABLE avatars ADD COLUMN webhook_say_token TEXT DEFAULT ''")
+if (!existing.includes('tavily_api_key'))
+  db.exec("ALTER TABLE avatars ADD COLUMN tavily_api_key TEXT DEFAULT ''")
 
 // Tabella log richieste
 db.exec(`
