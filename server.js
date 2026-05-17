@@ -975,7 +975,31 @@ async function mcpDetectTransport(url, headers) {
     const ct = r.headers.get('content-type') || '';
     if (ct.includes('text/event-stream')) return 'sse';
   } catch {}
+  // Prova initialize per rilevare Streamable HTTP (MCP 2025)
+  try {
+    const streamHeaders = { 'Content-Type': 'application/json', 'Accept': 'application/json, text/event-stream', ...headers };
+    const r = await fetch(url, {
+      method: 'POST', headers: streamHeaders,
+      body: JSON.stringify({ jsonrpc: '2.0', id: 0, method: 'initialize', params: {
+        protocolVersion: '2025-03-26', capabilities: {},
+        clientInfo: { name: 'avatar-kiosk', version: '1.0' },
+      }}),
+      signal: AbortSignal.timeout(5000),
+    });
+    if (r.ok && r.headers.get('mcp-session-id')) return 'streamable';
+  } catch {}
   return 'jsonrpc';
+}
+
+// Legge la prima risposta JSON-RPC da uno stream SSE (per Streamable HTTP)
+async function mcpReadSseBody(response) {
+  const text = await response.text();
+  for (const line of text.split('\n')) {
+    if (line.startsWith('data:')) {
+      try { return JSON.parse(line.slice(5).trim()); } catch {}
+    }
+  }
+  throw new Error('Nessun dato JSON nella risposta SSE');
 }
 
 async function mcpSseCall(url, headers, method, params, timeoutMs = 15000) {
@@ -1063,6 +1087,11 @@ async function mcpListTools(url, headers) {
     return result?.tools || [];
   }
 
+  if (transport === 'streamable') {
+    const session = await mcpOpenSession(url, headers);
+    return session.listTools();
+  }
+
   // JSON-RPC diretto — initialize + tools/list
   try {
     const post = async (body) => {
@@ -1132,35 +1161,51 @@ async function mcpCallTool(url, headers, name, args) {
 }
 
 // Crea una sessione MCP persistente (un solo initialize, tutte le call condividono la sessione)
+// Supporta sia JSON-RPC puro (2024) che Streamable HTTP / SSE (MCP 2025)
 async function mcpOpenSession(url, headers) {
-  const jsonHeaders = { 'Content-Type': 'application/json', ...headers };
+  const streamHeaders = {
+    'Content-Type': 'application/json',
+    'Accept': 'application/json, text/event-stream',
+    ...headers,
+  };
   let callId = 1;
+  let transportSessionId = null;
 
-  const post = async (body, sessionId) => {
-    const h = sessionId ? { ...jsonHeaders, 'mcp-session-id': sessionId } : jsonHeaders;
+  const post = async (body) => {
+    const h = transportSessionId ? { ...streamHeaders, 'mcp-session-id': transportSessionId } : streamHeaders;
     const r = await fetch(url, { method: 'POST', headers: h, body: JSON.stringify(body) });
     const text = await r.text();
     if (!r.ok) throw new Error(`MCP HTTP ${r.status}: ${text.slice(0, 300)}`);
-    return { data: JSON.parse(text), sessionId: r.headers.get('mcp-session-id') };
+    // Aggiorna session ID se il server lo manda
+    const sid = r.headers.get('mcp-session-id');
+    if (sid) transportSessionId = sid;
+    const ct = r.headers.get('content-type') || '';
+    // Risposta SSE: estrai il JSON dalla riga "data: ..."
+    if (ct.includes('text/event-stream')) {
+      for (const line of text.split('\n')) {
+        if (line.startsWith('data:')) {
+          try { return JSON.parse(line.slice(5).trim()); } catch {}
+        }
+      }
+      throw new Error('Nessun dato JSON nella risposta SSE');
+    }
+    return JSON.parse(text);
   };
 
-  const initRes = await post({ jsonrpc: '2.0', id: callId++, method: 'initialize', params: {
-    protocolVersion: '2024-11-05', capabilities: {},
+  await post({ jsonrpc: '2.0', id: callId++, method: 'initialize', params: {
+    protocolVersion: '2025-03-26', capabilities: {},
     clientInfo: { name: 'avatar-kiosk', version: '1.0' },
   }});
-  const transportSessionId = initRes.sessionId;
 
   return {
     async listTools() {
-      const res = await post({ jsonrpc: '2.0', id: callId++, method: 'tools/list', params: {} }, transportSessionId);
-      return res.data.result?.tools || [];
+      const d = await post({ jsonrpc: '2.0', id: callId++, method: 'tools/list', params: {} });
+      return d.result?.tools || [];
     },
     async callTool(name, args) {
-      const res = await post(
+      const d = await post(
         { jsonrpc: '2.0', id: callId++, method: 'tools/call', params: { name, arguments: args } },
-        transportSessionId
       );
-      const d = res.data;
       if (d.error) throw new Error(`MCP error: ${JSON.stringify(d.error)}`);
       const content = d.result?.content;
       if (Array.isArray(content)) return content.map(c => c.text ?? JSON.stringify(c)).join('\n');
@@ -1414,7 +1459,7 @@ app.post('/api/chat', async (req, res) => {
           const filtered = allTools.filter(t => t.name !== 'authenticate');
           mcpTools = mcpFilter.length === 0 ? filtered : filtered.filter(t => mcpFilter.includes(t.name));
         } else {
-          // Streamable HTTP: apri UNA sessione e riusa per tutte le call
+          // JSON-RPC o Streamable HTTP: apri UNA sessione e riusa per tutte le call
           mcpSession = await mcpOpenSession(mcpUrl, mcpHeaders);
           const allTools = await mcpSession.listTools();
 
