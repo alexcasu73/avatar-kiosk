@@ -1527,14 +1527,14 @@ app.post('/api/chat', async (req, res) => {
 
     if (aiProvider === 'openai') {
       const aiKey   = avatar?.openai_api_key || process.env.OPENAI_API_KEY;
-      const aiModel = avatar?.openai_model   || 'gpt-4o';
+      const aiModel = avatar?.openai_model   || 'gpt-4o-mini';
       const msgs    = [{ role: 'system', content: systemPrompt }, ...history];
       const oaiTools = [
         ...mcpTools.map(t => ({ type: 'function', function: { name: t.name, description: t.description || '', parameters: t.inputSchema || { type: 'object', properties: {} } } })),
         ...TAVILY_TOOL_DEF_OAI,
       ];
       let iterMsgs = [...msgs];
-      for (let i = 0; i < 5; i++) {
+      for (let i = 0; i < 3; i++) {
         const body = { model: aiModel, max_tokens: aiTokens, messages: iterMsgs };
         if (oaiTools.length) body.tools = oaiTools;
         const r = await fetch('https://api.openai.com/v1/chat/completions', {
@@ -1577,7 +1577,7 @@ app.post('/api/chat', async (req, res) => {
         ...TAVILY_TOOL_DEF_CLAUDE,
       ];
       let iterMsgs = [...history];
-      for (let i = 0; i < 5; i++) {
+      for (let i = 0; i < 3; i++) {
         const params = { model: aiModel, max_tokens: aiTokens, system: systemPrompt, messages: iterMsgs };
         if (claudeTools.length) params.tools = claudeTools;
         const response = await aiClient.messages.create(params);
@@ -1604,6 +1604,7 @@ app.post('/api/chat', async (req, res) => {
       if (!reply) reply = 'Non sono riuscito a elaborare una risposta.';
     }
     logRequest(avatarId, 'chat', chatIp, false, chatTokensIn, chatTokensOut);
+    console.log(`[TOKENS] avatar=${avatarId} provider=${aiProvider} model=${avatar?.openai_model || avatar?.anthropic_model || 'default'} in=${chatTokensIn} out=${chatTokensOut}`);
     history.push({ role: 'assistant', content: reply });
     res.json({ reply, sessionId: sid });
   } catch (error) {
